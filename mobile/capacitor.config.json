@@ -1,0 +1,6 @@
+{
+  "appId": "in.spjewellers.estimate",
+  "appName": "S.P. Jewellers",
+  "webDir": "../web/dist",
+  "android": { "allowMixedContent": false, "captureInput": true, "webContentsDebuggingEnabled": false }
+}

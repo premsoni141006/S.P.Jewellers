@@ -1,0 +1,218 @@
+// The printed estimate. This one HTML template is used for the on-screen preview,
+// the PDF, the Windows printer job (desktop), Android printing (app) and browser printing
+// (website), so every output is laid out by the same markup and the same CSS.
+//
+// Layout follows the shop's sample: SP_Jewellers_Simple_Demo_Estimate_v2.pdf.
+
+import { calcEstimate, ratePerGram } from './calc';
+import { fmtDateTime, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
+import { LOGO_ASPECT, LOGO_BW_DATA_URI } from './logo';
+import type { Estimate } from './types';
+
+export interface PrintHeader {
+  shopName: string;
+  shopCode: string;
+  /** Owner name and contact number, printed under the shop name (e.g. "Sandeep Soni · M. 94166 25950"). */
+  ownerLine?: string;
+  /** Print the black-and-white shop logo above the shop name (A4 only). Default off for callers that omit it. */
+  logo?: boolean;
+}
+
+/** The printed columns — in order, and nothing else (wastage was removed; the charge is "Making"). */
+export const PRINT_COLUMNS = [
+  'Description',
+  'G. Wt.',
+  'Less Wt.',
+  'Net Wt.',
+  'Tunch',
+  'Pcs',
+  'Making',
+  'Silver/Gold',
+  'Amount',
+] as const;
+
+/** The bill always shows at least this many item rows (blank rows fill the rest); more items = more rows. */
+export const MIN_PRINT_ROWS = 7;
+
+// Column widths in millimetres (proportions of the sample); they add up to the 190 mm
+// between the 10 mm A4 margins.
+const COL_MM = [54, 15, 15, 15, 14, 11, 20, 22, 24];
+
+export const escapeHtml = (s: string): string =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+/** Rate per 10 grams of a metal, as printed on the bill, e.g. "₹2,310 / 10 g". */
+export function bhavText(est: Estimate, metal: 'silver' | 'gold'): string {
+  const p = est.pricing;
+  const perGram = metal === 'gold' ? ratePerGram(p.goldRate, p.goldRateUnit) : ratePerGram(p.silverRate, p.silverRateUnit);
+  return `${fmtRupeeCell(perGram * 10)} / 10 g`;
+}
+
+/** The metals actually bought on this estimate: silver first, then gold; only those that appear. */
+export function metalsBought(est: Pick<Estimate, 'items'>): Array<'silver' | 'gold'> {
+  return (['silver', 'gold'] as const).filter((m) => est.items.some((i) => i.metal === m));
+}
+
+export const metalName = (m: 'silver' | 'gold'): string => (m === 'gold' ? 'Gold' : 'Silver');
+
+/** Kept for older callers. */
+export function silverRateText(est: Estimate): string {
+  return `${fmtRupeeCell(ratePerGram(est.pricing.silverRate, est.pricing.silverRateUnit))}/g`;
+}
+
+const A4_CSS = `
+@page { size: A4 portrait; margin: 10mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #fff; color: #000; }
+body {
+  font-family: Arial, "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 9pt; line-height: 1.2;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.sheet { width: 190mm; }
+.logo { display: block; margin: 0 auto 1mm; height: 17mm; width: auto; }
+.shop { text-align: center; font-size: 21pt; font-weight: 700; letter-spacing: 0.3pt; }
+.code-gap { height: 3mm; }
+.owner-line { text-align: center; font-size: 10.5pt; font-weight: 700; margin: 1mm 0 3mm; }
+.code { text-align: center; font-size: 9.5pt; margin: 0.5mm 0 3mm; }
+.customer { display: flex; justify-content: space-between; font-size: 9pt; margin-bottom: 2mm; }
+table { width: 190mm; table-layout: fixed; border-collapse: collapse; }
+thead { display: table-header-group; }
+tr { page-break-inside: avoid; break-inside: avoid; }
+th, td { border: 0.75pt solid #000; padding: 0 1.4mm; height: 7mm; vertical-align: middle; font-size: 8.5pt; }
+th { background: #f0f0f0; font-weight: 700; text-align: center; font-size: 8pt; }
+td { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+td.d { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+td.r { text-align: right; }
+tr.sum td { text-align: right; }
+tr.sum td.lbl { text-align: left; }
+tr.sum td.mid { text-align: center; }
+tr.grand td { background: #f0f0f0; font-weight: 700; }
+.note { font-size: 8pt; margin-top: 2mm; }
+@media screen {
+  html { background: #d6d6d6; }
+  body { padding: 24px 0; }
+  .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.25); }
+}
+`;
+
+function headerHtml(h: PrintHeader, withLogo = true): string {
+  const logo = withLogo && h.logo ? `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(17 * LOGO_ASPECT * 10) / 10}mm" height="17mm" alt="">` : '';
+  return `${logo}<div class="shop">${escapeHtml(h.shopName)}</div>${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}${(h.ownerLine ?? '').trim() ? `<div class="owner-line">${escapeHtml(h.ownerLine as string)}</div>` : '<div class="code-gap"></div>'}`;
+}
+
+export interface RenderOptions {
+  /** Small line under the table, e.g. for the test estimate. */
+  note?: string;
+}
+
+export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: RenderOptions = {}): string {
+  const t = calcEstimate(est);
+  const p = est.pricing;
+
+  const rows = est.items.map((it, i) => {
+    const c = t.items[i];
+    return `<tr>
+<td class="d">${escapeHtml(it.description)}</td>
+<td>${fmtWeight(it.grossWt)}</td>
+<td>${fmtWeight(it.lessWt)}</td>
+<td>${fmtWeight(c.netWt)}</td>
+<td>${fmtPercent(it.tunch)}</td>
+<td>${fmtPcs(it.pcs)}</td>
+<td>${fmtRupeeCell(c.labour)}</td>
+<td>${metalName(it.metal)}</td>
+<td class="r">${fmtRupeeCell(c.amount)}</td>
+</tr>`;
+  });
+  for (let i = est.items.length; i < MIN_PRINT_ROWS; i++) rows.push(`<tr>${'<td></td>'.repeat(9)}</tr>`);
+
+  const sum = (label: string, mid: string, value: string, cls = '') =>
+    `<tr class="sum ${cls}"><td class="lbl" colspan="7">${label}</td><td class="mid">${mid}</td><td>${value}</td></tr>`;
+  const summary = [
+    ...metalsBought(est).map((m) => sum(`${metalName(m).toUpperCase()} BHAV`, `${metalName(m)} Rate`, bhavText(est, m))),
+    ...est.otherCharges.map((c) => sum(escapeHtml(c.label.toUpperCase()), '', fmtRupeeCell(c.amount))),
+    ...(p.gstEnabled ? [sum(`GST ${fmtPercent(p.gstPercent)}%`, '', fmtRupeeCell(t.gst))] : []),
+    sum('TOTAL', '', fmtRupeeCell(t.grandTotal), 'grand'),
+  ].join('');
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Estimate</title><style>${A4_CSS}</style></head>
+<body><div class="sheet">
+${headerHtml(header)}
+<table>
+<colgroup>${COL_MM.map((w) => `<col style="width:${w}mm">`).join('')}</colgroup>
+<thead><tr>${PRINT_COLUMNS.map((c) => `<th>${c}</th>`).join('')}</tr></thead>
+<tbody>${rows.join('')}${summary}</tbody>
+</table>
+${opts.note ? `<div class="note">${escapeHtml(opts.note)}</div>` : ''}
+</div></body></html>`;
+}
+
+/** Printed by "Test Print" on a document (A4) printer. */
+export function renderTestPageHtml(header: PrintHeader, printerName: string, when: Date = new Date()): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Printer test</title><style>${A4_CSS}
+.msg { text-align: center; font-size: 16pt; font-weight: 700; margin-top: 12mm; }
+.meta { text-align: center; font-size: 11pt; margin-top: 4mm; }
+.box { border: 0.75pt solid #000; margin-top: 12mm; padding: 4mm; font-size: 9pt; text-align: center; }
+</style></head><body><div class="sheet">
+${headerHtml(header)}
+<div class="msg">Printer Test Successful</div>
+<div class="meta">${escapeHtml(fmtDateTime(when.toISOString()))}</div>
+<div class="meta">Printer: ${escapeHtml(printerName)}</div>
+<div class="box">If this page is centred with all four edges of this box visible, A4 alignment is correct.</div>
+</div></body></html>`;
+}
+
+/**
+ * Narrow version for thermal (ESC/POS) printers. Same header, same ten columns in the same
+ * order; each item takes three short rows so the numbers stay readable on 58/80 mm paper.
+ * `widthPx` is the printer's dot width; the page is rendered 1 CSS px = 1 dot.
+ */
+export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: number): string {
+  const t = calcEstimate(est);
+  const p = est.pricing;
+  const big = widthPx >= 500;
+  const fs = big ? 20 : 15;
+
+  const cell = (label: string, value: string) => `<td><div class="l">${label}</div><div class="v">${value}</div></td>`;
+  const items = est.items
+    .map((it, i) => {
+      const c = t.items[i];
+      return `<table class="it">
+<tr><td colspan="5" class="d">${escapeHtml(it.description)}</td></tr>
+<tr>${cell('G. Wt.', fmtWeight(it.grossWt))}${cell('Less Wt.', fmtWeight(it.lessWt))}${cell('Net Wt.', fmtWeight(c.netWt))}${cell('Tunch', fmtPercent(it.tunch))}${cell('Pcs', fmtPcs(it.pcs))}</tr>
+<tr>${cell('Making', fmtRupeeCell(c.labour))}${cell('Silver/Gold', metalName(it.metal))}<td colspan="3"><div class="l">Amount</div><div class="v b">${fmtRupeeCell(c.amount)}</div></td></tr>
+</table>`;
+    })
+    .join('');
+
+  const line = (k: string, v: string, cls = '') => `<div class="row ${cls}"><span>${escapeHtml(k)}</span><span>${v}</span></div>`;
+  const sums = [
+    ...metalsBought(est).map((m) => line(`${metalName(m).toUpperCase()} BHAV`, bhavText(est, m))),
+    ...est.otherCharges.map((c) => line(c.label.toUpperCase(), fmtRupeeCell(c.amount))),
+    ...(p.gstEnabled ? [line(`GST ${fmtPercent(p.gstPercent)}%`, fmtRupeeCell(t.gst))] : []),
+    line('TOTAL', fmtRupeeCell(t.grandTotal), 'grand'),
+  ].join('');
+
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #fff; color: #000; width: ${widthPx}px; }
+body { font-family: Arial, "Segoe UI", sans-serif; font-size: ${fs}px; line-height: 1.2; padding: 0 ${big ? 6 : 4}px; }
+.shop { text-align: center; font-size: ${Math.round(fs * 1.6)}px; font-weight: 700; }
+.code { text-align: center; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
+.owner-line { text-align: center; font-weight: 700; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
+.cust { margin-bottom: 6px; }
+table.it { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: -2px; }
+table.it td { border: 2px solid #000; padding: 2px 4px; vertical-align: top; }
+td.d { font-weight: 700; }
+.l { font-size: ${Math.round(fs * 0.72)}px; }
+.v { text-align: right; font-variant-numeric: tabular-nums; }
+.b { font-weight: 700; }
+.sum { margin-top: 10px; }
+.row { display: flex; justify-content: space-between; padding: 2px 0; }
+.grand { border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: 700; font-size: ${Math.round(fs * 1.2)}px; padding: 4px 0; margin-top: 4px; }
+</style></head><body>
+${headerHtml(header, false)}
+${items}
+<div class="sum">${sums}</div>
+</body></html>`;
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">S.P. Jewellers</string>
+    <string name="title_activity_main">S.P. Jewellers</string>
+    <string name="package_name">in.spjewellers.estimate</string>
+    <string name="custom_url_scheme">in.spjewellers.estimate</string>
+</resources>

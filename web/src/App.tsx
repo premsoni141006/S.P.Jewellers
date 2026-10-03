@@ -1,0 +1,287 @@
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { fmtEstimateNo, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { AppBar } from './components/AppBar';
+import { Icon } from './components/Icon';
+import { Sheet, type SheetAction } from './components/Sheet';
+import { blankEstimate, hasContent, useAppStore } from './lib/store';
+import { errorText, printEstimate } from './lib/printing';
+import { HomePage } from './pages/HomePage';
+import { EstimatePage } from './pages/EstimatePage';
+import { HistoryPage } from './pages/HistoryPage';
+import { PrinterPage } from './pages/PrinterPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { StockPage } from './pages/StockPage';
+import { PreviewScreen } from './pages/PreviewScreen';
+import { RatesModal } from './components/RatesModal';
+import { useBackLayer } from './lib/backStack';
+import { ProductsModal } from './components/ProductsModal';
+
+type Tab = 'home' | 'estimate' | 'history' | 'printer' | 'settings' | 'stock';
+// The bar has exactly three things: Home, "+" (new estimate) and History.
+// Settings opens from the gear on Home; Printer settings lives inside Settings.
+const TABS_LEFT: Array<{ id: Tab; label: string }> = [{ id: 'home', label: 'Home' }];
+const TABS_RIGHT: Array<{ id: Tab; label: string }> = [{ id: 'history', label: 'History' }];
+
+export interface SheetSpec {
+  title: string;
+  body?: ReactNode;
+  actions: SheetAction[];
+}
+
+export default function App() {
+  const store = useAppStore();
+  const { settings, printer, est, setEst, saveEstimate } = store;
+  const header = {
+    shopName: settings.shopName,
+    shopCode: '',
+    // Owner name and contact number print under the shop name (customer details are not printed).
+    ownerLine: [settings.ownerName?.trim(), settings.phone.trim() ? `M. ${settings.phone.trim()}` : ''].filter(Boolean).join(' · '),
+    logo: settings.printLogo !== false,
+  };
+
+  const [tab, setTab] = useState<Tab>('home');
+  const [sheet, setSheet] = useState<SheetSpec | null>(null);
+  const [ratesOpen, setRatesOpen] = useState(false);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean } | null>(null);
+  const [invalid, setInvalid] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [tab]);
+
+  const confirm = useCallback(
+    (title: string, body: ReactNode, okLabel: string, danger = false) =>
+      new Promise<boolean>((resolve) => {
+        const close = (v: boolean) => {
+          setSheet(null);
+          resolve(v);
+        };
+        setSheet({
+          title,
+          body,
+          actions: [
+            { label: okLabel, kind: danger ? 'danger' : 'primary', onClick: () => close(true) },
+            { label: 'Cancel', onClick: () => close(false) },
+          ],
+        });
+      }),
+    [],
+  );
+
+  const showIssues = (issues: ValidationIssue[]) => {
+    setInvalid(new Set(issues.map((i) => i.itemId).filter((x): x is string => !!x)));
+    setSheet({
+      title: 'Fix these first',
+      body: (
+        <ul className="issue-list" data-testid="issues">
+          {issues.map((i, n) => (
+            <li key={n}>{i.message}</li>
+          ))}
+        </ul>
+      ),
+      actions: [{ label: 'OK', kind: 'primary', onClick: () => setSheet(null) }],
+    });
+  };
+
+  const save = (): boolean => {
+    const issues = validateEstimate(est);
+    if (issues.length) {
+      showIssues(issues);
+      return false;
+    }
+    setInvalid(new Set());
+    const stored = saveEstimate(est);
+    setEst(stored);
+    setToast(`Bill ${fmtEstimateNo(stored.number)} saved to history.`);
+    return true;
+  };
+
+  const runPrint = async (target: Estimate, fromEditor: boolean): Promise<void> => {
+    const issues = validateEstimate(target);
+    if (issues.length) {
+      if (fromEditor) showIssues(issues);
+      else setSheet({ title: 'Cannot print', body: issues[0].message, actions: [{ label: 'OK', kind: 'primary', onClick: () => setSheet(null) }] });
+      return;
+    }
+    setInvalid(new Set());
+    let stored = saveEstimate(target);
+    if (fromEditor) setEst(stored);
+    setBusy('Printing...');
+    try {
+      const res = await printEstimate(stored, header, printer);
+      if (res.outcome !== 'cancelled') stored = saveEstimate({ ...stored, printStatus: 'printed', printedAt: new Date().toISOString(), lastPrintError: null });
+      setToast(res.message);
+    } catch (e) {
+      const reason = errorText(e);
+      stored = saveEstimate({ ...stored, printStatus: 'failed', lastPrintError: reason });
+      const failed = stored;
+      setSheet({
+        title: 'Printing failed',
+        body: <p data-testid="print-error">{reason}</p>,
+        actions: [
+          { label: 'Retry', kind: 'primary', onClick: () => { setSheet(null); void runPrint(failed, fromEditor); } },
+          { label: 'Printer settings', onClick: () => { setSheet(null); setPreview(null); setTab('printer'); } },
+          { label: 'Close', onClick: () => setSheet(null) },
+        ],
+      });
+    } finally {
+      setBusy(null);
+      if (fromEditor) setEst(stored);
+    }
+  };
+
+  /** Switch screen, then bring a control into view (used by the Home tiles). */
+  // Starting or opening another estimate never throws work away: an unsaved one is set aside as a draft
+  // (red dot in History) and the owner continues or discards it there.
+  const switchTo = (next: Estimate) => {
+    if (next.id !== est.id) {
+      if (hasDraft) store.stashDraft(est);
+      store.removeDraft(next.id);
+      setEst(next);
+    }
+    setInvalid(new Set());
+    setTab('estimate');
+  };
+  const hasDraft = store.dirty && hasContent(est);
+  const startNew = async () => switchTo(blankEstimate(settings));
+
+  // System Back (button or edge swipe): one step at a time, topmost layer first.
+  //  - a screen other than Home is a layer: Printer -> Settings, everything else -> Home
+  //  - the preview screen is a layer on top of it
+  //  - while printing, Back is swallowed (the printing overlay cannot be dismissed)
+  useBackLayer(tab !== 'home', () => setTab(tab === 'printer' ? 'settings' : 'home'));
+  useBackLayer(!!preview, () => setPreview(null));
+  useBackLayer(!!busy, () => undefined);
+
+  return (
+    <div className="app">
+      {tab !== 'home' && (
+        <AppBar
+          title={{ estimate: 'Estimate', history: 'History', printer: 'Printer settings', settings: 'Settings', stock: 'Shop stock', home: '' }[tab]}
+          onBack={tab === 'estimate' || tab === 'settings' || tab === 'stock' ? () => setTab('home') : tab === 'printer' ? () => setTab('settings') : undefined}
+          right={
+            <>
+              {!store.storageOk && <span className="pill pill-warn">Not saving</span>}
+            </>
+          }
+        />
+      )}
+
+      <main className={`content${tab === 'estimate' ? ' with-totals' : ''}${tab === 'home' ? ' flush' : ''}`}>
+        {tab === 'home' && (
+          <HomePage
+            store={store}
+            onSettings={() => setTab('settings')}
+            onProducts={() => setProductsOpen(true)}
+            onRates={() => setRatesOpen(true)}
+            onStock={() => setTab('stock')}
+            onHistory={() => setTab('history')}
+            onView={(e) => setPreview({ est: e, fromEditor: false })}
+          />
+        )}
+        {tab === 'estimate' && (
+          <EstimatePage
+            store={store}
+            invalid={invalid}
+            onSave={save}
+            confirm={confirm}
+          />
+        )}
+        {tab === 'stock' && <StockPage store={store} confirm={confirm} setToast={setToast} />}
+        {tab === 'history' && (
+          <HistoryPage
+            store={store}
+            drafts={[...(hasDraft ? [{ est, current: true }] : []), ...store.drafts.filter((d) => d.id !== est.id).map((d) => ({ est: d, current: false }))]}
+            onContinueDraft={(d) => (d.current ? setTab('estimate') : switchTo(d.est))}
+            onViewDraft={(d) => setPreview({ est: d.est, fromEditor: d.current })}
+            onDiscardDraft={async (d) => {
+              if (!(await confirm('Discard this draft?', 'The estimate you started will be deleted. It has not been saved.', 'Discard', true))) return;
+              if (d.current) { setInvalid(new Set()); setEst(blankEstimate(settings)); } else store.removeDraft(d.est.id);
+            }}
+            onView={(e) => setPreview({ est: e, fromEditor: false })}
+            onOpen={(e) => switchTo(e)}
+            onReprint={(e) => void runPrint(e, e.id === est.id)}
+            confirm={confirm}
+            onDeleted={(id) => {
+              if (id === est.id) setEst(blankEstimate(settings));
+              setToast('Estimate deleted.');
+            }}
+          />
+        )}
+        {tab === 'printer' && <PrinterPage store={store} header={header} setBusy={setBusy} setToast={setToast} setSheet={setSheet} />}
+        {tab === 'settings' && <SettingsPage store={store} confirm={confirm} setToast={setToast} onPrinter={() => setTab('printer')} />}
+      </main>
+
+      {tab !== 'estimate' && (
+        <nav className="tabbar" aria-label="Main">
+          {[...TABS_LEFT.map((t) => ({ ...t, fab: false })), { id: 'new' as const, label: 'New', fab: true }, ...TABS_RIGHT.map((t) => ({ ...t, fab: false }))].map((t) =>
+            t.fab ? (
+              <div className="fab-slot" key="fab">
+                <button className="fab" onClick={() => void startNew()} aria-label="New estimate" data-testid="fab-new"><Icon name="plus" size={28} /></button>
+              </div>
+            ) : (
+              <button key={t.id} className={`tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id as Tab)} aria-current={tab === t.id ? 'page' : undefined} data-testid={`tab-${t.id}`}>
+                <Icon name={t.id === 'home' ? 'home' : t.id} size={22} />
+                <span>{t.label}</span>
+              </button>
+            ),
+          )}
+        </nav>
+      )}
+
+      {productsOpen && (
+        <ProductsModal
+          products={store.products}
+          defaultLabour={settings.defaultLabour}
+          defaultLabourMode={settings.defaultLabourMode}
+          onChange={store.setProducts}
+          onClose={() => setProductsOpen(false)}
+        />
+      )}
+
+      {ratesOpen && (
+        <RatesModal
+          initial={{ silverRate: settings.defaultSilverRate, silverUnit: settings.silverRateUnit, goldRate: settings.defaultGoldRate, goldUnit: settings.goldRateUnit }}
+          onClose={() => setRatesOpen(false)}
+          onSave={(v) => {
+            store.setSettings({ ...settings, defaultSilverRate: v.silverRate, silverRateUnit: v.silverUnit, defaultGoldRate: v.goldRate, goldRateUnit: v.goldUnit });
+            // An estimate that has not been saved yet takes today's rates too; saved ones keep theirs.
+            if (est.number === 0) store.setEst({ ...est, pricing: { ...est.pricing, silverRate: v.silverRate, silverRateUnit: v.silverUnit, goldRate: v.goldRate, goldRateUnit: v.goldUnit } });
+            setRatesOpen(false);
+            setToast('Rates updated.');
+          }}
+        />
+      )}
+
+      {preview && (
+        <PreviewScreen
+          est={preview.fromEditor ? est : preview.est}
+          header={header}
+          onClose={() => setPreview(null)}
+          onNotice={setToast}
+          onPrint={() => {
+            const target = preview.fromEditor ? est : preview.est;
+            setPreview(null);
+            void runPrint(target, preview.fromEditor || target.id === est.id);
+          }}
+        />
+      )}
+      {sheet && <Sheet title={sheet.title} actions={sheet.actions} onClose={() => setSheet(null)}>{sheet.body}</Sheet>}
+      {busy && (
+        <div className="busy" role="status" aria-live="polite">
+          <div className="busy-card"><span className="spinner" />{busy}</div>
+        </div>
+      )}
+      {toast && <div className="toast" role="status" data-testid="toast">{toast}</div>}
+    </div>
+  );
+}
