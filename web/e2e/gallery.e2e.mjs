@@ -24,10 +24,7 @@ await page.waitForSelector('[data-testid=gallery-page]');
 const n = () => page.locator('[data-testid=gallery-photo]').count();
 check('opens on Gold, gold look, top switch Silver | Gold, All shows the gold photos with only item + weight', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && (await page.locator('[data-testid=gallery-photo]').first().innerText()).replace(/\s+/g, ' ').trim() === 'Gold Ring – Classic 5.500 g');
 { const sw = await page.locator('[data-testid=gallery-switch]').boundingBox(); const vw = page.viewportSize().width; check('the Silver | Gold switch sits in the middle of the page', Math.abs((sw.x + sw.width / 2) - vw / 2) < 4 && sw.width < vw * 0.7, JSON.stringify(sw)); }
-check('bottom bar: All | Albums | New | In stock | Sold', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === 'All|Albums|New|In stock|Sold');
-await page.click('[data-testid=gallery-tab-new]'); check('New: only the piece added lately', (await n()) === 1);
-await page.click('[data-testid=gallery-tab-stock]'); check('In stock: only the piece still in the shop', (await n()) === 1 && (await page.locator('[data-testid=gallery-photo]').innerText()).includes('5.500'));
-await page.click('[data-testid=gallery-tab-sold]'); check('Sold: only the piece that has gone out', (await n()) === 1 && (await page.locator('[data-testid=gallery-photo]').innerText()).includes('6.000'));
+check('bottom bar has only Fav, All and Albums', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === '♥ Fav|All|Albums');
 await page.click('[data-testid=gallery-tab-albums]');
 check('Albums: one album per category with its photo count', (await page.locator('[data-testid=gallery-album]').count()) === 1 && (await page.locator('[data-testid=gallery-album] .gx-count').innerText()) === '2');
 await page.locator('[data-testid=gallery-album]').click();
@@ -37,6 +34,25 @@ check('back to the albums list', (await page.locator('[data-testid=gallery-album
 await page.click('[data-testid=gallery-silver]');
 check('Silver switch: silver look and only the silver photo / albums', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'silver' && (await page.locator('[data-testid=gallery-album]').count()) === 1 && (await page.locator('[data-testid=gallery-album]').innerText()).includes('Silver Anklet'));
 await page.click('[data-testid=gallery-gold]');
+await page.click('[data-testid=gallery-tab-all]');
+// customer picks: + on a photo, name window, Fav list per customer
+await page.locator('[data-testid=gallery-plus]').nth(0).click();
+check('+ on a photo opens a window asking the customer name; Add is off until a name is typed', await page.locator('[data-testid=like-window]').isVisible() && await page.locator('[data-testid=like-save]').isDisabled());
+await page.fill('[data-testid=like-name]', 'Ramesh Kumar'); await page.click('[data-testid=like-save]');
+await page.waitForSelector('[data-testid=like-window]', { state: 'detached' });
+check('the photo shows it was picked (tick) and a note confirms', (await page.locator('[data-testid=gallery-plus]').nth(0).innerText()) === '✓' && (await page.locator('[data-testid=gallery-note]').innerText()).includes('Ramesh Kumar'));
+await page.locator('[data-testid=gallery-plus]').nth(1).click();
+check('earlier customers are offered as quick buttons', (await page.locator('[data-testid=like-known]').allInnerTexts()).join('|') === 'Ramesh Kumar');
+await page.fill('[data-testid=like-name]', 'sunita devi'); await page.click('[data-testid=like-save]');
+await page.waitForSelector('[data-testid=like-window]', { state: 'detached' });
+await page.click('[data-testid=gallery-tab-fav]');
+check('Fav lists every customer who has picked something, with their count', (await page.locator('[data-testid=gallery-customer]').count()) === 2 && (await page.locator('[data-testid=gallery-customers]').innerText()).replace(/\s+/g, ' ').includes('Ramesh Kumar 1'));
+await page.locator('[data-testid=gallery-customer]').filter({ hasText: 'Ramesh' }).click();
+check('tapping a customer shows all their selected photos (no + there)', (await n()) === 1 && (await page.locator('[data-testid=gallery-plus]').count()) === 0 && (await page.locator('.gx-title small').innerText()).toLowerCase().includes('ramesh kumar'), JSON.stringify([await n(), await page.locator('[data-testid=gallery-plus]').count(), await page.locator('.gx-title small').innerText()]));
+await page.click('[data-testid=gallery-customers-back]');
+check('back to the customers list', (await page.locator('[data-testid=gallery-customer]').count()) === 2);
+await page.reload(); await page.waitForSelector('[data-testid=home-page]'); await page.click('[data-testid=open-gallery]'); await page.click('[data-testid=gallery-tab-fav]');
+check('picks are remembered after reopening', (await page.locator('[data-testid=gallery-customer]').count()) === 2);
 await page.click('[data-testid=gallery-tab-all]');
 // scrolling hides the bars, scrolling back up shows them
 await page.evaluate(() => { const b = document.querySelector('[data-testid=gallery-body]'); const f = document.createElement('div'); f.style.height = '2000px'; b.appendChild(f); });

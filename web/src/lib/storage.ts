@@ -12,6 +12,7 @@ export const KEYS = {
   stock: 'spj.stock.v1',
   cash: 'spj.cash.v1',
   auth: 'spj.auth.v1',
+  picks: 'spj.picks.v1',
 } as const;
 
 export function load<T>(key: string, fallback: T): T {
