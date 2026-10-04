@@ -51,6 +51,7 @@ export interface OtherCharge {
 export interface EstimatePricing {
   goldRate: number;
   goldRateUnit: RateUnit;
+  goldKarat?: '22' | '24';
   silverRate: number;
   silverRateUnit: RateUnit;
   fineFormula: FineFormula;
@@ -77,7 +78,7 @@ export interface Estimate {
   printStatus: PrintStatus;
   printedAt: string | null;
   lastPrintError: string | null;
-  /** Set from the preview: 'pending' shows a red dot in history, 'clear' (or unset) a green one. */
+  /** Set from the preview: 'pending' shows a red dot in history, 'clear' a green one, unset shows no dot. */
   billStatus?: 'pending' | 'clear';
 }
 
@@ -95,6 +96,8 @@ export interface ShopSettings {
   ownerFamily?: string;
   phone: string;
   gstNumber: string;
+  /** Which gold the gold rate is for: 22K (no tunch asked) or 24K (tunch 92 by default). */
+  goldKarat?: '22' | '24';
   defaultGoldRate: number;
   goldRateUnit: RateUnit;
   defaultSilverRate: number;

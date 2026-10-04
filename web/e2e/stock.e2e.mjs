@@ -1,3 +1,4 @@
+import { launchUnlocked } from './launch.mjs';
 // Shop stock: Silver/Gold register (photo, category from saved products, weight, tunch) and Cash register.
 import { chromium } from '../../desktop/node_modules/playwright/index.mjs';
 
@@ -9,7 +10,7 @@ const check = (name, ok, extra = '') => { total++; if (!ok) failed++; console.lo
 // 1x1 PNG used as the "camera picture"
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await launchUnlocked(chromium);
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => { failed++; console.log('FAIL  page error: ' + e.message); });
@@ -64,7 +65,7 @@ await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[dat
 await page.click('[data-testid=stock-save]');
 check('no category chosen is refused', (await txt('stock-error')).toLowerCase().includes('item'));
 await pickItem('Gold Ring – Classic');
-check('choosing the category fills its tunch from the saved item (91.6)', (await page.inputValue('[data-testid=stock-tunch]')) === '91.6');
+check('choosing the category fills its tunch from the saved item (92)', (await page.inputValue('[data-testid=stock-tunch]')) === '92');
 await page.click('[data-testid=stock-save]');
 check('no weight is refused', (await txt('stock-error')).toLowerCase().includes('weight'));
 check('modal is blurred like the other pop-ups', /blur/.test(await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid=stock-backdrop]')).backdropFilter || '')));
@@ -79,7 +80,7 @@ await page.click('[data-testid=stock-close]'); await page.waitForSelector('[data
 // ------------------------------------------------------------ metal entries with photo
 await addStock('in', { metal: 'gold', item: 'Gold Ring – Classic', weight: 100, pcs: 2, note: 'From party A', photo: true });
 check('Stock IN gold 100 g with a photo -> thumbnail in the list, gold 100.000 g', (await txt('stock-gold-sum-net')) === '100.000 g' && (await rows().count()) === 1 && (await page.locator('[data-testid=stock-thumb]').count()) === 1);
-check('row shows category, metal and tunch', (await rows().first().innerText()).includes('Gold Ring – Classic') && (await rows().first().innerText()).includes('91.6%'));
+check('row shows category, metal and tunch', (await rows().first().innerText()).includes('Gold Ring – Classic') && (await rows().first().innerText()).includes('92%'));
 check('the photo is kept on the phone (1 stored photo)', (await photoCount()) === 1);
 await addStock('out', { metal: 'gold', item: 'Gold Ring – Classic', weight: 30.5, pcs: 1, note: 'Sold' });
 check('Stock OUT gold 30.5 g -> 69.500 g', (await txt('stock-gold-sum-net')) === '69.500 g' && (await rows().count()) === 2);
@@ -95,7 +96,7 @@ check('search: by note (party) -> the IN gold entry', (await find('party')) === 
 check('search: by note (sold) -> the OUT entry', (await find('sold')) === 1 && (await rows().first().innerText()).includes('OUT'));
 check('search: by weight (30.5)', (await find('30.5')) === 1);
 check('search: by weight (500.000)', (await find('500.000')) === 1 && (await rows().first().innerText()).includes('Silver Anklet'));
-check('search: by tunch (91.6) -> both gold ring entries', (await find('91.6')) === 2);
+check('search: by tunch (92) -> both gold ring entries', (await find('92')) === 2);
 check('search: by metal (gold) -> 2, (silver) -> 1', (await find('gold')) === 2 && (await find('silver')) === 1);
 check('search: several words narrow ("gold sold" = 1)', (await find('gold sold')) === 1);
 const nowD = new Date(); const pp = (n) => String(n).padStart(2, '0');

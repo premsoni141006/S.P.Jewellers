@@ -12,6 +12,8 @@ import { PrinterPage } from './pages/PrinterPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StockPage } from './pages/StockPage';
 import { PreviewScreen } from './pages/PreviewScreen';
+import { LoginScreen } from './pages/LoginScreen';
+import { isUnlocked } from './lib/auth';
 import { billFileName, billPdf, saveBlob, shareBill } from './lib/billExport';
 import { RatesModal } from './components/RatesModal';
 import { useBackLayer } from './lib/backStack';
@@ -29,7 +31,7 @@ export interface SheetSpec {
   actions: SheetAction[];
 }
 
-export default function App() {
+function AppMain() {
   const store = useAppStore();
   const { settings, printer, est, setEst, saveEstimate } = store;
   const header = {
@@ -48,7 +50,7 @@ export default function App() {
   const [productsOpen, setProductsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean } | null>(null);
+  const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean; saved?: boolean } | null>(null);
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -95,17 +97,17 @@ export default function App() {
     });
   };
 
-  const save = (): boolean => {
+  const save = (): Estimate | null => {
     const issues = validateEstimate(est);
     if (issues.length) {
       showIssues(issues);
-      return false;
+      return null;
     }
     setInvalid(new Set());
     const stored = saveEstimate(est);
     setEst(stored);
     setToast(`Bill ${fmtEstimateNo(stored.number)} saved to history.`);
-    return true;
+    return stored;
   };
 
   const runPrint = async (target: Estimate, fromEditor: boolean): Promise<void> => {
@@ -195,7 +197,7 @@ export default function App() {
           <EstimatePage
             store={store}
             invalid={invalid}
-            onSave={save}
+            onSave={() => { const s = save(); if (s) setPreview({ est: s, fromEditor: true, saved: true }); }}
             onPreview={() => setPreview({ est, fromEditor: true })}
             confirm={confirm}
           />
@@ -212,7 +214,6 @@ export default function App() {
               if (d.current) { setInvalid(new Set()); setEst(blankEstimate(settings)); } else store.removeDraft(d.est.id);
             }}
             onView={(e) => setPreview({ est: e, fromEditor: false })}
-            onOpen={(e) => switchTo(e)}
             onReprint={(e) => void runPrint(e, e.id === est.id)}
             onShare={async (e) => {
               setBusy('Preparing the bill…');
@@ -221,11 +222,6 @@ export default function App() {
             onDownload={async (e) => {
               setBusy('Preparing the bill…');
               try { setToast(`PDF saved to ${await saveBlob(billFileName(e, 'pdf'), await billPdf(e, header))}.`); } catch (err) { setToast(err instanceof Error && err.message ? err.message : 'Could not save the bill.'); } finally { setBusy(null); }
-            }}
-            confirm={confirm}
-            onDeleted={(id) => {
-              if (id === est.id) setEst(blankEstimate(settings));
-              setToast('Estimate deleted.');
             }}
           />
         )}
@@ -262,12 +258,12 @@ export default function App() {
 
       {ratesOpen && (
         <RatesModal
-          initial={{ silverRate: settings.defaultSilverRate, silverUnit: settings.silverRateUnit, goldRate: settings.defaultGoldRate, goldUnit: settings.goldRateUnit }}
+          initial={{ silverRate: settings.defaultSilverRate, silverUnit: settings.silverRateUnit, goldRate: settings.defaultGoldRate, goldUnit: settings.goldRateUnit, goldKarat: settings.goldKarat ?? '24' }}
           onClose={() => setRatesOpen(false)}
           onSave={(v) => {
-            store.setSettings({ ...settings, defaultSilverRate: v.silverRate, silverRateUnit: v.silverUnit, defaultGoldRate: v.goldRate, goldRateUnit: v.goldUnit });
+            store.setSettings({ ...settings, defaultSilverRate: v.silverRate, silverRateUnit: v.silverUnit, defaultGoldRate: v.goldRate, goldRateUnit: v.goldUnit, goldKarat: v.goldKarat });
             // An estimate that has not been saved yet takes today's rates too; saved ones keep theirs.
-            if (est.number === 0) store.setEst({ ...est, pricing: { ...est.pricing, silverRate: v.silverRate, silverRateUnit: v.silverUnit, goldRate: v.goldRate, goldRateUnit: v.goldUnit } });
+            if (est.number === 0) store.setEst({ ...est, pricing: { ...est.pricing, silverRate: v.silverRate, silverRateUnit: v.silverUnit, goldRate: v.goldRate, goldRateUnit: v.goldUnit, goldKarat: v.goldKarat } });
             setRatesOpen(false);
             setToast('Rates updated.');
           }}
@@ -278,8 +274,22 @@ export default function App() {
         <PreviewScreen
           est={preview.fromEditor ? est : preview.est}
           header={header}
-          onClose={() => setPreview(null)}
+          onClose={() => {
+            // A bill that has been made is final: leaving its preview returns to History with a fresh editor.
+            if (preview.saved) { setEst(blankEstimate(settings)); setPreview(null); setTab('history'); } else setPreview(null);
+          }}
           onNotice={setToast}
+          onEnsureSaved={() => {
+            if (!preview.fromEditor) return preview.est;
+            const issues = validateEstimate(est);
+            if (issues.length) { setPreview(null); showIssues(issues); return null; }
+            if (est.number > 0) return est;
+            const stored = saveEstimate(est);
+            setEst(stored);
+            setPreview({ est: stored, fromEditor: true, saved: true });
+            setToast(`Bill ${fmtEstimateNo(stored.number)} saved to history.`);
+            return stored;
+          }}
           onStatus={(status) => {
             const fromEditor = preview.fromEditor;
             const target = fromEditor ? est : preview.est;
@@ -292,8 +302,9 @@ export default function App() {
             }
             setInvalid(new Set());
             const stored = saveEstimate({ ...target, billStatus: status });
-            if (fromEditor || target.id === est.id) setEst(stored);
+            if (fromEditor || target.id === est.id) setEst(blankEstimate(settings));
             setPreview(null);
+            if (fromEditor) setTab('history');
             setToast(status === 'clear' ? `Bill ${fmtEstimateNo(stored.number)} marked Clear.` : `Bill ${fmtEstimateNo(stored.number)} marked Pending.`);
           }}
           onPrint={() => {
@@ -312,4 +323,9 @@ export default function App() {
       {toast && <div className="toast" role="status" data-testid="toast">{toast}</div>}
     </div>
   );
+}
+
+export default function App() {
+  const [ok, setOk] = useState(isUnlocked);
+  return ok ? <AppMain /> : <LoginScreen onDone={() => setOk(true)} />;
 }

@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { fmtDateTime, fmtEstimateNo, fmtRupees, type Estimate } from '@shared';
+import { useMemo, useState, type ReactNode } from 'react';
+import { fmtDateTime, fmtEstimateNo, fmtRupees, searchEstimates, type Estimate } from '@shared';
+import { SearchBar } from '../components/SearchBar';
 import { summarize, type AppStore } from '../lib/store';
 
 interface Props {
@@ -10,27 +11,32 @@ interface Props {
   onViewDraft: (d: { est: Estimate; current: boolean }) => void;
   onDiscardDraft: (d: { est: Estimate; current: boolean }) => void;
   onView: (e: Estimate) => void;
-  onOpen: (e: Estimate) => void;
   onReprint: (e: Estimate) => void;
   onShare: (e: Estimate) => void;
   onDownload: (e: Estimate) => void;
-  onDeleted: (id: string) => void;
-  confirm: (title: string, body: ReactNode, ok: string, danger?: boolean) => Promise<boolean>;
+  confirm?: (title: string, body: ReactNode, ok: string, danger?: boolean) => Promise<boolean>;
 }
 
 const STATUS = { printed: ['Printed', 'pill-ok'], failed: ['Print failed', 'pill-err'], not_printed: ['Not printed', 'pill-muted'] } as const;
 
-export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDiscardDraft, onView, onOpen, onReprint, onShare, onDownload, onDeleted, confirm }: Props) {
-  const list = [...store.history].sort((a, b) => b.number - a.number);
+export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDiscardDraft, onView, onReprint, onShare, onDownload }: Props) {
+  const [q, setQ] = useState('');
+  const searching = q.trim() !== '';
+  const list = useMemo(() => (searching ? searchEstimates(store.history, q) : [...store.history].sort((a, b) => b.number - a.number)), [store.history, q, searching]);
+  const shownDrafts = searching ? [] : drafts;
   return (
     <div className="page" data-testid="history-page">
-      {list.length === 0 && drafts.length === 0 && (
+      <SearchBar value={q} onChange={setQ} placeholder="Search name, number, item, amount, date, pending, clear…" label="Search saved bills" testId="history-search" />
+      {searching && list.length === 0 && (
+        <div className="card empty"><p>Nothing matches “{q.trim()}”.</p></div>
+      )}
+      {!searching && list.length === 0 && drafts.length === 0 && (
         <div className="card empty">
           <p>No estimates yet.</p>
           <p className="muted small">An estimate shows up here as soon as you add a product, and turns green once it is saved.</p>
         </div>
       )}
-      {drafts.map((d) => {
+      {shownDrafts.map((d) => {
         const s = summarize(d.est);
         return (
           <section className="card hist-card is-draft" key={`draft-${d.est.id}`} data-testid="draft-row">
@@ -59,9 +65,8 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
         const [label, cls] = STATUS[s.printStatus];
         return (
           <section className="card hist-card" key={e.id} data-testid="history-row">
-            {e.billStatus === 'pending'
-              ? <span className="status-dot dot-draft" role="img" aria-label="Pending" data-testid="dot-pending" />
-              : <span className="status-dot dot-done" role="img" aria-label="Complete" data-testid="dot-done" />}
+            {e.billStatus === 'pending' && <span className="status-dot dot-draft" role="img" aria-label="Pending" data-testid="dot-pending" />}
+            {e.billStatus === 'clear' && <span className="status-dot dot-done" role="img" aria-label="Clear" data-testid="dot-done" />}
             <div className="hist-top">
               <div>
                 <div className="hist-no">{fmtEstimateNo(s.number)}</div>
@@ -82,19 +87,6 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
               <button className="btn btn-plain btn-sm" onClick={() => onShare(e)} data-testid="hist-share">Share</button>
               <button className="btn btn-plain btn-sm" onClick={() => onReprint(e)} data-testid="reprint">Reprint</button>
               <button className="btn btn-plain btn-sm" onClick={() => onDownload(e)} data-testid="hist-download">Download</button>
-            </div>
-            <div className="hist-actions two">
-              <button className="btn btn-plain btn-sm" onClick={() => onOpen(e)}>Open</button>
-              <button
-                className="btn btn-plain btn-sm danger-text"
-                onClick={async () => {
-                  if (!(await confirm(`Delete ${fmtEstimateNo(e.number)}?`, 'This estimate will be removed from history.', 'Delete', true))) return;
-                  store.deleteEstimate(e.id);
-                  onDeleted(e.id);
-                }}
-              >
-                Delete
-              </button>
             </div>
           </section>
         );

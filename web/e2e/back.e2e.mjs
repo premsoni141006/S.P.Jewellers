@@ -1,3 +1,4 @@
+import { launchUnlocked } from './launch.mjs';
 // System Back (Android button / edge swipe) must go back exactly ONE step each time.
 // Uses the browser's real history: page.goBack() fires the same popstate Android's WebView does.
 import { chromium } from '../../desktop/node_modules/playwright/index.mjs';
@@ -6,7 +7,7 @@ const BASE = process.env.BASE ?? 'http://localhost:4173/';
 let failed = 0, total = 0;
 const check = (name, ok, extra = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : ' — ' + extra}`); };
 
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await launchUnlocked(chromium);
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => { failed++; console.log('FAIL  page error: ' + e.message); });
@@ -77,8 +78,7 @@ await page.click('[data-testid=fab-new]'); await page.waitForSelector('[data-tes
 await page.click('[data-testid=add-item]'); await page.waitForSelector('[data-testid=picker-modal]');
 await page.locator('[data-testid=pick-option]').first().click(); await page.waitForSelector('[data-testid=picker-modal]', { state: 'detached' });
 await page.locator('[data-testid=gross]').fill('10');
-await page.click('[data-testid=save]'); await page.waitForSelector('[data-testid=toast]');
-await page.click('[data-testid=bar-back]'); await settle();
+await page.click('[data-testid=save]'); await page.waitForSelector('[data-testid=preview-screen]'); await page.getByLabel('Close preview').click(); await page.waitForSelector('[data-testid=history-page]'); await settle();
 await page.click('[data-testid=tab-history]'); await page.waitForSelector('[data-testid=history-page]');
 await page.getByRole('button', { name: 'View' }).first().click(); await page.waitForSelector('[data-testid=preview-frame]'); await settle();
 check('preview open over History: still one spare entry', (await idx()) === 1 && (await entries()) === 2, `index=${await idx()} entries=${await entries()}`);

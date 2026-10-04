@@ -4,7 +4,7 @@
 //
 // Layout follows the shop's sample: SP_Jewellers_Simple_Demo_Estimate_v2.pdf.
 
-import { calcEstimate, ratePerGram } from './calc';
+import { calcEstimate, ratePerGram, usesTunch } from './calc';
 import { fmtDate, fmtDateTime, fmtEstimateNo, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
 import { LOGO_ASPECT, LOGO_BW_DATA_URI } from './logo';
 import type { Estimate } from './types';
@@ -38,6 +38,16 @@ export const PRINT_COLUMNS = [
 ] as const;
 
 /** The bill always shows at least this many item rows (blank rows fill the rest); more items = more rows. */
+/** Tunch as printed; 22K gold has none (the rate is already for 22K), so it shows "22K". */
+function tunchText(it: { metal: string; tunch: number }, pricing: Estimate['pricing']): string {
+  return usesTunch({ metal: it.metal as 'gold' | 'silver' }, pricing) ? fmtPercent(it.tunch) : '22K';
+}
+
+/** Making charge as printed: a % when the item's making is entered as a percentage (gold), rupees otherwise. */
+export function makingText(it: { labourMode: string; labourRate: number }, labour: number): string {
+  return it.labourMode === 'percent' ? `${fmtPercent(it.labourRate)}%` : fmtRupeeCell(labour);
+}
+
 export const MIN_PRINT_ROWS = 5;
 
 // Column widths in millimetres (proportions of the sample); they add up to the 190 mm
@@ -77,15 +87,16 @@ body {
 }
 .sheet { width: 190mm; }
 /* Top row: ESTIMATE in the middle, owner name and mobile at the right */
-.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; margin-bottom: 1mm; position: relative; top: 4mm; } /* sits 4 mm lower, nearer the shop name; the rest of the page does not move */
+.top { display: grid; grid-template-columns: 1fr; justify-items: center; align-items: start; margin-bottom: 1mm; position: relative; top: 4mm; } /* sits 4 mm lower, nearer the shop name; the rest of the page does not move */
 .estimate-title { font-size: 11pt; font-weight: 700; text-decoration: underline; letter-spacing: 0.5pt; text-align: center; }
 .top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
 /* Brand row: logo at the far left, shop name in the middle */
-.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; }
+.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; position: relative; top: 4.2mm; } /* shop name and logo sit down onto the empty line above the address (visual only: nothing else moves) */
 .brand-logo { justify-self: start; }
 .logo { display: block; height: 16mm; width: auto; }
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
-.address { text-align: center; font-size: 9.5pt; margin: 1mm 0 3mm; }
+.address-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 3mm; margin: 0 0 3mm; }
+.address { text-align: center; font-size: 9.5pt; }
 .code { text-align: center; font-size: 9.5pt; margin: 0 0 2mm; }
 /* First row of the table: customer + mobile (left, 7 columns); bill number + date (right, starting at Silver/Gold) */
 tr.meta-row td { text-align: left; white-space: normal; height: auto; padding: 1.6mm 2mm; font-size: 9.5pt; line-height: 1.4; font-variant-numeric: normal; }
@@ -120,9 +131,10 @@ function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string
   const o = ownerOf(h);
   const logo = withLogo && h.logo ? `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(16 * LOGO_ASPECT * 10) / 10}mm" height="16mm" alt="">` : '';
   const right = `${o.name ? `<b>${escapeHtml(o.name)}</b>` : ''}${o.phone ? `<span>M.: ${escapeHtml(o.phone)}</span>` : ''}`;
-  return `<div class="top"><span></span><span class="estimate-title">${escapeHtml(title)}</span><span class="top-right">${right}</span></div>
+  const address = (h.address ?? '').trim();
+  return `<div class="top"><span class="estimate-title">${escapeHtml(title)}</span></div>
 <div class="brand"><span class="brand-logo">${logo}</span><div class="shop">${escapeHtml(h.shopName)}</div><span></span></div>
-${(h.address ?? '').trim() ? `<div class="address">${escapeHtml((h.address as string).trim())}</div>` : '<div style="height:3mm"></div>'}${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}`;
+<div class="address-row"><span></span><div class="address">${escapeHtml(address)}</div><span class="top-right">${right}</span></div>${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}`;
 }
 
 /** Compact top of the narrow receipt: same facts as the A4 bill, stacked. */
@@ -156,9 +168,9 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
 <td>${fmtWeight(it.grossWt)}</td>
 <td>${fmtWeight(it.lessWt)}</td>
 <td>${fmtWeight(c.netWt)}</td>
-<td>${fmtPercent(it.tunch)}</td>
+<td>${tunchText(it, est.pricing)}</td>
 <td>${fmtPcs(it.pcs)}</td>
-<td>${fmtRupeeCell(c.labour)}</td>
+<td>${makingText(it, c.labour)}</td>
 <td>${metalName(it.metal)}</td>
 <td class="r">${fmtRupeeCell(c.amount)}</td>
 </tr>`;
@@ -218,8 +230,8 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
       const c = t.items[i];
       return `<table class="it">
 <tr><td colspan="5" class="d">${escapeHtml(it.description)}</td></tr>
-<tr>${cell('G. Wt.', fmtWeight(it.grossWt))}${cell('Less Wt.', fmtWeight(it.lessWt))}${cell('Net Wt.', fmtWeight(c.netWt))}${cell('Tunch', fmtPercent(it.tunch))}${cell('Pcs', fmtPcs(it.pcs))}</tr>
-<tr>${cell('Making', fmtRupeeCell(c.labour))}${cell('Silver/Gold', metalName(it.metal))}<td colspan="3"><div class="l">Amount</div><div class="v b">${fmtRupeeCell(c.amount)}</div></td></tr>
+<tr>${cell('G. Wt.', fmtWeight(it.grossWt))}${cell('Less Wt.', fmtWeight(it.lessWt))}${cell('Net Wt.', fmtWeight(c.netWt))}${cell('Tunch', tunchText(it, est.pricing))}${cell('Pcs', fmtPcs(it.pcs))}</tr>
+<tr>${cell('Making', makingText(it, c.labour))}${cell('Silver/Gold', metalName(it.metal))}<td colspan="3"><div class="l">Amount</div><div class="v b">${fmtRupeeCell(c.amount)}</div></td></tr>
 </table>`;
     })
     .join('');

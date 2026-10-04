@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { fmtEstimateNo, renderEstimateHtml, type Estimate, type PrintHeader } from '@shared';
 import { Icon } from '../components/Icon';
-import { billFileName, billImage, billPdf, saveBlob } from '../lib/billExport';
+import { billFileName, billPdf, saveBlob, shareBill } from '../lib/billExport';
 
 // The A4 sheet in the shared template is 210 mm wide on a grey screen background.
 const DOC_WIDTH = 820;
@@ -13,13 +13,13 @@ const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
  * Shows the exact bill that is printed. It opens fitted to the screen and can be zoomed (buttons,
  * two-finger pinch, double-tap) and saved as an image or a PDF.
  */
-export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus }: { est: Estimate; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void }) {
+export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved }: { est: Estimate; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void }) {
   const wrap = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const [fit, setFit] = useState(0.4); // scale that fits the bill to the screen width
   const [zoom, setZoom] = useState(1); // times that: 1 = fitted
   const [height, setHeight] = useState(1200);
-  const [busy, setBusy] = useState<'image' | 'pdf' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'share' | null>(null);
   const [error, setError] = useState('');
   const html = renderEstimateHtml(est, header);
   const scale = fit * zoom;
@@ -100,14 +100,17 @@ export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatu
     }
   };
 
-  const download = async (kind: 'image' | 'pdf') => {
+  // Save: the bill goes into History (if it is not there yet) and the PDF is saved to the phone.
+  // Share: the same, then the share screen opens with the PDF.
+  const run = async (kind: 'save' | 'share') => {
     if (busy) return;
     setBusy(kind);
     setError('');
     try {
-      const blob = kind === 'image' ? await billImage(est, header) : await billPdf(est, header);
-      const where = await saveBlob(billFileName(est, kind === 'image' ? 'png' : 'pdf'), blob);
-      onNotice(`${kind === 'image' ? 'Image' : 'PDF'} saved to ${where}.`);
+      const target = onEnsureSaved();
+      if (!target) return;
+      if (kind === 'share') await shareBill(target, header);
+      else onNotice(`PDF saved to ${await saveBlob(billFileName(target, 'pdf'), await billPdf(target, header))}.`);
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : 'Could not save the bill. Try again.');
     } finally {
@@ -134,8 +137,8 @@ export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatu
           <button className="btn btn-plain btn-sm" onClick={() => zoomTo(1)} disabled={zoom === 1} data-testid="zoom-fit">Fit</button>
         </div>
         <div className="save-group">
-          <button className="btn btn-outline btn-sm" onClick={() => void download('image')} disabled={!!busy} data-testid="download-image"><Icon name="download" size={16} /> {busy === 'image' ? 'Preparing…' : 'Image'}</button>
-          <button className="btn btn-outline btn-sm" onClick={() => void download('pdf')} disabled={!!busy} data-testid="download-pdf"><Icon name="download" size={16} /> {busy === 'pdf' ? 'Preparing…' : 'PDF'}</button>
+          <button className="btn btn-outline btn-sm" onClick={() => void run('save')} disabled={!!busy} data-testid="download-pdf"><Icon name="download" size={16} /> {busy === 'save' ? 'Saving…' : 'Save'}</button>
+          <button className="btn btn-outline btn-sm" onClick={() => void run('share')} disabled={!!busy} data-testid="share-bill">{busy === 'share' ? 'Preparing…' : 'Share'}</button>
         </div>
       </div>
       <div className="status-group" role="group" aria-label="Bill status">

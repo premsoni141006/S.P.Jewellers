@@ -11,6 +11,7 @@ export const KEYS = {
   printer: 'spj.printer.v1',
   stock: 'spj.stock.v1',
   cash: 'spj.cash.v1',
+  auth: 'spj.auth.v1',
 } as const;
 
 export function load<T>(key: string, fallback: T): T {

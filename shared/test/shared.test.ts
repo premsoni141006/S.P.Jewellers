@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, PRINT_COLUMNS, buildEstimateEscPosText, buildTestPrintEscPos, calcEstimate, calcItem,
   newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
-  searchStock, searchCash, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
+  searchStock, searchCash, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
 } from '../src';
 
 const pricing = { ...pricingFromSettings(DEFAULT_SETTINGS), silverRate: 100000, silverRateUnit: 'per_kg' as const, goldRate: 100000, goldRateUnit: 'per_10g' as const, roundGrandTotal: false };
@@ -554,6 +554,28 @@ describe('bill status search', () => {
     const b = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'b', number: 2, billStatus: 'clear' as const };
     const c = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'c', number: 3 };
     expect(searchEstimates([a, b, c], 'pending').map((e) => e.id)).toEqual(['a']);
-    expect(searchEstimates([a, b, c], 'clear').map((e) => e.id)).toEqual(['c', 'b']);
+    expect(searchEstimates([a, b, c], 'clear').map((e) => e.id)).toEqual(['b']);
+  });
+});
+
+describe('making charge on the bill', () => {
+  it('gold (percent) prints the percentage, silver prints rupees', () => {
+    const est = sampleEstimate(DEFAULT_SETTINGS);
+    const html = renderEstimateHtml(est, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(html).toContain('<td>5%</td>'); // gold ring: 5 %
+    expect(html).toMatch(/<td>(₹ ?)?900(\.00)?<\/td>/); // silver anklet: rupees
+  });
+});
+
+describe('gold karat and default tunch', () => {
+  it('new items start at gold 92, silver 100', () => {
+    expect(newItem(DEFAULT_SETTINGS, 'gold').tunch).toBe(92);
+    expect(newItem(DEFAULT_SETTINGS, 'silver').tunch).toBe(100);
+  });
+  it('22K gold ignores tunch; 24K uses it', () => {
+    const base = sampleEstimate(DEFAULT_SETTINGS);
+    const item = { ...base.items[0], metal: 'gold' as const, grossWt: 10, lessWt: 0, tunch: 92 };
+    expect(fineWeight(item, { ...base.pricing, goldKarat: '24' })).toBe(9.2);
+    expect(fineWeight(item, { ...base.pricing, goldKarat: '22' })).toBe(10);
   });
 });

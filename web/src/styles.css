@@ -693,3 +693,15 @@ html.kb-open .sheet { padding-bottom: 40vh; }
 .status-clear { color: #2e9e57; border-color: #2e9e57; }
 .status-pending.on { background: #d32f2f; color: #fff; }
 .status-clear.on { background: #2e9e57; color: #fff; }
+.result-card { position: relative; }
+.result-card .status-dot { box-shadow: 0 0 0 3px #fff; }
+.result-card .result-top { padding-right: 18px; }
+
+.karat-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0; }
+.karat-pick button { height: 44px; border-radius: 12px; border: 1.5px solid var(--line); background: #fff; font: inherit; font-weight: 700; color: var(--ink); }
+.karat-pick button.on { background: #5e0a10; border-color: #5e0a10; color: #fff; }
+
+.login { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--bg, #f5ece0); }
+.login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; align-items: stretch; background: #fff; border-radius: 18px; padding: 24px 20px; box-shadow: 0 6px 24px rgba(60, 10, 14, .12); }
+.login-card .home-logo { align-self: center; border-radius: 16px; }
+.login-card h1 { margin: 0; text-align: center; font: 700 22px/1.2 Georgia, serif; color: #5e0a10; letter-spacing: .5px; }

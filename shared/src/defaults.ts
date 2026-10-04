@@ -30,18 +30,19 @@ export const DEFAULT_SETTINGS: ShopSettings = {
 
 /** Demo product list. Fully editable in Settings → Products. */
 export const SAMPLE_PRODUCTS: Product[] = [
-  { id: 'p-gold-ring', name: 'Gold Ring – Classic', metal: 'gold', tunch: 91.6, wastage: 0, labourRate: 0, labourMode: 'fixed' },
-  { id: 'p-gold-chain', name: 'Gold Chain – Daily Wear', metal: 'gold', tunch: 91.6, wastage: 0, labourRate: 0, labourMode: 'fixed' },
-  { id: 'p-gold-earrings', name: 'Gold Earrings – Floral', metal: 'gold', tunch: 91.6, wastage: 0, labourRate: 0, labourMode: 'fixed' },
-  { id: 'p-gold-bracelet', name: 'Gold Bracelet – Designer', metal: 'gold', tunch: 91.6, wastage: 0, labourRate: 0, labourMode: 'fixed' },
-  { id: 'p-silver-anklet', name: 'Silver Anklet – Traditional', metal: 'silver', tunch: 92.5, wastage: 0, labourRate: 0, labourMode: 'fixed' },
-  { id: 'p-silver-ring', name: 'Silver Ring – Plain', metal: 'silver', tunch: 92.5, wastage: 0, labourRate: 0, labourMode: 'fixed' },
+  { id: 'p-gold-ring', name: 'Gold Ring – Classic', metal: 'gold', tunch: 92, wastage: 0, labourRate: 0, labourMode: 'fixed' },
+  { id: 'p-gold-chain', name: 'Gold Chain – Daily Wear', metal: 'gold', tunch: 92, wastage: 0, labourRate: 0, labourMode: 'fixed' },
+  { id: 'p-gold-earrings', name: 'Gold Earrings – Floral', metal: 'gold', tunch: 92, wastage: 0, labourRate: 0, labourMode: 'fixed' },
+  { id: 'p-gold-bracelet', name: 'Gold Bracelet – Designer', metal: 'gold', tunch: 92, wastage: 0, labourRate: 0, labourMode: 'fixed' },
+  { id: 'p-silver-anklet', name: 'Silver Anklet – Traditional', metal: 'silver', tunch: 100, wastage: 0, labourRate: 0, labourMode: 'fixed' },
+  { id: 'p-silver-ring', name: 'Silver Ring – Plain', metal: 'silver', tunch: 100, wastage: 0, labourRate: 0, labourMode: 'fixed' },
 ];
 
 export function pricingFromSettings(s: ShopSettings): EstimatePricing {
   return {
     goldRate: s.defaultGoldRate,
     goldRateUnit: s.goldRateUnit,
+    goldKarat: s.goldKarat ?? '24',
     silverRate: s.defaultSilverRate,
     silverRateUnit: s.silverRateUnit,
     fineFormula: s.fineFormula,
@@ -51,6 +52,9 @@ export function pricingFromSettings(s: ShopSettings): EstimatePricing {
   };
 }
 
+/** Tunch every new item starts with: gold 92, silver 100. */
+export const defaultTunch = (metal: Metal): number => (metal === 'gold' ? 92 : 100);
+
 export function newItem(_s: ShopSettings, metal: Metal = 'silver'): EstimateItem {
   return {
     id: newId(),
@@ -58,7 +62,7 @@ export function newItem(_s: ShopSettings, metal: Metal = 'silver'): EstimateItem
     metal,
     grossWt: 0,
     lessWt: 0,
-    tunch: 0,
+    tunch: defaultTunch(metal),
     wastage: 0,
     pcs: 1,
     // Gold: making charge is a percentage; Silver: a rupee amount. Nothing is pre-filled.
@@ -73,7 +77,7 @@ export function itemFromProduct(p: Product, base: EstimateItem): EstimateItem {
     ...base,
     description: p.name,
     // The metal is chosen on the item when the estimate is made, not stored on the product.
-    tunch: p.tunch,
+    tunch: defaultTunch(base.metal),
     wastage: 0,
   };
 }

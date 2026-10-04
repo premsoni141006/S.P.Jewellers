@@ -1,3 +1,4 @@
+import { launchUnlocked } from './launch.mjs';
 // Final bill: zoom (buttons, double-tap, pinch) and save as image / PDF.
 import { chromium } from '../../desktop/node_modules/playwright/index.mjs';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ const mkBill = (number, n) => ({
   items: Array.from({ length: n }, (_, i) => mkItem(i + 1)), otherCharges: [], printStatus: 'not_printed', printedAt: null, lastPrintError: null,
 });
 
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await launchUnlocked(chromium);
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, acceptDownloads: true });
 // two saved bills: a short one (E-0001) and a long one (E-0002, 45 items -> more than one A4 page)
 await ctx.addInitScript((bills) => { if (!localStorage.getItem('spj.history.v1')) localStorage.setItem('spj.history.v1', JSON.stringify(bills)); }, [mkBill(2, 45), mkBill(1, 3)]);
@@ -36,7 +37,7 @@ async function closeBill() { await page.getByLabel('Close preview').click(); awa
 
 // ------------------------------------------------------------ zoom
 await openBill('E-0001');
-check('preview opens fitted to the screen; has zoom buttons and Image / PDF buttons', (await page.locator('[data-testid=zoom-in]').isVisible()) && (await page.locator('[data-testid=download-image]').isVisible()) && (await page.locator('[data-testid=download-pdf]').isVisible()));
+check('preview opens fitted to the screen; has zoom buttons and Save / Share buttons', (await page.locator('[data-testid=zoom-in]').isVisible()) && (await page.locator('[data-testid=share-bill]').isVisible()) && (await page.locator('[data-testid=download-pdf]').isVisible()));
 const fit = await level();
 check('Fit is disabled while already fitted', await page.locator('[data-testid=zoom-fit]').isDisabled());
 await page.click('[data-testid=zoom-in]'); await wait(200);
@@ -73,20 +74,9 @@ check('pinching out with two fingers zooms in', (await level()) > fit * 1.5, `${
 await page.click('[data-testid=zoom-fit]'); await wait(250);
 await page.screenshot({ path: SHOTS + 'web-bill-preview.png' });
 
-// ------------------------------------------------------------ save as image
-const [imgDl] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=download-image]')]);
-check('Image button downloads Bill-E-0001.png', imgDl.suggestedFilename() === 'Bill-E-0001.png', imgDl.suggestedFilename());
-const imgPath = SHOTS + 'bill-E-0001.png';
-await imgDl.saveAs(imgPath);
-const png = fs.readFileSync(imgPath);
-const w = png.readUInt32BE(16), h = png.readUInt32BE(20);
-check('it is a real PNG, crisp (2 x A4 width) and as tall as the bill', png.subarray(1, 4).toString() === 'PNG' && w === 1588 && h > 600 && h < 1100 && png.length > 20000, `${w}x${h} ${png.length} bytes`);
-await page.waitForSelector('[data-testid=toast]');
-check('a notice says where it was saved', (await page.textContent('[data-testid=toast]')).includes('Image saved'));
-
 // ------------------------------------------------------------ save as PDF
 const [pdfDl] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=download-pdf]')]);
-check('PDF button downloads Bill-E-0001.pdf', pdfDl.suggestedFilename() === 'Bill-E-0001.pdf', pdfDl.suggestedFilename());
+check('Save button downloads Bill-E-0001.pdf', pdfDl.suggestedFilename() === 'Bill-E-0001.pdf', pdfDl.suggestedFilename());
 const pdfPath = SHOTS + 'bill-E-0001.pdf';
 await pdfDl.saveAs(pdfPath);
 const pdf = fs.readFileSync(pdfPath).toString('latin1');
@@ -111,6 +101,7 @@ await nctx.addInitScript((bills) => {
   if (!localStorage.getItem('spj.history.v1')) localStorage.setItem('spj.history.v1', JSON.stringify(bills));
   window.__saved = []; window.__failSave = false;
   window.Capacitor = { isNativePlatform: () => true, Plugins: { SpjPrinter: {
+    shareFile: async (o) => { window.__saved.push([o.name, o.mime, o.data.length, o.data.slice(0, 5)]); },
     saveFile: async (o) => { if (window.__failSave) throw { message: 'Could not save the file: no space left.', code: 'SAVE_FAILED' }; window.__saved.push([o.name, o.mime, o.data.length, o.data.slice(0, 5)]); return { location: o.mime.startsWith('image/') ? 'Pictures/SP Jewellers' : 'Downloads/SP Jewellers' }; },
   } } };
 }, [mkBill(1, 3)]);
@@ -122,12 +113,11 @@ await np.getByRole('button', { name: 'View' }).first().click();
 await np.waitForSelector('[data-testid=preview-frame]');
 await np.click('[data-testid=download-pdf]');
 await np.waitForFunction(() => window.__saved.length === 1);
-await np.click('[data-testid=download-image]');
+await np.click('[data-testid=share-bill]');
 await np.waitForFunction(() => window.__saved.length === 2);
 const saved = await np.evaluate(() => window.__saved);
 check('app: PDF is handed to the phone to save (name, type, PDF data)', saved[0][0] === 'Bill-E-0001.pdf' && saved[0][1] === 'application/pdf' && saved[0][2] > 20000 && saved[0][3] === 'JVBER', JSON.stringify(saved[0]));
-check('app: image is handed to the phone to save (PNG data)', saved[1][0] === 'Bill-E-0001.png' && saved[1][1] === 'image/png' && saved[1][2] > 20000 && saved[1][3] === 'iVBOR', JSON.stringify(saved[1]));
-check('app: notice names the folder', (await np.textContent('[data-testid=toast]')).includes('Pictures/SP Jewellers'));
+check('app: Share opens the phone share sheet with the PDF', saved[1][0] === 'Bill-E-0001.pdf' && saved[1][1] === 'application/pdf' && saved[1][2] > 20000 && saved[1][3] === 'JVBER', JSON.stringify(saved[1]));
 await np.evaluate(() => { window.__failSave = true; });
 await np.click('[data-testid=download-pdf]');
 await np.waitForSelector('[data-testid=download-error]');

@@ -9,6 +9,7 @@ export interface RatesValue {
   silverUnit: RateUnit;
   goldRate: number;
   goldUnit: RateUnit;
+  goldKarat: '22' | '24';
 }
 
 /** Rates are always entered per 10 grams. Older settings in per-gram / per-kg are converted, so the price does not change. */
@@ -32,6 +33,7 @@ export function RatesModal({ initial, onSave, onClose }: { initial: RatesValue; 
     silverUnit: 'per_10g',
     goldRate: toPer10g(initial.goldRate, initial.goldUnit),
     goldUnit: 'per_10g',
+    goldKarat: initial.goldKarat,
   }));
 
   return (
@@ -43,6 +45,12 @@ export function RatesModal({ initial, onSave, onClose }: { initial: RatesValue; 
         </div>
         <RateBlock title="Silver" testId="silver" rate={v.silverRate} onRate={(n) => setV({ ...v, silverRate: n })} />
         <RateBlock title="Gold" testId="gold" rate={v.goldRate} onRate={(n) => setV({ ...v, goldRate: n })} />
+        <div className="karat-pick" role="group" aria-label="Gold rate is for">
+          {(['22', '24'] as const).map((k) => (
+            <button key={k} type="button" className={v.goldKarat === k ? 'on' : ''} aria-pressed={v.goldKarat === k} onClick={() => setV({ ...v, goldKarat: k })} data-testid={`karat-${k}`}>{k}K</button>
+          ))}
+        </div>
+        <p className="muted small">{v.goldKarat === '22' ? '22K rate: tunch is not asked for gold.' : '24K rate: gold tunch starts at 92 (you can change it).'}</p>
         <p className="muted small">Rate of pure (fine) metal. New estimates use these rates; saved estimates keep the rates they were made with.</p>
         <button className="btn btn-primary btn-block" onClick={() => leave(() => onSave(v))} data-testid="rates-save">Save rates</button>
       </div>

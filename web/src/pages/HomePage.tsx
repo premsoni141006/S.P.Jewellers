@@ -85,6 +85,8 @@ export function HomePage({ store, onSettings, onProducts, onRates, onStock, onHi
               const names = e.items.map((i) => i.description).filter(Boolean);
               return (
                 <button key={e.id} className="result-card" onClick={() => onView(e)} data-testid="search-result">
+                  {e.billStatus === 'pending' && <span className="status-dot dot-draft" role="img" aria-label="Pending" />}
+                  {e.billStatus === 'clear' && <span className="status-dot dot-done" role="img" aria-label="Clear" />}
                   <span className="result-top">
                     <b>{fmtEstimateNo(e.number)}</b>
                     <b className="result-amt">{fmtRupees(calcEstimate(e).grandTotal)}</b>

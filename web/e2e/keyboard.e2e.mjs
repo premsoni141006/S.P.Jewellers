@@ -1,3 +1,4 @@
+import { launchUnlocked } from './launch.mjs';
 // When the on-screen keyboard opens, the tapped field must be fully visible and (where the page can
 // scroll) in the middle of the space left above the keyboard. The keyboard is simulated by shrinking
 // the viewport, which is exactly what Android's adjustResize does to the page.
@@ -10,7 +11,7 @@ const check = (name, ok, extra = '') => { total++; if (!ok) failed++; console.lo
 const FULL = { width: 390, height: 844 };
 const KB = { width: 390, height: 430 }; // what is left above a ~410 px keyboard
 
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await launchUnlocked(chromium);
 const ctx = await browser.newContext({ viewport: FULL, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => { failed++; console.log('FAIL  page error: ' + e.message); });

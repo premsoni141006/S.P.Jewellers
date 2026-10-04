@@ -1,3 +1,4 @@
+import { launchUnlocked } from './launch.mjs';
 // End-to-end check of the website at phone size. Run: npm run build && npx vite preview --port 4173 & node e2e/web.e2e.mjs
 import { chromium } from '../../desktop/node_modules/playwright/index.mjs';
 
@@ -25,7 +26,7 @@ async function go(pg, name) {
   if (name === 'printer') await pg.click('[data-testid=open-printer]');
 }
 
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await launchUnlocked(chromium);
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 const errors = [];
@@ -99,9 +100,9 @@ await fillItem(0, 'Silver Anklet – Traditional', 82.4, 2.4);
 await card(0).locator('[data-testid=pcs]').fill('2');
 check('picking a saved item does not pre-fill the making charge', (await card(0).locator('[data-testid=labour]').inputValue()) === '');
 await card(0).locator('[data-testid=labour]').fill('900');
-check('product fills tunch; no pieces/pair option anywhere', (await card(0).locator('[data-testid=tunch]').inputValue()) === '92.5' && (await page.locator('[data-testid=pcs-unit]').count()) === 0 && (await page.getByText(/^(pc|pair|Pieces|Pairs)$/).count()) === 0);
+check('product fills tunch; no pieces/pair option anywhere', (await card(0).locator('[data-testid=tunch]').inputValue()) === '100' && (await page.locator('[data-testid=pcs-unit]').count()) === 0 && (await page.getByText(/^(pc|pair|Pieces|Pairs)$/).count()) === 0);
 check('net weight = 82.4 - 2.4', (await card(0).locator('[data-testid=net]').textContent()) === '80.000');
-// pure metal = 80 × 92.5% = 74 (no wastage); amount = 74 × 231/g + 900 fixed making charge = 17094 + 900
+// pure metal = 80 × 100% = 80 (no wastage); amount = 80 × 231/g + 900 fixed making charge = 18480 + 900
 {
   const b = async (id) => card(0).locator(`[data-testid=${id}]`).boundingBox();
   const [d, t, g, l, n, pc, mk] = [await b('desc'), await b('tunch'), await b('gross'), await b('less'), await b('net'), await b('pcs'), await b('labour')];
@@ -113,8 +114,8 @@ check('net weight = 82.4 - 2.4', (await card(0).locator('[data-testid=net]').tex
   check('item amount is read-only (no edit button, no manual-amount field)', (await card(0).locator('[data-testid=amount-override]').count()) === 0 && (await card(0).getByText(/Edit amount|Use calculated/).count()) === 0 && (await card(0).locator('input[data-testid=amount], [data-testid=amount] input').count()) === 0);
 }
 const amt1 = (await card(0).locator('[data-testid=amount]').textContent())?.replace(/\s/g, '');
-check('amount calculated', amt1 === '₹17,994', amt1);
-check('grand total rounded', (await page.textContent('[data-testid=grand-total]'))?.replace(/\s/g, '') === '₹17,994');
+check('amount calculated', amt1 === '₹19,380', amt1);
+check('grand total rounded', (await page.textContent('[data-testid=grand-total]'))?.replace(/\s/g, '') === '₹19,380');
 await page.screenshot({ path: SHOTS + 'web-estimate.png' });
 
 // 10 products
@@ -140,10 +141,7 @@ await card(0).locator('[data-testid=duplicate]').click();
 check('duplicate item', (await cards.count()) === 10 && (await descOf(card(1))) === 'Silver Anklet – Traditional');
 
 // preview (from History after saving) has the nine columns
-await page.click('[data-testid=save]');
-await page.waitForSelector('[data-testid=toast]');
-await go(page, 'history');
-await page.getByRole('button', { name: 'View' }).first().click();
+await page.click('[data-testid=preview]');
 const frame = page.frameLocator('[data-testid=preview-frame]');
 await frame.locator('th').first().waitFor();
 const ths = await frame.locator('th').allTextContents();
@@ -153,13 +151,9 @@ const descs = (await frame.locator('td.d').allTextContents()).filter((t) => t.tr
 check('preview item rows', descs.length === 10, String(descs.length));
 await page.screenshot({ path: SHOTS + 'web-preview.png' });
 await page.getByLabel('Close preview').click();
-await page.getByRole('button', { name: 'Open' }).first().click();
 await page.waitForSelector('[data-testid=estimate-page]');
 
 // save
-await page.click('[data-testid=save]');
-await page.waitForSelector('[data-testid=toast]');
-check('save assigns E-0001', (await page.textContent('[data-testid=toast]')).includes('E-0001'));
 
 // draft auto-save survives reload
 check('customer fields are always visible (no collapsed card)', (await page.locator('[aria-expanded]').count()) === 0 && (await page.locator('[data-testid=customer-name]').isVisible()) && (await page.locator('[data-testid=customer-phone]').isVisible()) && (await page.locator('[data-testid=customer-locality]').isVisible()));
@@ -177,11 +171,27 @@ await page.waitForSelector('[data-testid=estimate-page]');
 check('reload keeps estimate', (await cards.count()) === 10);
 check('reload keeps unsaved draft edit', (await page.locator('[data-testid=customer-name]').count()) === 1 && (await page.inputValue('[data-testid=customer-name]')) === 'Ramesh Kumar' && (await page.inputValue('[data-testid=customer-phone]')) === '98765 43210' && (await page.inputValue('[data-testid=customer-locality]')) === 'Gandhi Chowk');
 await page.click('[data-testid=save]');
+await page.waitForSelector('[data-testid=preview-screen]');
+check('Save opens the final bill preview automatically', await page.locator('[data-testid=preview-screen]').isVisible());
+check('save assigns E-0001', (await page.textContent('[data-testid=toast]')).includes('E-0001'));
+await page.getByLabel('Close preview').click();
+await page.waitForSelector('[data-testid=history-page]');
 
 // history + reopen
 await go(page, 'history');
 check('history row', (await page.locator('[data-testid=history-row]').count()) === 1 && (await page.locator('[data-testid=history-row]').textContent()).includes('Ramesh Kumar'));
-check('saved estimate has a green dot, no draft row', (await page.locator('[data-testid=dot-done]').count()) === 1 && (await page.locator('[data-testid=draft-row]').count()) === 0);
+check('saved estimate has no dot until Pending / Clear is chosen, and no draft row', (await page.locator('[data-testid=dot-done], [data-testid=dot-pending]').count()) === 0 && (await page.locator('[data-testid=draft-row]').count()) === 0);
+check('saved bills in History cannot be opened for editing or deleted', (await page.getByRole('button', { name: 'Open', exact: true }).count()) === 0 && (await page.getByRole('button', { name: 'Delete', exact: true }).count()) === 0);
+await page.getByRole('button', { name: 'View' }).first().click();
+await page.click('[data-testid=mark-clear]');
+await page.waitForSelector('[data-testid=preview-screen]', { state: 'detached' });
+await go(page, 'history');
+check('Clear shows a green dot', (await page.locator('[data-testid=dot-done]').count()) === 1);
+await page.fill('[data-testid=history-search]', 'pending');
+check('History search: "pending" finds nothing yet', (await page.locator('[data-testid=history-row]').count()) === 0);
+await page.fill('[data-testid=history-search]', 'clear');
+check('History search: "clear" finds the bill', (await page.locator('[data-testid=history-row]').count()) === 1);
+await page.fill('[data-testid=history-search]', '');
 await page.screenshot({ path: SHOTS + 'web-history.png' });
 await page.click('[data-testid=fab-new]');
 check('new estimate starts empty', (await cards.count()) === 0);
@@ -213,11 +223,7 @@ await page.getByRole('button', { name: 'Discard' }).last().click();
 await page.waitForSelector('.sheet', { state: 'detached' });
 check('discarding removes the draft', (await page.locator('[data-testid=draft-row]').count()) === 0);
 await go(page, 'history');
-await page.getByRole('button', { name: 'Open' }).click();
-check('reopen saved estimate', (await cards.count()) === 10);
-
 // validation before print
-await page.click('[data-testid=bar-back]');
 await page.click('[data-testid=fab-new]');
 await page.waitForSelector('[data-testid=estimate-page]');
 await page.click('[data-testid=add-item]');
@@ -268,7 +274,7 @@ await page.screenshot({ path: SHOTS + 'web-settings.png', fullPage: true });
 {
   const t = await page.locator('[data-testid=settings-page]').innerText();
   const titles = await page.locator('[data-testid=settings-page] .section-title').allTextContents();
-  check('Settings no longer has the Rates and pricing or Products cards (they are on Home)', titles.join(',') === 'Shop,GST' && !t.includes('Default gold rate') && (await page.locator('[data-testid=product]').count()) === 0, titles.join(','));
+  check('Settings no longer has the Rates and pricing or Products cards (they are on Home)', titles.join(',') === 'Shop,GST,Password' && !t.includes('Default gold rate') && (await page.locator('[data-testid=product]').count()) === 0, titles.join(','));
   check('Settings keeps Printer settings, Shop, and the GST switch', t.includes('Printer settings') && t.includes('Shop') && t.includes('Charge GST'));
 }
 
@@ -286,8 +292,8 @@ check('item picker: "+" is the last row', (await page.locator('.pick-list li').l
 await page.screenshot({ path: SHOTS + 'web-picker.png' });
 await page.locator('[data-testid=pick-option]').filter({ hasText: 'Gold Earrings – Floral' }).click();
 await page.waitForSelector('[data-testid=picker-modal]', { state: 'detached' });
-await page.waitForFunction(() => document.querySelector('[data-testid=item-card] [data-testid=tunch]')?.value === '91.6', null, { timeout: 3000 }).catch(() => {});
-{ const d = await descOf(card(0)); const t = await card(0).locator('[data-testid=tunch]').inputValue(); check('choosing an item fills its details', d === 'Gold Earrings – Floral' && t === '91.6', `desc=${d} tunch=${t}`); }
+await page.waitForFunction(() => document.querySelector('[data-testid=item-card] [data-testid=tunch]')?.value === '100', null, { timeout: 3000 }).catch(() => {});
+{ const d = await descOf(card(0)); const t = await card(0).locator('[data-testid=tunch]').inputValue(); check('choosing an item fills its details', d === 'Gold Earrings – Floral' && t === '100', `desc=${d} tunch=${t}`); }
 // metal is chosen on the item; picking a product must not change it
 await card(0).getByRole('button', { name: 'Gold', exact: true }).click();
 await page.locator('[data-testid=desc]').first().click();
@@ -298,19 +304,19 @@ check('picking a product keeps the metal chosen on the item', (await card(0).get
 check('Gold item asks for the making charge as a percentage', (await card(0).innerText()).includes('Making charge (%)') && !(await card(0).innerText()).includes('Making charge (₹)'));
 await card(0).locator('[data-testid=gross]').fill('10');
 await card(0).locator('[data-testid=labour]').fill('5');
-await card(0).locator('[data-testid=amount]').filter({ hasText: '69,930' }).waitFor({ timeout: 3000 }).catch(() => {});
-{ const a = (await card(0).locator('[data-testid=amount]').textContent())?.replace(/\s/g, ''); check('Gold 10 g, 92.5 % (Silver Ring tunch), rate 72,000 per 10 g, making 5 % -> item amount ₹69,930', a === '₹69,930', a); }
-check('Gold shows the making charge in rupees under the field', (await card(0).locator('[data-testid=making-note]').innerText()).includes('3,330'));
+await card(0).locator('[data-testid=amount]').filter({ hasText: '69,552' }).waitFor({ timeout: 3000 }).catch(() => {});
+{ const a = (await card(0).locator('[data-testid=amount]').textContent())?.replace(/\s/g, ''); check('Gold 10 g, 92 % (gold default tunch), rate 72,000 per 10 g, making 5 % -> item amount ₹69,552', a === '₹69,552', a); }
+check('Gold shows the making charge in rupees under the field', (await card(0).locator('[data-testid=making-note]').innerText()).includes('3,312'));
 const amountText = async () => (await card(0).locator('[data-testid=amount]').textContent())?.replace(/\s/g, '');
 const lab = () => card(0).locator('[data-testid=labour]');
 const settleField = (v) => lab().evaluate((el, want) => new Promise((r) => { const t = Date.now(); const f = () => (el.value === want || Date.now() - t > 2000 ? r() : requestAnimationFrame(f)); f(); }), v);
 check('Gold starts as %, with the switch showing % selected', (await card(0).locator('[data-testid=making-pct]').getAttribute('aria-pressed')) === 'true');
 await card(0).locator('[data-testid=making-amt]').click();
-await settleField('3330');
-check('Gold: switching to ₹ shows the same charge as rupees (3330) and the amount does not change', (await card(0).innerText()).includes('Making charge (₹)') && (await lab().inputValue()) === '3330' && (await amountText()) === '₹69,930', `${await lab().inputValue()} ${await amountText()}`);
+await settleField('3312');
+check('Gold: switching to ₹ shows the same charge as rupees (3312) and the amount does not change', (await card(0).innerText()).includes('Making charge (₹)') && (await lab().inputValue()) === '3312' && (await amountText()) === '₹69,552', `${await lab().inputValue()} ${await amountText()}`);
 await card(0).locator('[data-testid=making-pct]').click();
 await settleField('5');
-check('Gold: switching back to % returns 5 and the amount does not change', (await card(0).innerText()).includes('Making charge (%)') && Number(await lab().inputValue()) === 5 && (await amountText()) === '₹69,930', `${await lab().inputValue()} ${await amountText()}`);
+check('Gold: switching back to % returns 5 and the amount does not change', (await card(0).innerText()).includes('Making charge (%)') && Number(await lab().inputValue()) === 5 && (await amountText()) === '₹69,552', `${await lab().inputValue()} ${await amountText()}`);
 await card(0).getByRole('button', { name: 'Silver', exact: true }).click();
 await card(0).locator('[data-testid=labour]').evaluate((el) => new Promise((r) => { const t = Date.now(); const f = () => (el.value === '' || Date.now() - t > 2000 ? r() : requestAnimationFrame(f)); f(); }));
 check('switching to Silver changes the field to rupees and clears the number', (await card(0).innerText()).includes('Making charge (₹)') && (await card(0).locator('[data-testid=labour]').inputValue()) === '');
@@ -319,8 +325,8 @@ await lab().fill('10');
 await card(0).locator('[data-testid=making-pct]').click();
 await settleField('0');
 await card(0).locator('[data-testid=labour]').fill('10');
-await card(0).locator('[data-testid=amount]').filter({ hasText: '2,350' }).waitFor({ timeout: 3000 }).catch(() => {});
-check('Silver can use %: 10 % of silver value (9.25 g x 231) -> amount ₹2,350 and the note says silver', (await amountText()) === '₹2,350' && (await card(0).locator('[data-testid=making-note]').innerText()).toLowerCase().includes('silver value'), `${await amountText()}`);
+await card(0).locator('[data-testid=amount]').filter({ hasText: '2,541' }).waitFor({ timeout: 3000 }).catch(() => {});
+check('Silver can use %: 10 % of silver value (9.25 g x 231) -> amount ₹2,541 and the note says silver', (await amountText()) === '₹2,541' && (await card(0).locator('[data-testid=making-note]').innerText()).toLowerCase().includes('silver value'), `${await amountText()}`);
 await card(0).locator('[data-testid=making-amt]').click();
 await card(0).getByRole('button', { name: 'Gold', exact: true }).click();
 await page.locator('[data-testid=desc]').first().click();
@@ -379,9 +385,8 @@ for (const t of ['home', 'history', 'settings', 'printer']) {
   check(`no horizontal overflow at 360px (${t})`, w <= vw + 1, `${w} vs ${vw}`);
 }
 await go(page, 'history');
-await page.getByRole('button', { name: 'Open' }).click();
 const [w, vw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
-check('no overflow with 10 items at 360px', w <= vw + 1, `${w} vs ${vw}`);
+check('no overflow on History at 360px', w <= vw + 1, `${w} vs ${vw}`);
 
 // ---- Android app path (window.Capacitor + SpjPrinter plugin mocked) ----
 {
@@ -420,9 +425,9 @@ check('no overflow with 10 items at 360px', w <= vw + 1, `${w} vs ${vw}`);
   await np.locator('[data-testid=gross]').fill('7.8');
   // save the bill, then print it from History -> View
   await np.click('[data-testid=save]');
-  await np.waitForSelector('[data-testid=toast]');
-  await np.click('[data-testid=bar-back]');
-  await np.click('[data-testid=tab-history]');
+  await np.waitForSelector('[data-testid=preview-screen]');
+  await np.getByLabel('Close preview').click();
+  await np.waitForSelector('[data-testid=history-page]');
   await np.getByRole('button', { name: 'View' }).first().click();
   await np.click('[data-testid=preview-print]');
   await np.waitForFunction(() => /printed successfully/i.test(document.querySelector('[data-testid=toast]')?.textContent || ''));

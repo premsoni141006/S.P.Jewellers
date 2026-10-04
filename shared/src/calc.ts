@@ -28,10 +28,13 @@ export function netWeight(item: Pick<EstimateItem, 'grossWt' | 'lessWt'>): numbe
   return Math.max(0, round(num(item.grossWt) - num(item.lessWt), WEIGHT_DECIMALS));
 }
 
+/** With a 22K gold rate the price is already for 22K gold, so gold counts at 100% (tunch is not asked). */
+export const usesTunch = (item: Pick<EstimateItem, 'metal'>, pricing?: Pick<EstimatePricing, 'goldKarat'>): boolean => !(item.metal === 'gold' && pricing?.goldKarat === '22');
+
 /** Pure (fine) metal weight = Net Wt. x Tunch / 100. */
-export function fineWeight(item: EstimateItem, _pricing?: EstimatePricing): number {
+export function fineWeight(item: EstimateItem, pricing?: EstimatePricing): number {
   // Wastage was removed: pure metal weight is Net Wt. x Tunch only. Old saved wastage values are ignored.
-  return round((netWeight(item) * num(item.tunch)) / 100, WEIGHT_DECIMALS);
+  return round((netWeight(item) * (usesTunch(item, pricing) ? num(item.tunch) : 100)) / 100, WEIGHT_DECIMALS);
 }
 
 export function labourAmount(item: Pick<EstimateItem, 'grossWt' | 'lessWt' | 'pcs' | 'labourRate' | 'labourMode'>): number {

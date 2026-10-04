@@ -1,3 +1,4 @@
+import { launchUnlocked } from './launch.mjs';
 // Home search: find saved bills by name, phone, place, item, weight, amount, date, bill number.
 import { chromium } from '../../desktop/node_modules/playwright/index.mjs';
 
@@ -6,7 +7,7 @@ const SHOTS = new URL('../../docs/screenshots/', import.meta.url).pathname;
 let failed = 0, total = 0;
 const check = (name, ok, extra = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : ' — ' + extra}`); };
 
-const browser = await chromium.launch({ channel: 'chromium' });
+const browser = await launchUnlocked(chromium);
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => { failed++; console.log('FAIL  page error: ' + e.message); });
@@ -29,8 +30,10 @@ async function createBill({ name, phone, place, product, metal, gross }) {
   await page.waitForFunction(() => /[1-9]/.test(document.querySelector('[data-testid=grand-total]')?.textContent || ''));
   const total = (await page.textContent('[data-testid=grand-total]')).replace(/[^0-9]/g, '');
   await page.click('[data-testid=save]');
-  await page.waitForSelector('[data-testid=toast]');
-  await page.click('[data-testid=bar-back]');
+  await page.waitForSelector('[data-testid=preview-screen]');
+  await page.getByLabel('Close preview').click();
+  await page.waitForSelector('[data-testid=history-page]');
+  await page.click('[data-testid=tab-home]');
   await page.waitForSelector('[data-testid=home-page]');
   return total;
 }
