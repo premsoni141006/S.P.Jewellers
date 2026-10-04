@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { availableStock, fmtWeight, today, type StockEntry } from '@shared';
 import { Icon } from '../components/Icon';
 import { useBackLayer } from '../lib/backStack';
@@ -73,6 +73,17 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   const [metal, setMetal] = useState<'gold' | 'silver' | null>(null); // null until the first look at what exists
   const [tab, setTab] = useState<GalleryTab>('all');
   const [album, setAlbum] = useState<string | null>(null);
+  // Scrolling down hides the header and the bottom bar; scrolling back up brings them back.
+  const [hideBars, setHideBars] = useState(false);
+  const lastTop = useRef(0);
+  const onScroll = (e: React.UIEvent<HTMLElement>) => {
+    const top = e.currentTarget.scrollTop;
+    const d = top - lastTop.current;
+    if (top < 40) setHideBars(false);
+    else if (d > 8) setHideBars(true);
+    else if (d < -8) setHideBars(false);
+    lastTop.current = top;
+  };
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   const { categories, all } = useMemo(() => {
@@ -108,7 +119,8 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   const inAlbumList = tab === 'albums' && !album;
 
   return (
-    <div className="gx" data-theme={active} data-testid="gallery-page">
+    <div className={`gx${hideBars ? ' hide-bars' : ''}`} data-theme={active} data-testid="gallery-page">
+      <div className="gx-head" data-testid="gallery-head">
       <header className="gx-top">
         <button className="gx-round" onClick={onBack} aria-label="Back" data-testid="gallery-back"><Icon name="back" size={22} /></button>
         <div className="gx-title"><span>Gallery</span><small>{inAlbumList ? `${albums.length} album${albums.length === 1 ? '' : 's'}` : album ? albums.find((a) => a.key === album)?.item ?? '' : `${shown.length} piece${shown.length === 1 ? '' : 's'}`}</small></div>
@@ -116,11 +128,12 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
       </header>
       <div className="gx-switch" role="group" aria-label="Metal" data-testid="gallery-switch">
         {(['silver', 'gold'] as const).map((m) => (
-          <button key={m} className={active === m ? 'on' : ''} aria-pressed={active === m} onClick={() => { setMetal(m); setAlbum(null); }} data-testid={`gallery-${m}`}>{m === 'gold' ? 'Gold' : 'Silver'}</button>
+          <button key={m} className={active === m ? 'on' : ''} aria-pressed={active === m} onClick={() => { setMetal(m); setAlbum(null); setHideBars(false); }} data-testid={`gallery-${m}`}>{m === 'gold' ? 'Gold' : 'Silver'}</button>
         ))}
       </div>
+      </div>
 
-      <main className="gx-body">
+      <main className="gx-body" onScroll={onScroll} data-testid="gallery-body">
         {inAlbumList ? (
           albums.length === 0 ? <Empty text={`No ${active} albums yet`} /> : (
             <div className="gx-grid" key={`albums-${active}`}>
@@ -141,7 +154,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
 
       <nav className="gx-nav" aria-label="Gallery sections" data-testid="gallery-nav">
         {TABS.map(([id, label]) => (
-          <button key={id} className={`gx-chip${tab === id ? ' on' : ''}`} onClick={() => { setTab(id); setAlbum(null); }} data-testid={`gallery-tab-${id}`}>{label}</button>
+          <button key={id} className={`gx-chip${tab === id ? ' on' : ''}`} onClick={() => { setTab(id); setAlbum(null); setHideBars(false); }} data-testid={`gallery-tab-${id}`}>{label}</button>
         ))}
       </nav>
       {openIdx !== null && shown[openIdx] && <Detail list={shown} index={openIdx} onIndex={setOpenIdx} onClose={() => setOpenIdx(null)} />}

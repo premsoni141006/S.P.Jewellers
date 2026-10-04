@@ -37,6 +37,15 @@ await page.click('[data-testid=gallery-silver]');
 check('Silver switch: silver look and only the silver photo / albums', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'silver' && (await page.locator('[data-testid=gallery-album]').count()) === 1 && (await page.locator('[data-testid=gallery-album]').innerText()).includes('Silver Anklet'));
 await page.click('[data-testid=gallery-gold]');
 await page.click('[data-testid=gallery-tab-all]');
+// scrolling hides the bars, scrolling back up shows them
+await page.evaluate(() => { const b = document.querySelector('[data-testid=gallery-body]'); const f = document.createElement('div'); f.style.height = '2000px'; b.appendChild(f); });
+await page.evaluate(() => { document.querySelector('[data-testid=gallery-body]').scrollTop = 300; });
+await page.waitForSelector('.gx.hide-bars', { timeout: 3000 }).catch(() => {});
+check('scrolling down hides the header and the bottom bar', (await page.locator('.gx.hide-bars').count()) === 1);
+await page.evaluate(() => { document.querySelector('[data-testid=gallery-body]').scrollTop = 120; });
+await page.waitForFunction(() => !document.querySelector('.gx.hide-bars'), null, { timeout: 3000 }).catch(() => {});
+check('scrolling back up brings them back', (await page.locator('.gx.hide-bars').count()) === 0);
+await page.evaluate(() => { document.querySelector('[data-testid=gallery-body]').scrollTop = 0; });
 await page.locator('[data-testid=gallery-photo]').first().click();
 check('tapping a photo opens it on its own page (big, with its item and weight)', await page.locator('[data-testid=gallery-viewer]').isVisible() && (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('5.500 g'));
 await page.click('[data-testid=gallery-next]');

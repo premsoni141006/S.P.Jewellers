@@ -873,3 +873,10 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .gx-album .gx-name { font-size: 14px; white-space: normal; }
 .gx-count { position: absolute; top: 10px; right: 10px; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font: 700 13px/1 inherit; background: linear-gradient(135deg, var(--acc-a), var(--acc-b)); color: var(--acc-ink); box-shadow: 0 3px 10px var(--acc-glow); }
 .gx-crumb { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 14px 0 8px; margin: 0 0 10px; border-radius: 17px; border: 1px solid var(--glass-edge); background: var(--glass); color: var(--ink); font: 600 13.5px/1 inherit; }
+
+/* Gallery: header and bottom bar slide away while scrolling down, and return when scrolling up */
+.gx-head { position: absolute; top: 0; left: 0; right: 0; z-index: 4; padding-bottom: 6px; background: var(--glass); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-edge); transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.gx-body { padding-top: calc(var(--safe-t, 0px) + 138px); }
+.gx-nav { transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.gx.hide-bars .gx-head { transform: translateY(-105%); }
+.gx.hide-bars .gx-nav { transform: translateY(150%); }
