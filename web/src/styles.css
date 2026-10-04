@@ -880,3 +880,5 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .gx-nav { transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .gx.hide-bars .gx-head { transform: translateY(-105%); }
 .gx.hide-bars .gx-nav { transform: translateY(150%); }
+
+.gx-head .gx-switch { width: fit-content; margin: 0 auto 6px; }

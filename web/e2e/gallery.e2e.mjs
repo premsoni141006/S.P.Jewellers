@@ -23,6 +23,7 @@ await page.click('[data-testid=open-gallery]');
 await page.waitForSelector('[data-testid=gallery-page]');
 const n = () => page.locator('[data-testid=gallery-photo]').count();
 check('opens on Gold, gold look, top switch Silver | Gold, All shows the gold photos with only item + weight', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && (await page.locator('[data-testid=gallery-photo]').first().innerText()).replace(/\s+/g, ' ').trim() === 'Gold Ring – Classic 5.500 g');
+{ const sw = await page.locator('[data-testid=gallery-switch]').boundingBox(); const vw = page.viewportSize().width; check('the Silver | Gold switch sits in the middle of the page', Math.abs((sw.x + sw.width / 2) - vw / 2) < 4 && sw.width < vw * 0.7, JSON.stringify(sw)); }
 check('bottom bar: All | Albums | New | In stock | Sold', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === 'All|Albums|New|In stock|Sold');
 await page.click('[data-testid=gallery-tab-new]'); check('New: only the piece added lately', (await n()) === 1);
 await page.click('[data-testid=gallery-tab-stock]'); check('In stock: only the piece still in the shop', (await n()) === 1 && (await page.locator('[data-testid=gallery-photo]').innerText()).includes('5.500'));
