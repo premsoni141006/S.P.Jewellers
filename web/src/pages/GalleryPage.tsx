@@ -1,23 +1,41 @@
 import { useMemo, useRef, useState } from 'react';
-import { fmtWeight, type StockEntry } from '@shared';
+import { fmtRupees, ratePerGram, type StockEntry } from '@shared';
 import { Icon } from '../components/Icon';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
 import { addPick, customersOf, loadPicks, picksOf, type Pick } from '../lib/picks';
 import type { AppStore } from '../lib/store';
 
-function Card({ entry, index, liked, onOpen, onLike }: { entry: StockEntry; index: number; liked: boolean; onOpen: () => void; onLike?: () => void }) {
+const wt = (w: number): string => `${Math.round(w * 1000) / 1000} g`;
+
+/** Kind of jewellery from the item name, for the round filter buttons. */
+const TYPES: Array<{ id: string; label: string; icon: string; words: RegExp }> = [
+  { id: 'necklace', label: 'Necklaces', icon: 'necklace', words: /necklace|chain|haar|mala|mangalsutra/i },
+  { id: 'earrings', label: 'Earrings', icon: 'earrings', words: /ear ?ring|jhumk|stud|bali|tops/i },
+  { id: 'bracelet', label: 'Bracelets', icon: 'bracelet', words: /bracelet|bangle|kada|kangan/i },
+  { id: 'ring', label: 'Rings', icon: 'ring', words: /\bring/i },
+  { id: 'pendant', label: 'Pendants', icon: 'pendant', words: /pendant|locket/i },
+  { id: 'anklet', label: 'Anklets', icon: 'bracelet', words: /anklet|payal/i },
+];
+const typeOf = (item: string): string => TYPES.find((t) => t.words.test(item))?.id ?? 'other';
+
+function Card({ entry, index, price, liked, badge, onOpen, onLike }: { entry: StockEntry; index: number; price: number; liked: boolean; badge?: string; onOpen: () => void; onLike?: () => void }) {
   const url = usePhotoUrl(entry.photoId);
   return (
-    <div className="gx-card" style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}>
-      <button type="button" className="gx-open" onClick={onOpen} data-testid="gallery-photo" aria-label={`${entry.item} ${fmtWeight(entry.weight)} g`}>
-        {url ? <img src={url} alt="" loading="lazy" /> : <span className="gx-blank" />}
-        <span className="gx-label">
-          <span className="gx-name">{entry.item}</span>
-          <span className="gx-wt">{fmtWeight(entry.weight)} g</span>
-        </span>
-      </button>
-      {onLike && <button type="button" className={`gx-plus${liked ? ' liked' : ''}`} onClick={onLike} aria-label="A customer likes this" data-testid="gallery-plus">{liked ? '✓' : '+'}</button>}
+    <div className="gx-pcard" style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }} data-testid="gallery-card">
+      <div className="gx-pphoto">
+        <button type="button" className="gx-open" onClick={onOpen} data-testid="gallery-photo" aria-label={`${entry.item} ${wt(entry.weight)}`}>
+          {url ? <img src={url} alt="" loading="lazy" /> : <span className="gx-blank" />}
+        </button>
+        {badge && <span className="gx-badge-pill" data-testid="gallery-pill">{badge === 'BESTSELLER' ? '★' : '🔥'} {badge}</span>}
+        {onLike && <button type="button" className={`gx-heart${liked ? ' liked' : ''}`} onClick={onLike} aria-label="A customer likes this" data-testid="gallery-heart"><Icon name="heart" size={18} fill={liked ? 'currentColor' : 'none'} /></button>}
+      </div>
+      <div className="gx-pinfo">
+        <span className="gx-pname">{entry.item}</span>
+        <span className="gx-pwt">{wt(entry.weight)}</span>
+        <span className="gx-pprice">{price > 0 ? fmtRupees(price) : ''}</span>
+        {onLike && <button type="button" className={`gx-pplus${liked ? ' liked' : ''}`} onClick={onLike} aria-label="Customer likes this" data-testid="gallery-plus">{liked ? '✓' : entry.metal === 'silver' ? <Icon name="cart" size={22} /> : '+'}</button>}
+      </div>
     </div>
   );
 }
@@ -32,7 +50,7 @@ function LikeWindow({ entry, picks, onSave, onClose }: { entry: StockEntry; pick
     <div className="gx-modal" role="dialog" aria-modal="true" aria-label="Customer likes this" onClick={onClose} data-testid="like-window">
       <form className="gx-modal-card" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); save(); }}>
         <h2>Customer likes this</h2>
-        <p className="gx-modal-sub">{entry.item} · {fmtWeight(entry.weight)} g</p>
+        <p className="gx-modal-sub">{entry.item} · {wt(entry.weight)}</p>
         <label className="gx-field">
           <span>Customer name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" autoFocus data-testid="like-name" />
@@ -89,14 +107,14 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
         {url && <img src={url} alt="" />}
         <button className="gx-round gx-next" onClick={() => onIndex(index + 1)} disabled={index === list.length - 1} aria-label="Next" data-testid="gallery-next"><Icon name="next" size={22} /></button>
       </div>
-      <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt">{fmtWeight(entry.weight)} g</span></div>
+      <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt">{wt(entry.weight)}</span></div>
       {onLike && <button type="button" className={`gx-like-big${liked(entry.id) ? ' liked' : ''}`} onClick={() => onLike(entry)} data-testid="gallery-detail-plus">{liked(entry.id) ? '✓ Liked' : '+ Customer likes this'}</button>}
     </div>
   );
 }
 
 type GalleryTab = 'fav' | 'all' | 'albums';
-const TABS: Array<[GalleryTab, string]> = [['fav', '♥ Fav'], ['all', 'All'], ['albums', 'Albums']];
+const TABS: Array<[GalleryTab, string, string]> = [['fav', 'Fav', 'heart'], ['all', 'All', 'grid'], ['albums', 'Albums', 'gallery']];
 
 /**
  * Full-screen gallery of every jewellery photo from the stock register. A dark, immersive
@@ -122,9 +140,29 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   const [picks, setPicks] = useState<Pick[]>(loadPicks);
   const [likeFor, setLikeFor] = useState<StockEntry | null>(null);
   const [favCustomer, setFavCustomer] = useState<string | null>(null);
+  const [type, setType] = useState('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [q, setQ] = useState('');
   const [note, setNote] = useState('');
   const likedIds = useMemo(() => new Set(picks.map((p) => p.entryId)), [picks]);
   const customers = useMemo(() => customersOf(picks), [picks]);
+  // BESTSELLER: the piece most customers picked; TRENDING: other pieces picked in the last week.
+  const badges = useMemo(() => {
+    const m = new Map<string, string>();
+    const counts = new Map<string, number>();
+    for (const p of picks) counts.set(p.entryId, (counts.get(p.entryId) ?? 0) + 1);
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top) m.set(top[0], 'BESTSELLER');
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    for (const p of picks) if (p.at >= weekAgo && !m.has(p.entryId)) m.set(p.entryId, 'TRENDING');
+    return m;
+  }, [picks]);
+  const { settings } = store;
+  // Approximate value at today's rate: weight x tunch x rate (making charges are not included).
+  const priceOf = (e: StockEntry): number => {
+    const rate = e.metal === 'gold' ? ratePerGram(settings.defaultGoldRate, settings.goldRateUnit) : ratePerGram(settings.defaultSilverRate, settings.silverRateUnit);
+    return Math.round(e.weight * (e.tunch > 0 ? e.tunch : 100) / 100 * rate);
+  };
 
   const { categories, all } = useMemo(() => {
     const withPhoto = store.stock.filter((e) => e.photoId && e.type === 'in');
@@ -147,9 +185,15 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   const cats = categories.filter((c) => c.metal === active);
   const keyOf = (e: StockEntry) => `${e.metal}|${e.item.trim().toLowerCase()}`;
 
-  const shown = tab === 'all' ? ofMetal
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const textOf = (e: StockEntry) => `${e.item} ${wt(e.weight)} ${e.weight} ${e.tunch}`.toLowerCase();
+  const typesHere = TYPES.filter((t) => ofMetal.some((e) => typeOf(e.item) === t.id));
+  const hasOther = ofMetal.some((e) => typeOf(e.item) === 'other');
+  const base = tab === 'all' ? ofMetal.filter((e) => type === 'all' || typeOf(e.item) === type) : ofMetal;
+  const shown0 = tab === 'all' ? base
     : tab === 'fav' ? (favCustomer ? picksOf(picks, favCustomer).map((p) => all.find((e) => e.id === p.entryId)).filter((e): e is StockEntry => !!e) : [])
     : album ? ofMetal.filter((e) => keyOf(e) === album) : [];
+  const shown = words.length ? shown0.filter((e) => words.every((w) => textOf(e).includes(w))) : shown0;
   const albums = cats.map((c) => ({ ...c, photos: ofMetal.filter((e) => keyOf(e) === c.key) })).filter((a) => a.photos.length);
   const inAlbumList = tab === 'albums' && !album;
   const inCustomerList = tab === 'fav' && !favCustomer;
@@ -157,20 +201,39 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
 
   return (
     <div className={`gx${hideBars ? ' hide-bars' : ''}`} data-theme={active} data-testid="gallery-page">
+      <main className="gx-body" onScroll={onScroll} data-testid="gallery-body">
       <div className="gx-head" data-testid="gallery-head">
       <header className="gx-top">
         <button className="gx-round" onClick={onBack} aria-label="Back" data-testid="gallery-back"><Icon name="back" size={22} /></button>
         <div className="gx-title"><span>Gallery</span><small>{inCustomerList ? `${customers.length} customer${customers.length === 1 ? '' : 's'}` : tab === 'fav' ? favName : inAlbumList ? `${albums.length} album${albums.length === 1 ? '' : 's'}` : album ? albums.find((a) => a.key === album)?.item ?? '' : `${shown.length} piece${shown.length === 1 ? '' : 's'}`}</small></div>
-        <span className="gx-round gx-ghost" aria-hidden="true" />
+        <div className="gx-actions">
+          <button className={`gx-round${searchOpen ? ' on' : ''}`} onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setQ(''); }} aria-label="Search" data-testid="gallery-search-btn"><Icon name="search" size={20} /></button>
+          <button className="gx-round gx-cart" onClick={() => { setTab('fav'); setAlbum(null); setFavCustomer(null); setHideBars(false); }} aria-label="Customer picks" data-testid="gallery-cart"><Icon name="cart" size={20} />{picks.length > 0 && <span className="gx-badge" data-testid="gallery-badge">{picks.length}</span>}</button>
+        </div>
       </header>
       <div className="gx-switch" role="group" aria-label="Metal" data-testid="gallery-switch">
         {(['silver', 'gold'] as const).map((m) => (
-          <button key={m} className={active === m ? 'on' : ''} aria-pressed={active === m} onClick={() => { setMetal(m); setAlbum(null); setHideBars(false); }} data-testid={`gallery-${m}`}>{m === 'gold' ? 'Gold' : 'Silver'}</button>
+          <button key={m} className={active === m ? 'on' : ''} aria-pressed={active === m} onClick={() => { setMetal(m); setAlbum(null); setType('all'); setHideBars(false); }} data-testid={`gallery-${m}`}>{m === 'gold' ? 'Gold' : 'Silver'}</button>
         ))}
       </div>
+      {searchOpen && (
+        <div className="gx-search">
+          <Icon name="search" size={18} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search item or weight" autoFocus autoComplete="off" data-testid="gallery-search" />
+        </div>
+      )}
+      {tab === 'all' && (
+        <div className="gx-types" role="group" aria-label="Type" data-testid="gallery-types">
+          <button className={`gx-type${type === 'all' ? ' on' : ''}`} onClick={() => setType('all')} data-testid="gallery-type-all"><span className="gx-type-ic"><Icon name="grid" size={22} /></span><span>All</span></button>
+          {typesHere.map((t) => (
+            <button key={t.id} className={`gx-type${type === t.id ? ' on' : ''}`} onClick={() => setType(t.id)} data-testid="gallery-type"><span className="gx-type-ic"><Icon name={t.icon} size={22} /></span><span>{t.label}</span></button>
+          ))}
+          {hasOther && <button className={`gx-type${type === 'other' ? ' on' : ''}`} onClick={() => setType('other')} data-testid="gallery-type"><span className="gx-type-ic"><Icon name="gem" size={22} /></span><span>Others</span></button>}
+        </div>
+      )}
       </div>
 
-      <main className="gx-body" onScroll={onScroll} data-testid="gallery-body">
+      <div className="gx-content">
         {inCustomerList ? (
           customers.length === 0 ? <Empty text="No customer has picked anything yet" hint="Tap + on a photo when a customer likes it." /> : (
             <div className="gx-customers" data-testid="gallery-customers">
@@ -196,15 +259,16 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
             {album && <button className="gx-crumb" onClick={() => setAlbum(null)} data-testid="gallery-albums-back"><Icon name="back" size={16} /> Albums</button>}
             {tab === 'fav' && favCustomer && <button className="gx-crumb" onClick={() => setFavCustomer(null)} data-testid="gallery-customers-back"><Icon name="back" size={16} /> Customers</button>}
             <div className="gx-grid" key={`${tab}-${album}-${active}`}>
-              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} liked={likedIds.has(e.id)} onOpen={() => setOpenIdx(i)} onLike={tab === 'fav' ? undefined : () => setLikeFor(e)} />)}
+              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} price={priceOf(e)} liked={likedIds.has(e.id)} badge={badges.get(e.id)} onOpen={() => setOpenIdx(i)} onLike={tab === 'fav' ? undefined : () => setLikeFor(e)} />)}
             </div>
           </>
         )}
+      </div>
       </main>
 
       <nav className="gx-nav" aria-label="Gallery sections" data-testid="gallery-nav">
-        {TABS.map(([id, label]) => (
-          <button key={id} className={`gx-chip${tab === id ? ' on' : ''}`} onClick={() => { setTab(id); setAlbum(null); setFavCustomer(null); setHideBars(false); }} data-testid={`gallery-tab-${id}`}>{label}</button>
+        {TABS.map(([id, label, icon]) => (
+          <button key={id} className={`gx-chip${tab === id ? ' on' : ''}`} onClick={() => { setTab(id); setAlbum(null); setFavCustomer(null); setHideBars(false); }} data-testid={`gallery-tab-${id}`}><Icon name={icon} size={19} fill={id === 'fav' ? 'currentColor' : 'none'} /><span>{label}</span></button>
         ))}
       </nav>
       {openIdx !== null && shown[openIdx] && <Detail list={shown} index={openIdx} liked={(id) => likedIds.has(id)} onIndex={setOpenIdx} onLike={tab === 'fav' ? undefined : setLikeFor} onClose={() => setOpenIdx(null)} />}

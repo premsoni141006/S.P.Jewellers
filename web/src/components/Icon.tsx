@@ -16,6 +16,14 @@ const paths: Record<string, string> = {
   gem: 'M6 4h12l4 6-10 11L2 10zM2 10h20M9 4l-2 6 5 11 5-11-2-6',
   stock: 'M3 9l9-5 9 5v10l-9 5-9-5zM3 9l9 5 9-5M7.5 6.5l9 5M12 14v10',
   gallery: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M8.5 9.5v.01',
+  grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  heart: 'M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z',
+  cart: 'M3 4h2.5l2.2 10.5h9.6L19.5 8H6.2M9.5 19.5v.01M16.5 19.5v.01',
+  ring: 'M12 9l2.2-3.2L12 3 9.8 5.8zM12 21a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z',
+  earrings: 'M8 3v4M16 3v4M8 7c-2.2 2.8-2.2 6 0 8 2.200-2 2.200-5.200 0-8zM16 7c-2.200 2.800-2.200 6 0 8 2.200-2 2.200-5.200 0-8z',
+  necklace: 'M5 4c0 9 3 13 7 13s7-4 7-13M12 17v3M10.500 20h3',
+  bracelet: 'M12 6c4.500 0 8 2.500 8 6s-3.500 6-8 6-8-2.500-8-6 3.500-6 8-6zM12 8c3 0 5.500 1.800 5.500 4S15 16 12 16 6.500 14.200 6.500 12 9 8 12 8z',
+  pendant: 'M12 3v5M12 8c-3 3-3 6 0 10 3-4 3-7 0-10z',
   camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   cash: 'M3 7h18v10H3zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 10v.01M18 14v.01',
   search: 'M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM16 16l5 5',
@@ -25,9 +33,9 @@ const paths: Record<string, string> = {
   draft: 'M5 20h4l10-10-4-4L5 16zM13 7l4 4',
 };
 
-export function Icon({ name, size = 20 }: { name: keyof typeof paths | string; size?: number }) {
+export function Icon({ name, size = 20, fill = 'none' }: { name: keyof typeof paths | string; size?: number; fill?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={paths[name] ?? ''} />
     </svg>
   );

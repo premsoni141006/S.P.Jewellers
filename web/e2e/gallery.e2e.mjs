@@ -22,9 +22,9 @@ await page.waitForSelector('[data-testid=home-page]');
 await page.click('[data-testid=open-gallery]');
 await page.waitForSelector('[data-testid=gallery-page]');
 const n = () => page.locator('[data-testid=gallery-photo]').count();
-check('opens on Gold, gold look, top switch Silver | Gold, All shows the gold photos with only item + weight', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && (await page.locator('[data-testid=gallery-photo]').first().innerText()).replace(/\s+/g, ' ').trim() === 'Gold Ring – Classic 5.500 g');
+check('opens on Gold, gold look, top switch Silver | Gold, All shows the gold cards with item, weight and price', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && /Gold Ring – Classic 5\.5 g ₹/.test((await page.locator('[data-testid=gallery-card]').first().innerText()).replace(/\s+/g, ' ')));
 { const sw = await page.locator('[data-testid=gallery-switch]').boundingBox(); const vw = page.viewportSize().width; check('the Silver | Gold switch sits in the middle of the page', Math.abs((sw.x + sw.width / 2) - vw / 2) < 4 && sw.width < vw * 0.7, JSON.stringify(sw)); }
-check('bottom bar has only Fav, All and Albums', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === '♥ Fav|All|Albums');
+check('bottom bar has only Fav, All and Albums', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === 'Fav|All|Albums');
 await page.click('[data-testid=gallery-tab-albums]');
 check('Albums: one album per category with its photo count', (await page.locator('[data-testid=gallery-album]').count()) === 1 && (await page.locator('[data-testid=gallery-album] .gx-count').innerText()) === '2');
 await page.locator('[data-testid=gallery-album]').click();
@@ -64,9 +64,9 @@ await page.waitForFunction(() => !document.querySelector('.gx.hide-bars'), null,
 check('scrolling back up brings them back', (await page.locator('.gx.hide-bars').count()) === 0);
 await page.evaluate(() => { document.querySelector('[data-testid=gallery-body]').scrollTop = 0; });
 await page.locator('[data-testid=gallery-photo]').first().click();
-check('tapping a photo opens it on its own page (big, with its item and weight)', await page.locator('[data-testid=gallery-viewer]').isVisible() && (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('5.500 g'));
+check('tapping a photo opens it on its own page (big, with its item and weight)', await page.locator('[data-testid=gallery-viewer]').isVisible() && (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('5.5 g'));
 await page.click('[data-testid=gallery-next]');
-check('next shows the following piece', (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('6.000 g'));
+check('next shows the following piece', (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('6 g'));
 await page.click('[data-testid=gallery-viewer-back]');
 await page.waitForSelector('[data-testid=gallery-viewer]', { state: 'detached' });
 check('no lock while inside the Gallery', (await page.locator('[data-testid=app-lock]').count()) === 0);
