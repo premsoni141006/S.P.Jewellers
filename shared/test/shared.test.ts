@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, PRINT_COLUMNS, buildEstimateEscPosText, buildTestPrintEscPos, calcEstimate, calcItem,
   newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
-  searchStock, searchCash, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
+  searchStock, searchCash, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
 } from '../src';
 
 const pricing = { ...pricingFromSettings(DEFAULT_SETTINGS), silverRate: 100000, silverRateUnit: 'per_kg' as const, goldRate: 100000, goldRateUnit: 'per_10g' as const, roundGrandTotal: false };
@@ -577,5 +577,22 @@ describe('gold karat and default tunch', () => {
     const item = { ...base.items[0], metal: 'gold' as const, grossWt: 10, lessWt: 0, tunch: 92 };
     expect(fineWeight(item, { ...base.pricing, goldKarat: '24' })).toBe(9.2);
     expect(fineWeight(item, { ...base.pricing, goldKarat: '22' })).toBe(10);
+  });
+});
+
+describe('stock matches for a sold item', () => {
+  const mk = (id: string, type: 'in' | 'out', weight: number, item = 'Gold Ring – Classic', metal: 'gold' | 'silver' = 'gold', date = '2026-10-01') =>
+    ({ id, date, type, metal, item, tunch: 92, weight, pcs: 1, note: '', createdAt: `${date}T10:00:0${id.length}Z` });
+  const sold = { metal: 'gold' as const, description: 'gold ring – classic', weight: 5.5 };
+  it('finds same category + same weight only', () => {
+    const stock = [mk('a', 'in', 5.5), mk('bb', 'in', 5.5, 'Gold Ring – Classic', 'gold', '2026-10-02'), mk('c', 'in', 6), mk('d', 'in', 5.5, 'Gold Chain – Daily Wear'), mk('e', 'in', 5.5, 'Gold Ring – Classic', 'silver')];
+    expect(stockMatchesForSale(stock, sold).map((e) => e.id)).toEqual(['bb', 'a']);
+  });
+  it('a piece already taken out (OUT of the same lot) is not offered again', () => {
+    const a = mk('a', 'in', 5.5), b = mk('bb', 'in', 5.5, 'Gold Ring – Classic', 'gold', '2026-10-02');
+    const out = saleOutEntry(a, 'o', '2026-10-05', 'Sold');
+    expect(out.type).toBe('out');
+    expect(stockMatchesForSale([a, b, out], sold).map((e) => e.id)).toEqual(['bb']);
+    expect(stockMatchesForSale([a, b, out, saleOutEntry(b, 'p', '2026-10-05', 'Sold')], sold)).toEqual([]);
   });
 });

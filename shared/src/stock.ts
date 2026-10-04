@@ -81,6 +81,33 @@ export function validateStockEntry(e: StockEntry): string | null {
   return null;
 }
 
+const WEIGHT_TOL = 0.0005;
+const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Pieces still in stock that look like a sold item: the same metal and category (item name) and
+ * the same weight (grams). An IN entry counts as used up once OUT entries of that same lot
+ * (metal + item + weight) add up to it, oldest IN first. Newest first in the result.
+ */
+export function stockMatchesForSale(stock: StockEntry[], sold: { metal: Metal; description: string; weight: number }): StockEntry[] {
+  const wt = num(sold.weight);
+  if (!(wt > 0) || !sold.description.trim()) return [];
+  const lot = (e: StockEntry) => e.metal === sold.metal && sameName(e.item, sold.description) && Math.abs(num(e.weight) - wt) <= WEIGHT_TOL;
+  const ins = stock.filter((e) => e.type === 'in' && lot(e)).sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date.localeCompare(b.date)));
+  let pool = stock.filter((e) => e.type === 'out' && lot(e)).reduce((acc, e) => acc + num(e.weight), 0);
+  const left: StockEntry[] = [];
+  for (const e of ins) {
+    if (pool >= num(e.weight) - WEIGHT_TOL) pool -= num(e.weight);
+    else left.push(e);
+  }
+  return left.reverse();
+}
+
+/** The OUT movement that takes a matched IN piece out of stock after it is sold. */
+export function saleOutEntry(piece: StockEntry, id: string, dateStr: string, note: string): StockEntry {
+  return { id, date: dateStr, type: 'out', metal: piece.metal, item: piece.item, tunch: piece.tunch, weight: piece.weight, pcs: piece.pcs, note, createdAt: new Date().toISOString() };
+}
+
 /** Today's date as YYYY-MM-DD in the phone's own time zone. */
 export function today(now: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0');

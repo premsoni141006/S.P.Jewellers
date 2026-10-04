@@ -122,7 +122,6 @@ export function StockPage({ store, confirm, setToast }: { store: AppStore; confi
           {stockList.map((e) => (
             <section className="card stock-row" key={e.id} data-testid="stock-row">
               <button className="stock-main" onClick={() => setStockEdit({ entry: e, isNew: false })} aria-label={`Edit ${e.item || 'entry'}`}>
-                <span className={`stock-badge ${e.type}`}>{e.type === 'in' ? 'IN' : 'OUT'}</span>
                 <Thumb photoId={e.photoId} />
                 <span className="stock-info">
                   <b>{e.item || 'Unnamed'}</b>
@@ -174,7 +173,6 @@ export function StockPage({ store, confirm, setToast }: { store: AppStore; confi
           {cashList.map((e) => (
             <section className="card stock-row" key={e.id} data-testid="cash-row">
               <button className="stock-main" onClick={() => setCashEdit({ entry: e, isNew: false })} aria-label={`Edit cash entry ${e.note || ''}`}>
-                <span className={`stock-badge ${e.type}`}>{e.type === 'in' ? 'IN' : 'OUT'}</span>
                 <span className="stock-info">
                   <b>{e.note || (e.type === 'in' ? 'Cash received' : 'Cash paid')}</b>
                   <span className="muted small">{fmtDate(e.date)}</span>

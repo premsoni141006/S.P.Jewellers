@@ -92,8 +92,8 @@ const sbar = page.locator('[data-testid=stock-search]');
 const find = async (q) => { await sbar.fill(q); await settle(); return rows().count(); };
 check('stock page has a search bar at the top', (await sbar.count()) === 1 && (await sbar.boundingBox()).y < (await page.locator('[data-testid=card-metal]').boundingBox()).y);
 check('search: by category (anklet) -> 1 entry', (await find('anklet')) === 1);
-check('search: by note (party) -> the IN gold entry', (await find('party')) === 1 && (await rows().first().innerText()).includes('IN'));
-check('search: by note (sold) -> the OUT entry', (await find('sold')) === 1 && (await rows().first().innerText()).includes('OUT'));
+check('search: by note (party) -> the IN gold entry (green)', (await find('party')) === 1 && (await rows().first().locator('.stock-amt.in').count()) === 1);
+check('search: by note (sold) -> the OUT entry', (await find('sold')) === 1 && (await rows().first().locator('.stock-amt.out').count()) === 1);
 check('search: by weight (30.5)', (await find('30.5')) === 1);
 check('search: by weight (500.000)', (await find('500.000')) === 1 && (await rows().first().innerText()).includes('Silver Anklet'));
 check('search: by tunch (92) -> both gold ring entries', (await find('92')) === 2);
@@ -114,7 +114,7 @@ check('OUT larger than the stock shows a warning (not a block)', (await page.loc
 await page.click('[data-testid=stock-close]'); await page.waitForSelector('[data-testid=stock-modal]', { state: 'detached' });
 
 await page.click('[data-testid=stock-filter-out]');
-check('filter OUT shows only the OUT entry', (await rows().count()) === 1 && (await rows().first().innerText()).includes('OUT'));
+check('filter OUT shows only the OUT entry', (await rows().count()) === 1 && (await rows().first().locator('.stock-amt.out').count()) === 1);
 await page.click('[data-testid=stock-filter-all]');
 await page.screenshot({ path: SHOTS + 'web-stock.png', fullPage: true });
 

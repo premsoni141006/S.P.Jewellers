@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { fmtEstimateNo, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { fmtEstimateNo, newId, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
 import { AppBar } from './components/AppBar';
 import { Icon } from './components/Icon';
 import { Sheet, type SheetAction } from './components/Sheet';
@@ -13,6 +13,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { StockPage } from './pages/StockPage';
 import { PreviewScreen } from './pages/PreviewScreen';
 import { LoginScreen } from './pages/LoginScreen';
+import { StockMatchModal } from './components/StockMatchModal';
 import { isUnlocked } from './lib/auth';
 import { billFileName, billPdf, saveBlob, shareBill } from './lib/billExport';
 import { RatesModal } from './components/RatesModal';
@@ -49,6 +50,7 @@ function AppMain() {
   const [ratesOpen, setRatesOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [stockPrompt, setStockPrompt] = useState<Estimate | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean; saved?: boolean } | null>(null);
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
@@ -197,7 +199,13 @@ function AppMain() {
           <EstimatePage
             store={store}
             invalid={invalid}
-            onSave={() => { const s = save(); if (s) setPreview({ est: s, fromEditor: true, saved: true }); }}
+            onSave={() => {
+              const s = save();
+              if (!s) return;
+              setPreview({ est: s, fromEditor: true, saved: true });
+              // Pieces in stock like the ones sold? Offer to take them out of stock.
+              if (s.items.some((it) => stockMatchesForSale(store.stock, { metal: it.metal, description: it.description, weight: it.grossWt }).length > 0)) setStockPrompt(s);
+            }}
             onPreview={() => setPreview({ est, fromEditor: true })}
             confirm={confirm}
           />
@@ -311,6 +319,17 @@ function AppMain() {
             const target = preview.fromEditor ? est : preview.est;
             setPreview(null);
             void runPrint(target, preview.fromEditor || target.id === est.id);
+          }}
+        />
+      )}
+      {stockPrompt && (
+        <StockMatchModal
+          est={stockPrompt}
+          stock={store.stock}
+          onClose={() => setStockPrompt(null)}
+          onRemove={(pieces) => {
+            for (const p of pieces) store.saveStock(saleOutEntry(p, newId(), today(), `Sold – ${fmtEstimateNo(stockPrompt.number)}`));
+            setToast(pieces.length === 1 ? 'Stock updated.' : `Stock updated: ${pieces.length} pieces removed.`);
           }}
         />
       )}
