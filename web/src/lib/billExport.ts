@@ -4,7 +4,7 @@
 // A4 pages of that picture (cut between rows, never through one).
 
 import { A4_PT, buildPdfFromJpegs, fmtEstimateNo, renderEstimateHtml, type Estimate, type PrintHeader } from '@shared';
-import { isNative, nativeSaveFile } from './native';
+import { isNative, nativeSaveFile, nativeShareFile } from './native';
 
 const SHEET_W = 794; // A4 width at 96 dpi, in CSS px
 const SHEET_H = 1123;
@@ -132,4 +132,20 @@ export async function saveBlob(name: string, blob: Blob): Promise<string> {
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 5000);
   return 'Downloads';
+}
+
+/** Shares the bill (PDF) through the phone's share sheet; in a browser uses the Web Share API when it can send files. */
+export async function shareBill(est: Estimate, header: PrintHeader): Promise<void> {
+  const blob = await billPdf(est, header);
+  const name = billFileName(est, 'pdf');
+  if (isNative()) {
+    await nativeShareFile({ name, mime: blob.type || 'application/pdf', data: await toBase64(blob) });
+    return;
+  }
+  const file = new File([blob], name, { type: 'application/pdf' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); } catch (e) { if ((e as Error).name !== 'AbortError') throw e; }
+    return;
+  }
+  await saveBlob(name, blob); // no sharing here: the file is downloaded instead
 }

@@ -26,7 +26,7 @@ export const hasContent = (e: Estimate): boolean =>
 export function summarize(e: Estimate): EstimateSummary {
   return {
     id: e.id, number: e.number, createdAt: e.createdAt, updatedAt: e.updatedAt, customerName: e.customerName,
-    grandTotal: calcEstimate(e).grandTotal, itemCount: e.items.length, printStatus: e.printStatus, printedAt: e.printedAt,
+    grandTotal: calcEstimate(e).grandTotal, itemCount: e.items.length, printStatus: e.printStatus, printedAt: e.printedAt, billStatus: e.billStatus,
   };
 }
 

@@ -129,14 +129,15 @@ describe('print template', () => {
     expect(html).toMatch(/ESTIMATE</);
     expect(html).toMatch(/Bill No\./);
     expect(html).toMatch(/Date:/);
-    expect(html).toContain('SILVER BHAV');
-    expect(html).toContain('GOLD BHAV'); // the sample has both metals
+    expect(html).toContain('>Silver Rate<');
+    expect(html).toContain('>Gold Rate<'); // the sample has both metals
+    expect(html).not.toMatch(/BHAV/i);
     expect(html).toContain('TOTAL');
-    // padded to 7 item rows (plus the header row)
-    expect((html.match(/<tr>/g) ?? []).length).toBe(7 + 1);
+    // the sample has 6 items, above the 5-row minimum (plus the column header row)
+    expect((html.match(/<tr>/g) ?? []).length).toBe(6 + 1);
     expect(html).toContain('@page { size: A4 portrait; margin: 10mm; }');
   });
-  it('item rows: 7 when there are fewer than 7 items, otherwise one row per item', () => {
+  it('item rows: 5 when there are fewer than 5 items, otherwise one row per item', () => {
     const rows = (n: number) => {
       const est = sampleEstimate(DEFAULT_SETTINGS);
       est.items = Array.from({ length: n }, (_, i) => ({ ...est.items[i % est.items.length], id: `i${i}` }));
@@ -145,11 +146,11 @@ describe('print template', () => {
       const body = html.split('<tbody>')[1].split('class="sum')[0];
       return (body.match(/<tr>/g) ?? []).length;
     };
-    expect(rows(0)).toBe(7);
-    expect(rows(1)).toBe(7);
-    expect(rows(6)).toBe(7);
-    expect(rows(7)).toBe(7);
-    expect(rows(8)).toBe(8);
+    expect(rows(0)).toBe(5);
+    expect(rows(1)).toBe(5);
+    expect(rows(4)).toBe(5);
+    expect(rows(5)).toBe(5);
+    expect(rows(6)).toBe(6);
     expect(rows(12)).toBe(12);
   });
   it('the bill has 9 columns: no Wstg, and the charge column is "Making"', () => {
@@ -190,15 +191,20 @@ describe('print template', () => {
     expect(at('class="shop"')).toBeLessThan(at('class="address"'));
     expect(html).toContain('Main Bazar, Near Gandhi Chowk, Ellenabad-125102');
     expect(at('class="estimate-title"')).toBeLessThan(at('class="brand"'));
-    // the row above the table: customer + mobile (left), bill number + date (right)
+    // the first row INSIDE the table: customer + mobile (7 columns), bill number + date (last 2 columns)
     expect(html).toContain('Customer: <b>Ramesh Kumar</b>');
     expect(html).toContain('Mobile: <b>98765 43210</b>');
     expect(html).toContain('Bill No.: <b>E-0007</b>');
     expect(html).toContain('Date: <b>04 Oct 2026</b>');
-    expect(at('class="bill-meta"')).toBeGreaterThan(at('class="address"'));
-    expect(at('class="bill-meta"')).toBeLessThan(at('<table>'));
-    expect(at('class="bill-meta-l"')).toBeLessThan(at('class="bill-meta-r"'));
-    expect(html).toContain('.bill-meta-r { text-align: right; }');
+    expect(html).toContain('<tr class="meta-row"><td colspan="7" class="meta-l">');
+    expect(html).toContain('<td colspan="2" class="meta-r">');
+    expect(at('<table>')).toBeLessThan(at('class="meta-row"'));
+    expect(at('class="meta-row"')).toBeLessThan(at('<th>Description</th>'));
+    expect(at('class="meta-l"')).toBeLessThan(at('class="meta-r"'));
+    expect(at('class="meta-row"')).toBeGreaterThan(at('class="address"'));
+    // 7 + 2 = the 9 printed columns, so the right cell starts exactly at the Silver/Gold column
+    const row = html.slice(at('class="meta-row"'), at('<th>Description</th>'));
+    expect((row.match(/colspan="(\d)"/g) ?? []).join('')).toBe('colspan="7"colspan="2"');
     // left-to-right order inside the brand row: logo, then name
     expect(html).toMatch(/grid-template-columns: 24mm 1fr 24mm/);
   });
@@ -226,14 +232,15 @@ describe('print template', () => {
       return renderEstimateHtml(est, header);
     };
     const onlySilver = mk(['silver', 'silver']);
-    expect(onlySilver).toContain('SILVER BHAV');
-    expect(onlySilver).not.toContain('GOLD BHAV');
+    expect(onlySilver).toContain('>Silver Rate<');
+    expect(onlySilver).not.toContain('>Gold Rate<');
     const onlyGold = mk(['gold']);
-    expect(onlyGold).toContain('GOLD BHAV');
-    expect(onlyGold).not.toContain('SILVER BHAV');
+    expect(onlyGold).toContain('>Gold Rate<');
+    expect(onlyGold).not.toContain('>Silver Rate<');
     const both = mk(['gold', 'silver', 'gold']);
-    expect(both.indexOf('SILVER BHAV')).toBeGreaterThan(-1);
-    expect(both.indexOf('GOLD BHAV')).toBeGreaterThan(both.indexOf('SILVER BHAV'));
+    expect(both.indexOf('>Silver Rate<')).toBeGreaterThan(-1);
+    expect(both.indexOf('>Gold Rate<')).toBeGreaterThan(both.indexOf('>Silver Rate<'));
+    expect(both).not.toMatch(/BHAV/i);
     // the metal is written in each item row, in the combined column
     expect((both.match(/<td>Gold<\/td>/g) ?? []).length).toBe(2);
     expect((both.match(/<td>Silver<\/td>/g) ?? []).length).toBe(1);
@@ -251,7 +258,7 @@ describe('print template', () => {
     expect(html).not.toContain('GRAND TOTAL');
     // the total is the last row and equals the calculated total
     const total = calcEstimate(est).grandTotal;
-    expect(html.indexOf('>TOTAL<')).toBeGreaterThan(html.indexOf('BHAV'));
+    expect(html.indexOf('>TOTAL<')).toBeGreaterThan(html.indexOf('Rate<'));
     expect(html).toContain(`₹${new Intl.NumberFormat('en-IN').format(total)}`);
     // with GST on, its row stays (a tax line is never hidden) and is followed by the single TOTAL
     est.pricing.gstEnabled = true;
@@ -291,7 +298,8 @@ describe('ESC/POS', () => {
     const b = buildEstimateEscPosText(sampleEstimate(DEFAULT_SETTINGS), { shopName: 'S.P. JEWELLERS', shopCode: 'ELNABAAD (S0012)' }, 58);
     const text = Buffer.from(b).toString('latin1');
     expect(text).toContain('Gold Ring - Classic');
-    expect(text).toContain('SILVER BHAV');
+    expect(text).toContain('Silver Rate');
+    expect(text).not.toMatch(/BHAV/i);
     for (const ln of text.split('\n')) {
       const printable = ln.replace(/[\x00-\x1f]./g, '').replace(/[^\x20-\x7e]/g, '');
       expect(printable.length).toBeLessThanOrEqual(34);
@@ -537,5 +545,15 @@ describe('searching the stock and cash registers', () => {
     expect(c('1 sep')).toEqual(['Rent']);
     expect(c('03/10/2026')).toEqual(['Sale', 'Advance']);
     expect(searchCash(cash, '')).toHaveLength(3);
+  });
+});
+
+describe('bill status search', () => {
+  it('finds bills by "pending" and "clear"', () => {
+    const a = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'a', number: 1, billStatus: 'pending' as const };
+    const b = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'b', number: 2, billStatus: 'clear' as const };
+    const c = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'c', number: 3 };
+    expect(searchEstimates([a, b, c], 'pending').map((e) => e.id)).toEqual(['a']);
+    expect(searchEstimates([a, b, c], 'clear').map((e) => e.id)).toEqual(['c', 'b']);
   });
 });

@@ -12,11 +12,12 @@ interface Props {
   store: AppStore;
   invalid: Set<string>;
   onSave: () => void;
+  onPreview: () => void;
   confirm: (title: string, body: ReactNode, ok: string, danger?: boolean) => Promise<boolean>;
 }
 
 
-export function EstimatePage({ store, invalid, onSave, confirm }: Props) {
+export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Props) {
   const [pickFor, setPickFor] = useState<string | null>(null);
   // "+" in the picker opens the Products pop-up right here; closing it brings the picker back.
   const [managingFor, setManagingFor] = useState<string | null>(null);
@@ -149,7 +150,8 @@ export function EstimatePage({ store, invalid, onSave, confirm }: Props) {
           <b data-testid="grand-total">{fmtRupees(totals.grandTotal)}</b>
         </div>
         <div className="bar-actions">
-          <button className="btn btn-primary" onClick={onSave} data-testid="save">Save bill</button>
+          <button className="btn btn-outline" onClick={onPreview} data-testid="preview">Preview</button>
+          <button className="btn btn-primary" onClick={onSave} data-testid="save">Save</button>
         </div>
       </div>
       </>)}

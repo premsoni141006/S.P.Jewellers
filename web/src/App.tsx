@@ -12,6 +12,7 @@ import { PrinterPage } from './pages/PrinterPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StockPage } from './pages/StockPage';
 import { PreviewScreen } from './pages/PreviewScreen';
+import { billFileName, billPdf, saveBlob, shareBill } from './lib/billExport';
 import { RatesModal } from './components/RatesModal';
 import { useBackLayer } from './lib/backStack';
 import { ProductsModal } from './components/ProductsModal';
@@ -195,6 +196,7 @@ export default function App() {
             store={store}
             invalid={invalid}
             onSave={save}
+            onPreview={() => setPreview({ est, fromEditor: true })}
             confirm={confirm}
           />
         )}
@@ -212,6 +214,14 @@ export default function App() {
             onView={(e) => setPreview({ est: e, fromEditor: false })}
             onOpen={(e) => switchTo(e)}
             onReprint={(e) => void runPrint(e, e.id === est.id)}
+            onShare={async (e) => {
+              setBusy('Preparing the bill…');
+              try { await shareBill(e, header); } catch (err) { setToast(err instanceof Error && err.message ? err.message : 'Could not share the bill.'); } finally { setBusy(null); }
+            }}
+            onDownload={async (e) => {
+              setBusy('Preparing the bill…');
+              try { setToast(`PDF saved to ${await saveBlob(billFileName(e, 'pdf'), await billPdf(e, header))}.`); } catch (err) { setToast(err instanceof Error && err.message ? err.message : 'Could not save the bill.'); } finally { setBusy(null); }
+            }}
             confirm={confirm}
             onDeleted={(id) => {
               if (id === est.id) setEst(blankEstimate(settings));
@@ -270,6 +280,22 @@ export default function App() {
           header={header}
           onClose={() => setPreview(null)}
           onNotice={setToast}
+          onStatus={(status) => {
+            const fromEditor = preview.fromEditor;
+            const target = fromEditor ? est : preview.est;
+            const issues = validateEstimate(target);
+            if (issues.length) {
+              setPreview(null);
+              if (fromEditor) showIssues(issues);
+              else setToast(issues[0].message);
+              return;
+            }
+            setInvalid(new Set());
+            const stored = saveEstimate({ ...target, billStatus: status });
+            if (fromEditor || target.id === est.id) setEst(stored);
+            setPreview(null);
+            setToast(status === 'clear' ? `Bill ${fmtEstimateNo(stored.number)} marked Clear.` : `Bill ${fmtEstimateNo(stored.number)} marked Pending.`);
+          }}
           onPrint={() => {
             const target = preview.fromEditor ? est : preview.est;
             setPreview(null);

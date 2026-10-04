@@ -12,13 +12,15 @@ interface Props {
   onView: (e: Estimate) => void;
   onOpen: (e: Estimate) => void;
   onReprint: (e: Estimate) => void;
+  onShare: (e: Estimate) => void;
+  onDownload: (e: Estimate) => void;
   onDeleted: (id: string) => void;
   confirm: (title: string, body: ReactNode, ok: string, danger?: boolean) => Promise<boolean>;
 }
 
 const STATUS = { printed: ['Printed', 'pill-ok'], failed: ['Print failed', 'pill-err'], not_printed: ['Not printed', 'pill-muted'] } as const;
 
-export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDiscardDraft, onView, onOpen, onReprint, onDeleted, confirm }: Props) {
+export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDiscardDraft, onView, onOpen, onReprint, onShare, onDownload, onDeleted, confirm }: Props) {
   const list = [...store.history].sort((a, b) => b.number - a.number);
   return (
     <div className="page" data-testid="history-page">
@@ -57,7 +59,9 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
         const [label, cls] = STATUS[s.printStatus];
         return (
           <section className="card hist-card" key={e.id} data-testid="history-row">
-            <span className="status-dot dot-done" role="img" aria-label="Complete" data-testid="dot-done" />
+            {e.billStatus === 'pending'
+              ? <span className="status-dot dot-draft" role="img" aria-label="Pending" data-testid="dot-pending" />
+              : <span className="status-dot dot-done" role="img" aria-label="Complete" data-testid="dot-done" />}
             <div className="hist-top">
               <div>
                 <div className="hist-no">{fmtEstimateNo(s.number)}</div>
@@ -74,9 +78,13 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
             </div>
             {e.printStatus === 'failed' && e.lastPrintError && <p className="err small">{e.lastPrintError}</p>}
             <div className="hist-actions">
-              <button className="btn btn-plain btn-sm" onClick={() => onView(e)}>View</button>
-              <button className="btn btn-plain btn-sm" onClick={() => onOpen(e)}>Open</button>
+              <button className="btn btn-plain btn-sm" onClick={() => onView(e)} data-testid="hist-view">View</button>
+              <button className="btn btn-plain btn-sm" onClick={() => onShare(e)} data-testid="hist-share">Share</button>
               <button className="btn btn-plain btn-sm" onClick={() => onReprint(e)} data-testid="reprint">Reprint</button>
+              <button className="btn btn-plain btn-sm" onClick={() => onDownload(e)} data-testid="hist-download">Download</button>
+            </div>
+            <div className="hist-actions two">
+              <button className="btn btn-plain btn-sm" onClick={() => onOpen(e)}>Open</button>
               <button
                 className="btn btn-plain btn-sm danger-text"
                 onClick={async () => {

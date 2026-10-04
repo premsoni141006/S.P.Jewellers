@@ -77,6 +77,8 @@ export interface Estimate {
   printStatus: PrintStatus;
   printedAt: string | null;
   lastPrintError: string | null;
+  /** Set from the preview: 'pending' shows a red dot in history, 'clear' (or unset) a green one. */
+  billStatus?: 'pending' | 'clear';
 }
 
 export interface ShopSettings {
@@ -127,4 +129,5 @@ export interface EstimateSummary {
   itemCount: number;
   printStatus: PrintStatus;
   printedAt: string | null;
+  billStatus?: 'pending' | 'clear';
 }

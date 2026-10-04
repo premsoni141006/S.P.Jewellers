@@ -38,7 +38,7 @@ export const PRINT_COLUMNS = [
 ] as const;
 
 /** The bill always shows at least this many item rows (blank rows fill the rest); more items = more rows. */
-export const MIN_PRINT_ROWS = 7;
+export const MIN_PRINT_ROWS = 5;
 
 // Column widths in millimetres (proportions of the sample); they add up to the 190 mm
 // between the 10 mm A4 margins.
@@ -77,7 +77,7 @@ body {
 }
 .sheet { width: 190mm; }
 /* Top row: ESTIMATE in the middle, owner name and mobile at the right */
-.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; margin-bottom: 1mm; }
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; margin-bottom: 1mm; position: relative; top: 4mm; } /* sits 4 mm lower, nearer the shop name; the rest of the page does not move */
 .estimate-title { font-size: 11pt; font-weight: 700; text-decoration: underline; letter-spacing: 0.5pt; text-align: center; }
 .top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
 /* Brand row: logo at the far left, shop name in the middle */
@@ -87,9 +87,8 @@ body {
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
 .address { text-align: center; font-size: 9.5pt; margin: 1mm 0 3mm; }
 .code { text-align: center; font-size: 9.5pt; margin: 0 0 2mm; }
-/* Row above the table: customer on the left, bill number and date on the right */
-.bill-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; font-size: 9.5pt; line-height: 1.35; margin-bottom: 2mm; }
-.bill-meta-r { text-align: right; }
+/* First row of the table: customer + mobile (left, 7 columns); bill number + date (right, starting at Silver/Gold) */
+tr.meta-row td { text-align: left; white-space: normal; height: auto; padding: 1.6mm 2mm; font-size: 9.5pt; line-height: 1.4; font-variant-numeric: normal; }
 table { width: 190mm; table-layout: fixed; border-collapse: collapse; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; break-inside: avoid; }
@@ -135,10 +134,10 @@ function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
 <div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
 }
 
-/** Customer name + mobile on the left; bill number + date on the right. */
-function metaHtml(est: Estimate): string {
+/** One big first row of the table: customer + mobile on the left, bill number + date in the last two columns. */
+function metaRowHtml(est: Estimate): string {
   const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
-  return `<div class="bill-meta"><div class="bill-meta-l"><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div><div class="bill-meta-r"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div></div></div>`;
+  return `<tr class="meta-row"><td colspan="7" class="meta-l"><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></td><td colspan="2" class="meta-r"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div></td></tr>`;
 }
 
 export interface RenderOptions {
@@ -169,7 +168,7 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
   const sum = (label: string, mid: string, value: string, cls = '') =>
     `<tr class="sum ${cls}"><td class="lbl" colspan="7">${label}</td><td class="mid">${mid}</td><td>${value}</td></tr>`;
   const summary = [
-    ...metalsBought(est).map((m) => sum(`${metalName(m).toUpperCase()} BHAV`, `${metalName(m)} Rate`, bhavText(est, m))),
+    ...metalsBought(est).map((m) => sum('', `${metalName(m)} Rate`, bhavText(est, m))),
     ...est.otherCharges.map((c) => sum(escapeHtml(c.label.toUpperCase()), '', fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [sum(`GST ${fmtPercent(p.gstPercent)}%`, '', fmtRupeeCell(t.gst))] : []),
     sum('TOTAL', '', fmtRupeeCell(t.grandTotal), 'grand'),
@@ -178,10 +177,9 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
   return `<!doctype html><html><head><meta charset="utf-8"><title>Estimate</title><style>${A4_CSS}</style></head>
 <body><div class="sheet">
 ${headerHtml(header)}
-${metaHtml(est)}
 <table>
 <colgroup>${COL_MM.map((w) => `<col style="width:${w}mm">`).join('')}</colgroup>
-<thead><tr>${PRINT_COLUMNS.map((c) => `<th>${c}</th>`).join('')}</tr></thead>
+<thead>${metaRowHtml(est)}<tr>${PRINT_COLUMNS.map((c) => `<th>${c}</th>`).join('')}</tr></thead>
 <tbody>${rows.join('')}${summary}</tbody>
 </table>
 ${opts.note ? `<div class="note">${escapeHtml(opts.note)}</div>` : ''}
@@ -228,7 +226,7 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
 
   const line = (k: string, v: string, cls = '') => `<div class="row ${cls}"><span>${escapeHtml(k)}</span><span>${v}</span></div>`;
   const sums = [
-    ...metalsBought(est).map((m) => line(`${metalName(m).toUpperCase()} BHAV`, bhavText(est, m))),
+    ...metalsBought(est).map((m) => line(`${metalName(m)} Rate`, bhavText(est, m))),
     ...est.otherCharges.map((c) => line(c.label.toUpperCase(), fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [line(`GST ${fmtPercent(p.gstPercent)}%`, fmtRupeeCell(t.gst))] : []),
     line('TOTAL', fmtRupeeCell(t.grandTotal), 'grand'),

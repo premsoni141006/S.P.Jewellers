@@ -18,6 +18,7 @@ interface SpjPrinterPlugin {
   printEscPos(o: { address: string; data: string }): Promise<{ bytes: number }>;
   openBluetoothSettings(): Promise<void>;
   saveFile(o: { name: string; mime: string; data: string }): Promise<{ location: string }>;
+  shareFile(o: { name: string; mime: string; data: string }): Promise<void>;
 }
 
 interface CapacitorGlobal {
@@ -78,3 +79,6 @@ export const nativePrintEscPos = (address: string, bytes: Uint8Array) => call((p
 
 /** Saves a file (base64 data) into the phone's Downloads (PDF) or Pictures (image). */
 export const nativeSaveFile = (o: { name: string; mime: string; data: string }): Promise<{ location: string }> => call((p) => p.saveFile(o));
+
+/** Opens the phone's share sheet with a file (base64 data) attached. */
+export const nativeShareFile = (o: { name: string; mime: string; data: string }): Promise<void> => call((p) => p.shareFile(o));

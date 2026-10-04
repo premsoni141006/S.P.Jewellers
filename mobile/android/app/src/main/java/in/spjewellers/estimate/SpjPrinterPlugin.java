@@ -298,6 +298,38 @@ public class SpjPrinterPlugin extends Plugin {
         }
     }
 
+    /** Opens the phone's share sheet with the bill (PDF or picture) attached. */
+    @PluginMethod
+    public void shareFile(PluginCall call) {
+        String rawName = call.getString("name");
+        String mime = call.getString("mime");
+        String b64 = call.getString("data");
+        if (rawName == null || mime == null || b64 == null || b64.isEmpty()) {
+            call.reject("Nothing to share.", "BAD_ARGS");
+            return;
+        }
+        final String name = rawName.replaceAll("[^A-Za-z0-9._-]", "_");
+        io.execute(() -> {
+            try {
+                File dir = new File(getContext().getCacheDir(), "share");
+                if (!dir.exists() && !dir.mkdirs()) throw new IOException("No storage is available.");
+                File f = new File(dir, name);
+                try (FileOutputStream out = new FileOutputStream(f)) { out.write(Base64.decode(b64, Base64.DEFAULT)); }
+                Uri uri = androidx.core.content.FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", f);
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType(mime);
+                send.putExtra(Intent.EXTRA_STREAM, uri);
+                send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Intent chooser = Intent.createChooser(send, "Share bill");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(chooser);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject("Could not share the file: " + e.getMessage(), "SHARE_FAILED");
+            }
+        });
+    }
+
     // ------------------------------------------------------------------ save the bill (image / PDF)
 
     /**

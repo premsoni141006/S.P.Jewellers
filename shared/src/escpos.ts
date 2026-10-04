@@ -166,7 +166,7 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   p.line(rule);
 
   const kv = (k: string, v: string) => p.line(padR(k, W - Math.max(v.length, 12)) + padL(v, Math.max(v.length, 12)));
-  metalsBought(est).forEach((m) => kv(`${metalName(m).toUpperCase()} BHAV`, toAscii(bhavText(est, m))));
+  metalsBought(est).forEach((m) => kv(`${metalName(m)} Rate`, toAscii(bhavText(est, m))));
   if (est.otherCharges.length) {
     kv('Items', fmtMoney(t.itemsAmount));
     est.otherCharges.forEach((c) => kv(c.label.slice(0, W - 14), fmtMoney(c.amount)));
