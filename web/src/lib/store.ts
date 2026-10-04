@@ -4,7 +4,6 @@ import {
   type Estimate, type EstimateSummary, type Product, type ShopSettings, type StockEntry, type CashEntry,
 } from '@shared';
 import { KEYS, load, save } from './storage';
-import { deletePhoto } from './photos';
 import { DEFAULT_PRINTER, type PrinterConfig } from './printing';
 
 /** Older saved estimates: Gold making becomes a %, Silver making a rupee total (same rupees as before); manual amounts (no longer editable) are cleared. */
@@ -107,10 +106,6 @@ export function useAppStore() {
     return stored;
   }, [history]);
 
-  const deleteEstimate = useCallback((id: string) => {
-    writeHistory(load<Estimate[]>(KEYS.history, history).filter((x) => x.id !== id));
-  }, [history]);
-
   const writeDrafts = (d: Estimate[]) => {
     setDrafts(d);
     setStorageOk(save(KEYS.drafts, d));
@@ -134,12 +129,6 @@ export function useAppStore() {
     const cur = load<StockEntry[]>(KEYS.stock, []);
     writeStock(cur.some((x) => x.id === e.id) ? cur.map((x) => (x.id === e.id ? e : x)) : [e, ...cur]);
   }, []);
-  const deleteStock = useCallback((id: string) => {
-    const cur = load<StockEntry[]>(KEYS.stock, []);
-    const gone = cur.find((x) => x.id === id);
-    if (gone?.photoId) void deletePhoto(gone.photoId); // the picture goes with the entry
-    writeStock(cur.filter((x) => x.id !== id));
-  }, []);
 
   const writeCash = (list: CashEntry[]) => {
     setCash(list);
@@ -149,16 +138,13 @@ export function useAppStore() {
     const cur = load<CashEntry[]>(KEYS.cash, []);
     writeCash(cur.some((x) => x.id === e.id) ? cur.map((x) => (x.id === e.id ? e : x)) : [e, ...cur]);
   }, []);
-  const deleteCash = useCallback((id: string) => {
-    writeCash(load<CashEntry[]>(KEYS.cash, []).filter((x) => x.id !== id));
-  }, []);
 
   const savedCopy = history.find((h) => h.id === est.id);
   const dirty = savedCopy ? strip(savedCopy) !== strip(est) : hasContent(est);
 
   return {
     settings, setSettings, products, setProducts, history, printer, setPrinter,
-    est, setEst, saveEstimate, deleteEstimate, dirty, storageOk, drafts, stashDraft, removeDraft, stock, saveStock, deleteStock, cash, saveCash, deleteCash,
+    est, setEst, saveEstimate, dirty, storageOk, drafts, stashDraft, removeDraft, stock, saveStock, cash, saveCash,
   };
 }
 

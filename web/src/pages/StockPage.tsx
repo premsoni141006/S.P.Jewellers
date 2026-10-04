@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { cashTotals, fmtDate, fmtPercent, fmtRupees, fmtWeight, searchCash, searchStock, sortCash, sortStock, stockByItem, stockTotals, type CashEntry, type Metal, type StockEntry } from '@shared';
+import { cashTotals, fmtDate, fmtPercent, fmtRupees, fmtWeight, searchCash, searchStock, sortCash, sortStock, stockByItem, availableStock, stockTotals, type CashEntry, type Metal, type StockEntry } from '@shared';
 import { CashEntryModal, newCashEntry } from '../components/CashEntryModal';
 import { Icon } from '../components/Icon';
 import { SearchBar } from '../components/SearchBar';
-import { StockEntryModal, newStockEntry } from '../components/StockEntryModal';
+import { newStockEntry } from './StockEntryPage';
 import { usePhotoUrl } from '../lib/photos';
 import type { AppStore } from '../lib/store';
 
@@ -28,10 +28,10 @@ function TypeSeg({ value, onChange }: { value: TypeFilter; onChange: (v: TypeFil
   );
 }
 
-export function StockPage({ section, onRange, store, confirm, setToast }: { section: Section; onRange: () => void; store: AppStore; confirm: Confirm; setToast: (s: string) => void }) {
-  const { stock, cash, products, settings } = store;
-  const [stockEdit, setStockEdit] = useState<{ entry: StockEntry; isNew: boolean } | null>(null);
+export function StockPage({ section, onRange, onEditStock, store, setToast }: { section: Section; onRange: () => void; onEditStock: (entry: StockEntry, isNew: boolean) => void; store: AppStore; confirm?: Confirm; setToast: (s: string) => void }) {
+  const { stock, cash } = store;
   const [cashEdit, setCashEdit] = useState<{ entry: CashEntry; isNew: boolean } | null>(null);
+  const [itemsOpen, setItemsOpen] = useState(false);
   const [typeF, setTypeF] = useState<TypeFilter>('all');
   const [metalF, setMetalF] = useState<MetalFilter>('all');
   const [cashF, setCashF] = useState<TypeFilter>('all');
@@ -41,6 +41,8 @@ export function StockPage({ section, onRange, store, confirm, setToast }: { sect
 
   const gold = useMemo(() => stockTotals(stock, 'gold'), [stock]);
   const silver = useMemo(() => stockTotals(stock, 'silver'), [stock]);
+  // IN entries that have since gone out (an OUT of the same piece exists) are shown faded: the record stays.
+  const inStock = useMemo(() => new Set(availableStock(stock).map((x) => x.id)), [stock]);
   const byItem = useMemo(() => stockByItem(stock), [stock]);
   const cashT = useMemo(() => cashTotals(cash), [cash]);
   const stockList = useMemo(() => searchStock(sortStock(stock), qMetal).filter((e) => (typeF === 'all' || e.type === typeF) && (metalF === 'all' || e.metal === metalF)), [stock, qMetal, typeF, metalF]);
@@ -79,14 +81,17 @@ export function StockPage({ section, onRange, store, confirm, setToast }: { sect
       {section === 'metal' ? (
         <div className="stack" data-testid="section-metal">
           <div className="grid-2">
-            <button className="btn btn-primary" onClick={() => setStockEdit({ entry: newStockEntry('in'), isNew: true })} data-testid="stock-add-in"><Icon name="plus" size={18} /> Stock IN</button>
-            <button className="btn btn-outline" onClick={() => setStockEdit({ entry: newStockEntry('out'), isNew: true })} data-testid="stock-add-out"><Icon name="plus" size={18} /> Stock OUT</button>
+            <button className="btn btn-primary" onClick={() => onEditStock(newStockEntry('in'), true)} data-testid="stock-add-in"><Icon name="plus" size={18} /> Stock IN</button>
+            <button className="btn btn-outline" onClick={() => onEditStock(newStockEntry('out'), true)} data-testid="stock-add-out"><Icon name="plus" size={18} /> Stock OUT</button>
           </div>
 
           {byItem.length > 0 && (
             <section className="card" data-testid="stock-by-item">
-              <div className="section-title">Stock by item</div>
-              {byItem.map((r) => (
+              <button type="button" className="drop-head" onClick={() => setItemsOpen(!itemsOpen)} aria-expanded={itemsOpen} data-testid="stock-by-item-toggle">
+                <span className="section-title">Stock by item</span>
+                <span className={`drop-chev${itemsOpen ? ' open' : ''}`}><Icon name="chevron" size={18} /></span>
+              </button>
+              {itemsOpen && byItem.map((r) => (
                 <div className="kv" key={`${r.metal}|${r.item}`} data-testid="stock-item-row">
                   <span>{r.item} <span className="muted small">· {r.metal === 'gold' ? 'Gold' : 'Silver'}</span></span>
                   <span className={r.netWt < 0 ? 'neg' : ''}><b>{fmtWeight(r.netWt)} g</b> <span className="muted small">{r.netPcs} pcs</span></span>
@@ -114,8 +119,8 @@ export function StockPage({ section, onRange, store, confirm, setToast }: { sect
           {stock.length > 0 && stockList.length === 0 && <div className="card empty"><p className="muted">{qMetal.trim() ? `No entry matches “${qMetal.trim()}”.` : 'Nothing matches this filter.'}</p></div>}
 
           {stockList.map((e) => (
-            <section className="card stock-row" key={e.id} data-testid="stock-row">
-              <button className="stock-main" onClick={() => setStockEdit({ entry: e, isNew: false })} aria-label={`Edit ${e.item || 'entry'}`}>
+            <section className={`card stock-row${e.type === 'in' && !inStock.has(e.id) ? ' exited' : ''}`} key={e.id} data-testid="stock-row">
+              <button className="stock-main" onClick={() => onEditStock(e, false)} aria-label={`Open ${e.item || 'entry'}`}>
                 <Thumb photoId={e.photoId} />
                 <span className="stock-info">
                   <b>{e.item || 'Unnamed'}</b>
@@ -125,18 +130,6 @@ export function StockPage({ section, onRange, store, confirm, setToast }: { sect
                   <b>{e.type === 'in' ? '+' : '−'}{fmtWeight(e.weight)} g</b>
                   {e.pcs > 0 && <span className="muted small">{e.pcs} pcs</span>}
                 </span>
-              </button>
-              <button
-                className="icon-btn danger"
-                aria-label={`Delete ${e.item || 'entry'}`}
-                data-testid="stock-delete"
-                onClick={async () => {
-                  if (!(await confirm('Delete this entry?', `${e.type === 'in' ? 'IN' : 'OUT'} · ${e.item || 'Unnamed'} · ${fmtWeight(e.weight)} g. The stock totals will change.`, 'Delete', true))) return;
-                  store.deleteStock(e.id);
-                  setToast('Entry deleted.');
-                }}
-              >
-                <Icon name="trash" size={18} />
               </button>
             </section>
           ))}
@@ -161,43 +154,18 @@ export function StockPage({ section, onRange, store, confirm, setToast }: { sect
 
           {cashList.map((e) => (
             <section className="card stock-row" key={e.id} data-testid="cash-row">
-              <button className="stock-main" onClick={() => setCashEdit({ entry: e, isNew: false })} aria-label={`Edit cash entry ${e.note || ''}`}>
+              <div className="stock-main static">
                 <span className="stock-info">
                   <b>{e.note || (e.type === 'in' ? 'Cash received' : 'Cash paid')}</b>
                   <span className="muted small">{fmtDate(e.date)}</span>
                 </span>
                 <span className={`stock-amt ${e.type}`}><b>{e.type === 'in' ? '+' : '−'}{fmtRupees(e.amount)}</b></span>
-              </button>
-              <button
-                className="icon-btn danger"
-                aria-label="Delete cash entry"
-                data-testid="cash-delete"
-                onClick={async () => {
-                  if (!(await confirm('Delete this entry?', `${e.type === 'in' ? 'IN' : 'OUT'} · ${fmtRupees(e.amount)}. The cash balance will change.`, 'Delete', true))) return;
-                  store.deleteCash(e.id);
-                  setToast('Entry deleted.');
-                }}
-              >
-                <Icon name="trash" size={18} />
-              </button>
+              </div>
             </section>
           ))}
         </div>
       )}
 
-      {stockEdit && (
-        <StockEntryModal
-          initial={stockEdit.entry}
-          isNew={stockEdit.isNew}
-          entries={stock}
-          products={products}
-          defaultLabour={settings.defaultLabour}
-          defaultLabourMode={settings.defaultLabourMode}
-          onProductsChange={store.setProducts}
-          onClose={() => setStockEdit(null)}
-          onSave={(e) => { store.saveStock(e); setStockEdit(null); setToast(stockEdit.isNew ? 'Stock entry saved.' : 'Entry updated.'); }}
-        />
-      )}
       {cashEdit && (
         <CashEntryModal
           initial={cashEdit.entry}

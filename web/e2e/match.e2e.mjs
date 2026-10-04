@@ -58,21 +58,30 @@ await page.getByLabel('Close preview').click();
 await sell('Gold', 'Gold Ring – Classic', 4.2);
 await page.waitForSelector('[data-testid=preview-screen]');
 check('no similar piece in stock -> no stock window', (await page.locator('[data-testid=match-modal]').count()) === 0);
-// Stock OUT: find the piece that is leaving
+// Stock OUT page: metal, category, estimated weight, then pieces near that weight
 await page.getByLabel('Close preview').click();
 await page.click('[data-testid=tab-home]');
 await page.click('[data-testid=tile-stock]');
 await page.click('[data-testid=stock-add-out]');
-await page.waitForSelector('[data-testid=find-box]');
-check('Stock OUT shows a search bar and the pieces in stock for the chosen metal', (await page.locator('[data-testid=find-search]').count()) === 1 && (await page.locator('[data-testid=find-piece]').count()) >= 1);
+await page.waitForSelector('[data-testid=stock-entry-page]');
+check('Stock OUT opens on its own page, with no photo row and no search bar', (await page.locator('[data-testid=stock-modal]').count()) === 0 && (await page.getByText('Product photo').count()) === 0 && (await page.locator('[data-testid=find-search]').count()) === 0);
+check('before a weight is entered the list asks for it', (await page.locator('[data-testid=find-piece]').count()) === 0 && (await page.locator('[data-testid=find-box]').innerText()).includes('Enter the weight'));
+await page.fill('[data-testid=stock-weight]', '5.9');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid=find-piece]').length > 0, null, { timeout: 3000 }).catch(() => {});
+let ws = await page.locator('[data-testid=find-piece]').allInnerTexts();
+check('gold: pieces within 1 g of 5.9 g (the 6 g ring; the 5.5 g ones were already removed; not 4.4 or 8.35)', ws.length === 1 && ws[0].includes('6.000'), JSON.stringify(ws));
 await page.getByTestId('stock-silver').click();
-check('Silver / Gold switch filters the pieces (only the silver anklet)', (await page.locator('[data-testid=find-piece]').count()) === 1 && (await page.locator('[data-testid=find-piece]').innerText()).includes('Silver Anklet'));
+await page.fill('[data-testid=stock-weight]', '35');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid=find-piece]').length > 0, null, { timeout: 3000 }).catch(() => {});
+ws = await page.locator('[data-testid=find-piece]').allInnerTexts();
+check('silver: pieces within 10 g of 35 g (the 38.5 g anklet, not the 7.8 g ring)', ws.length === 1 && ws[0].includes('38.500'), JSON.stringify(ws));
 await page.getByTestId('stock-gold').click();
-await page.fill('[data-testid=find-search]', '6');
-check('search narrows to the 6 g piece', (await page.locator('[data-testid=find-piece]').count()) === 1);
-await page.locator('[data-testid=find-piece]').click();
+await page.fill('[data-testid=stock-weight]', '6.2');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid=find-piece]').length > 0, null, { timeout: 3000 }).catch(() => {});
+await page.locator('[data-testid=find-piece]').first().click();
 await page.waitForFunction(() => document.querySelector('[data-testid=stock-weight]')?.value === '6', null, { timeout: 3000 }).catch(() => {});
-{ const v = [await page.inputValue('[data-testid=stock-weight]'), await page.getAttribute('[data-testid=stock-item]', 'data-value'), await page.inputValue('[data-testid=stock-tunch]')]; check('picking a piece fills its category, weight and tunch', v[0] === '6' && v[1] === 'Gold Ring – Classic' && v[2] === '92', JSON.stringify(v)); }
+{ const v = [await page.inputValue('[data-testid=stock-weight]'), await page.getAttribute('[data-testid=stock-item]', 'data-value'), await page.inputValue('[data-testid=stock-tunch]')]; check('picking a piece fills its category, exact weight and tunch', v[0] === '6' && v[1] === 'Gold Ring – Classic' && v[2] === '92', JSON.stringify(v)); }
+check('tunch, pieces, date and note are all optional', (await page.locator('.field-label', { hasText: 'Tunch (optional)' }).count()) === 1 && (await page.locator('.field-label', { hasText: 'No. of pieces (optional)' }).count()) === 1 && (await page.locator('.field-label', { hasText: 'Date (optional' }).count()) === 1);
 await browser.close();
 console.log(`${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

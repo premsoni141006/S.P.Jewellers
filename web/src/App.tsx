@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { fmtEstimateNo, newId, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { fmtEstimateNo, fmtWeight, newId, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
 import { AppBar } from './components/AppBar';
 import { Icon } from './components/Icon';
 import { Sheet, type SheetAction } from './components/Sheet';
@@ -14,6 +14,9 @@ import { StockPage } from './pages/StockPage';
 import { PreviewScreen } from './pages/PreviewScreen';
 import { LoginScreen } from './pages/LoginScreen';
 import { RangePage } from './pages/RangePage';
+import { GalleryPage } from './pages/GalleryPage';
+import { AppLock } from './components/AppLock';
+import { StockEntryPage } from './pages/StockEntryPage';
 import { StockMatchModal } from './components/StockMatchModal';
 import { isUnlocked } from './lib/auth';
 import { billFileName, billPdf, saveBlob, shareBill } from './lib/billExport';
@@ -21,7 +24,7 @@ import { RatesModal } from './components/RatesModal';
 import { useBackLayer } from './lib/backStack';
 import { ProductsModal } from './components/ProductsModal';
 
-type Tab = 'home' | 'estimate' | 'history' | 'printer' | 'settings' | 'stock' | 'cash' | 'stockrange' | 'cashrange';
+type Tab = 'home' | 'estimate' | 'history' | 'printer' | 'settings' | 'stock' | 'cash' | 'stockrange' | 'cashrange' | 'stockentry' | 'gallery';
 // The bar has exactly three things: Home, "+" (new estimate) and History.
 // Settings opens from the gear on Home; Printer settings lives inside Settings.
 const TABS_LEFT: Array<{ id: Tab; label: string }> = [{ id: 'home', label: 'Home' }];
@@ -51,6 +54,14 @@ function AppMain() {
   const [ratesOpen, setRatesOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [stockEdit, setStockEdit] = useState<{ entry: StockEntry; isNew: boolean } | null>(null);
+  // Leaving the Gallery locks the app behind a blurred cover until the password is entered again.
+  const [locked, setLocked] = useState(false);
+  const prevTab = useRef<Tab>('home');
+  useEffect(() => {
+    if (prevTab.current === 'gallery' && tab !== 'gallery') setLocked(true);
+    prevTab.current = tab;
+  }, [tab]);
   const [stockPrompt, setStockPrompt] = useState<Estimate | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean; saved?: boolean } | null>(null);
@@ -166,7 +177,7 @@ function AppMain() {
   //  - a screen other than Home is a layer: Printer -> Settings, everything else -> Home
   //  - the preview screen is a layer on top of it
   //  - while printing, Back is swallowed (the printing overlay cannot be dismissed)
-  useBackLayer(tab !== 'home', () => setTab(tab === 'printer' ? 'settings' : tab === 'stockrange' ? 'stock' : tab === 'cashrange' ? 'cash' : 'home'));
+  useBackLayer(tab !== 'home', () => setTab(tab === 'printer' ? 'settings' : tab === 'stockrange' ? 'stock' : tab === 'cashrange' ? 'cash' : tab === 'stockentry' ? 'stock' : 'home'));
   useBackLayer(!!preview, () => setPreview(null));
   useBackLayer(!!busy, () => undefined);
 
@@ -174,8 +185,8 @@ function AppMain() {
     <div className="app">
       {tab !== 'home' && (
         <AppBar
-          title={{ estimate: 'Estimate', history: 'History', printer: 'Printer settings', settings: 'Settings', stock: 'Shop stock', cash: 'Cash', stockrange: 'Silver / Gold report', cashrange: 'Cash report', home: '' }[tab]}
-          onBack={tab === 'estimate' || tab === 'settings' || tab === 'stock' || tab === 'cash' ? () => setTab('home') : tab === 'printer' ? () => setTab('settings') : tab === 'stockrange' ? () => setTab('stock') : tab === 'cashrange' ? () => setTab('cash') : undefined}
+          title={{ estimate: 'Estimate', history: 'History', printer: 'Printer settings', settings: 'Settings', stock: 'Shop stock', cash: 'Cash', stockrange: 'Silver / Gold report', cashrange: 'Cash report', gallery: 'Gallery', stockentry: stockEdit ? (stockEdit.isNew ? (stockEdit.entry.type === 'in' ? 'Stock IN' : 'Stock OUT') : 'Edit entry') : '', home: '' }[tab]}
+          onBack={tab === 'estimate' || tab === 'settings' || tab === 'stock' || tab === 'cash' || tab === 'gallery' ? () => setTab('home') : tab === 'printer' ? () => setTab('settings') : tab === 'stockrange' ? () => setTab('stock') : tab === 'cashrange' ? () => setTab('cash') : tab === 'stockentry' ? () => setTab('stock') : undefined}
           right={
             <>
               {!store.storageOk && <span className="pill pill-warn">Not saving</span>}
@@ -193,6 +204,7 @@ function AppMain() {
             onRates={() => setRatesOpen(true)}
             onStock={() => setTab('stock')}
             onCash={() => setTab('cash')}
+            onGallery={() => setTab('gallery')}
             onHistory={() => setTab('history')}
             onView={(e) => setPreview({ est: e, fromEditor: false })}
           />
@@ -212,7 +224,28 @@ function AppMain() {
             confirm={confirm}
           />
         )}
-        {(tab === 'stock' || tab === 'cash') && <StockPage key={tab} section={tab === 'cash' ? 'cash' : 'metal'} onRange={() => setTab(tab === 'cash' ? 'cashrange' : 'stockrange')} store={store} confirm={confirm} setToast={setToast} />}
+        {(tab === 'stock' || tab === 'cash') && <StockPage key={tab} section={tab === 'cash' ? 'cash' : 'metal'} onRange={() => setTab(tab === 'cash' ? 'cashrange' : 'stockrange')} onEditStock={(entry, isNew) => { setStockEdit({ entry, isNew }); setTab('stockentry'); }} store={store} confirm={confirm} setToast={setToast} />}
+        {tab === 'stockentry' && stockEdit && (
+          <StockEntryPage
+            key={stockEdit.entry.id}
+            initial={stockEdit.entry}
+            isNew={stockEdit.isNew}
+            entries={store.stock}
+            products={store.products}
+            defaultLabour={settings.defaultLabour}
+            defaultLabourMode={settings.defaultLabourMode}
+            onProductsChange={store.setProducts}
+            onBack={() => setTab('stock')}
+            onRemoveStock={async (piece) => {
+              if (!(await confirm('Remove this stock?', `${piece.item} · ${fmtWeight(piece.weight)} g goes out of stock.`, 'Remove', true))) return;
+              store.saveStock(saleOutEntry(piece, newId(), today(), 'Removed'));
+              setTab('stock');
+              setToast('Stock removed.');
+            }}
+            onSave={(e) => { store.saveStock(e); setTab('stock'); setToast(stockEdit.isNew ? 'Stock entry saved.' : 'Entry updated.'); }}
+          />
+        )}
+        {tab === 'gallery' && <GalleryPage store={store} onBack={() => setTab('home')} />}
         {tab === 'stockrange' && <RangePage kind="metal" store={store} />}
         {tab === 'cashrange' && <RangePage kind="cash" store={store} />}
         {tab === 'history' && (
@@ -339,6 +372,7 @@ function AppMain() {
           }}
         />
       )}
+      {locked && <AppLock onUnlock={() => setLocked(false)} />}
       {sheet && <Sheet title={sheet.title} actions={sheet.actions} onClose={() => setSheet(null)}>{sheet.body}</Sheet>}
       {busy && (
         <div className="busy" role="status" aria-live="polite">

@@ -7,6 +7,7 @@ import { summarize, type AppStore } from '../lib/store';
 interface Props {
   store: AppStore;
   onSettings: () => void;
+  onGallery: () => void;
   onProducts: () => void;
   onRates: () => void;
   onStock: () => void;
@@ -17,7 +18,7 @@ interface Props {
 
 const STATUS = { printed: ['Printed', 'ok'], failed: ['Print failed', 'bad'], not_printed: ['Not printed', 'muted'] } as const;
 
-export function HomePage({ store, onSettings, onProducts, onRates, onStock, onCash, onHistory, onView }: Props) {
+export function HomePage({ store, onSettings, onGallery, onProducts, onRates, onStock, onCash, onHistory, onView }: Props) {
   const { settings, history, products } = store;
   const [q, setQ] = useState('');
   const searching = q.trim() !== '';
@@ -36,6 +37,7 @@ export function HomePage({ store, onSettings, onProducts, onRates, onStock, onCa
     <div className="home" data-testid="home-page">
       <div className="home-head">
         <div className="home-top">
+          <button className="bar-btn" onClick={onGallery} aria-label="Gallery" data-testid="open-gallery"><Icon name="gallery" size={22} /></button>
           <button className="bar-btn" onClick={onSettings} aria-label="Settings" data-testid="open-settings"><Icon name="settings" size={22} /></button>
         </div>
         <div className="home-brand">

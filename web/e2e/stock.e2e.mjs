@@ -32,7 +32,7 @@ async function pickItem(name) {
 }
 async function addStock(type, { metal, item, weight, tunch, pcs = '', note = '', photo = false }) {
   await page.click(`[data-testid=stock-add-${type}]`);
-  await page.waitForSelector('[data-testid=stock-modal]');
+  await page.waitForSelector('[data-testid=stock-entry-page]');
   await page.click(`[data-testid=stock-${metal}]`);
   await pickItem(item);
   await page.fill('[data-testid=stock-weight]', String(weight));
@@ -41,7 +41,7 @@ async function addStock(type, { metal, item, weight, tunch, pcs = '', note = '',
   if (note) await page.fill('[data-testid=stock-note]', note);
   if (photo) await page.setInputFiles('[data-testid=photo-input-camera]', { name: 'p.png', mimeType: 'image/png', buffer: PNG });
   await page.click('[data-testid=stock-save]');
-  await page.waitForSelector('[data-testid=stock-modal]', { state: 'detached' });
+  await page.waitForSelector('[data-testid=stock-entry-page]', { state: 'detached' });
 }
 async function addCash(type, amount, note = '') {
   await page.click(`[data-testid=cash-add-${type}]`);
@@ -61,21 +61,20 @@ check('Silver / Gold card is selected first; zero totals; empty state', (await p
 await page.screenshot({ path: SHOTS + 'web-stock-empty.png' });
 
 // ------------------------------------------------------------ validation
-await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-modal]');
+await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-entry-page]');
 await page.click('[data-testid=stock-save]');
 check('no category chosen is refused', (await txt('stock-error')).toLowerCase().includes('item'));
 await pickItem('Gold Ring – Classic');
 check('choosing the category fills its tunch from the saved item (92)', (await page.inputValue('[data-testid=stock-tunch]')) === '92');
 await page.click('[data-testid=stock-save]');
 check('no weight is refused', (await txt('stock-error')).toLowerCase().includes('weight'));
-check('modal is blurred like the other pop-ups', /blur/.test(await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid=stock-backdrop]')).backdropFilter || '')));
 // "+" in the category list opens the products pop-up; closing it brings the list back
 await page.click('[data-testid=stock-item]'); await page.waitForSelector('[data-testid=picker-modal]');
 await page.click('[data-testid=pick-add]'); await page.waitForSelector('[data-testid=prod-name]');
 await page.click('[data-testid=products-close]'); await page.waitForSelector('[data-testid=picker-modal]');
 check('"+" in the category list opens Products here, and closing returns to the list', true);
 await page.click('[data-testid=picker-close]'); await page.waitForSelector('[data-testid=picker-modal]', { state: 'detached' });
-await page.click('[data-testid=stock-close]'); await page.waitForSelector('[data-testid=stock-modal]', { state: 'detached' });
+await page.click('[data-testid=bar-back]'); await page.waitForSelector('[data-testid=stock-entry-page]', { state: 'detached' });
 
 // ------------------------------------------------------------ metal entries with photo
 await addStock('in', { metal: 'gold', item: 'Gold Ring – Classic', weight: 100, pcs: 2, note: 'From party A', photo: true });
@@ -106,24 +105,28 @@ check('search count line', (await find('gold')) === 2 && (await txt('stock-searc
 await page.click('[data-testid=stock-search-clear]'); await settle();
 check('clear brings all 3 entries back', (await rows().count()) === 3 && (await sbar.inputValue()) === '');
 
+check('Stock by item is a drop-down: closed first', (await page.locator('[data-testid=stock-item-row]').count()) === 0);
+await page.click('[data-testid=stock-by-item-toggle]');
 check('stock by item: Gold Ring – Classic 69.500 g', (await page.locator('[data-testid=stock-item-row]').filter({ hasText: 'Gold Ring' }).innerText()).includes('69.500'));
 
-await page.click('[data-testid=stock-add-out]'); await page.waitForSelector('[data-testid=stock-modal]');
+await page.click('[data-testid=stock-add-out]'); await page.waitForSelector('[data-testid=stock-entry-page]');
 await page.fill('[data-testid=stock-weight]', '500');
 check('OUT larger than the stock shows a warning (not a block)', (await page.locator('[data-testid=stock-warn]').count()) === 1);
-await page.click('[data-testid=stock-close]'); await page.waitForSelector('[data-testid=stock-modal]', { state: 'detached' });
+await page.click('[data-testid=bar-back]'); await page.waitForSelector('[data-testid=stock-entry-page]', { state: 'detached' });
 
 await page.click('[data-testid=stock-filter-out]');
 check('filter OUT shows only the OUT entry', (await rows().count()) === 1 && (await rows().first().locator('.stock-amt.out').count()) === 1);
 await page.click('[data-testid=stock-filter-all]');
 await page.screenshot({ path: SHOTS + 'web-stock.png', fullPage: true });
 
-// edit keeps the photo
+// saved entries are records: opening one shows it read-only
+const before = await txt('stock-gold-sum-net');
 await rows().filter({ hasText: 'Sold' }).locator('.stock-main').click();
-await page.waitForSelector('[data-testid=stock-modal]');
-await page.fill('[data-testid=stock-weight]', '40');
-await page.click('[data-testid=stock-save]'); await page.waitForSelector('[data-testid=stock-modal]', { state: 'detached' });
-check('editing updates the totals (100 - 40 = 60)', (await txt('stock-gold-sum-net')) === '60.000 g');
+await page.waitForSelector('[data-testid=stock-entry-page]');
+check('a saved entry opens read-only: no fields, no Save, no Remove (it is an OUT)', (await page.locator('[data-testid=stock-weight], [data-testid=stock-save], [data-testid=remove-stock]').count()) === 0 && (await page.locator('[data-testid=view-weight]').innerText()).includes('g'));
+await page.click('[data-testid=bar-back]'); await page.waitForSelector('[data-testid=stock-entry-page]', { state: 'detached' });
+check('nothing changed', (await txt('stock-gold-sum-net')) === before && before === '69.500 g', before);
+check('there are no delete buttons on stock rows', (await page.locator('[data-testid=stock-delete]').count()) === 0);
 
 // ------------------------------------------------------------ cash card
 await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-cash]');
@@ -159,11 +162,8 @@ check('cash search cleared: all 3 back', (await crows().count()) === 3);
 await page.click('[data-testid=stock-filter-out]');
 check('cash filter OUT shows only Rent', (await crows().count()) === 1 && (await crows().first().innerText()).includes('Rent'));
 await page.click('[data-testid=stock-filter-all]');
-await crows().filter({ hasText: 'Rent' }).locator('.stock-main').click();
-await page.waitForSelector('[data-testid=cash-modal]');
-await page.fill('[data-testid=cash-amount]', '10000');
-await page.click('[data-testid=cash-save]'); await page.waitForSelector('[data-testid=cash-modal]', { state: 'detached' });
-check('editing a cash entry updates the balance (₹42,500)', (await flat('cash-balance')) === '₹42,500');
+await crows().filter({ hasText: 'Rent' }).locator('.stock-main').click({ force: true });
+check('cash entries are records too: tapping one changes nothing and there is no delete', (await page.locator('[data-testid=cash-modal]').count()) === 0 && (await page.locator('[data-testid=cash-delete]').count()) === 0 && (await flat('cash-balance')) === '₹40,500');
 await page.screenshot({ path: SHOTS + 'web-stock-cash.png', fullPage: true });
 
 // ------------------------------------------------------------ persistence
@@ -171,31 +171,35 @@ await page.waitForTimeout(300);
 await page.reload(); await page.waitForSelector('[data-testid=home-page]'); await settle();
 const baseIdx = await idx();
 await page.click('[data-testid=tile-stock]'); await page.waitForSelector('[data-testid=stock-page]'); await settle();
-check('metal entries, totals and photos survive closing and reopening the app', (await rows().count()) === 3 && (await txt('stock-gold-sum-net')) === '60.000 g' && (await photoCount()) === 2);
+check('metal entries, totals and photos survive closing and reopening the app', (await rows().count()) === 3 && (await txt('stock-gold-sum-net')) === '69.500 g' && (await photoCount()) === 2);
 await page.waitForFunction(() => document.querySelectorAll('[data-testid=stock-thumb]').length === 2, null, { timeout: 4000 }).catch(() => {});
 check('thumbnails load from the phone after restart', (await page.locator('[data-testid=stock-thumb]').count()) === 2 && (await page.locator('[data-testid=stock-thumb]').first().evaluate((i) => i.complete && i.naturalWidth > 0)));
 await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-cash]'); await settle();
-check('cash entries survive too', (await crows().count()) === 3 && (await flat('cash-balance')) === '₹42,500');
+check('cash entries survive too', (await crows().count()) === 3 && (await flat('cash-balance')) === '₹40,500');
 
-// ------------------------------------------------------------ deletes
-await crows().filter({ hasText: 'Advance' }).locator('[data-testid=cash-delete]').click();
-await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
-await page.waitForSelector('.sheet', { state: 'detached' });
-check('deleting a cash entry asks first, then updates the balance (₹40,000)', (await crows().count()) === 2 && (await flat('cash-balance')) === '₹40,000');
+// ------------------------------------------------------------ Remove this stock (the only way out)
 await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-stock]'); await settle();
-await rows().filter({ hasText: 'Silver Anklet' }).locator('[data-testid=stock-delete]').click();
-await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+await rows().filter({ hasText: 'Silver Anklet' }).filter({ has: page.locator('.stock-amt.in') }).locator('.stock-main').click();
+await page.waitForSelector('[data-testid=remove-stock]');
+await page.click('[data-testid=remove-stock]');
+await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
 await page.waitForSelector('.sheet', { state: 'detached' });
+await page.waitForSelector('[data-testid=stock-page]');
 await page.waitForTimeout(300);
-check('deleting a stock entry removes it and its photo from the phone', (await rows().count()) === 2 && (await txt('stock-silver-sum-net')) === '0.000 g' && (await photoCount()) === 1);
+check('Remove this stock asks first, then adds an OUT: the silver is out of stock, the record and photo stay', (await rows().count()) === 4 && (await txt('stock-silver-sum-net')) === '0.000 g' && (await photoCount()) === 2);
+check('the removed piece stays listed (entry) with its exit, faded', (await page.locator('.stock-row.exited').count()) >= 1 && (await rows().filter({ hasText: 'Silver Anklet' }).count()) === 2);
+await rows().filter({ hasText: 'Silver Anklet' }).filter({ has: page.locator('.stock-amt.in') }).locator('.stock-main').click();
+await page.waitForSelector('[data-testid=stock-entry-page]');
+check('a piece that was removed cannot be removed twice', (await page.locator('[data-testid=remove-stock]').count()) === 0);
+await page.click('[data-testid=bar-back]');
 
 // ------------------------------------------------------------ Back: one step at a time
-await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-modal]');
+await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-entry-page]');
 await page.click('[data-testid=stock-item]'); await page.waitForSelector('[data-testid=picker-modal]'); await settle();
 await page.goBack().catch(() => {}); await settle();
-check('Back #1 closes only the category list (entry pop-up stays)', (await page.locator('[data-testid=picker-modal]').count()) === 0 && (await page.locator('[data-testid=stock-modal]').count()) === 1);
+check('Back #1 closes only the category list (entry pop-up stays)', (await page.locator('[data-testid=picker-modal]').count()) === 0 && (await page.locator('[data-testid=stock-entry-page]').count()) === 1);
 await page.goBack().catch(() => {}); await settle();
-check('Back #2 closes the entry pop-up (Stock stays)', (await page.locator('[data-testid=stock-modal]').count()) === 0 && (await page.locator('[data-testid=stock-page]').isVisible()));
+check('Back #2 closes the entry pop-up (Stock stays)', (await page.locator('[data-testid=stock-entry-page]').count()) === 0 && (await page.locator('[data-testid=stock-page]').isVisible()));
 await page.goBack().catch(() => {}); await settle();
 check('Back #3 -> Home, history back where it started', (await page.locator('[data-testid=home-page]').isVisible()) && (await idx()) === baseIdx, `index=${await idx()} base=${baseIdx}`);
 

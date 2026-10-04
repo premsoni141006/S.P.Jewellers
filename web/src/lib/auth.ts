@@ -9,6 +9,8 @@ const SESSION_KEY = 'spj.unlocked';
 
 const currentPass = (): string => load<{ pass?: string }>(KEYS.auth, {}).pass || DEFAULT_PASS;
 
+export const checkPassword = (pass: string): boolean => pass === currentPass();
+
 export const checkLogin = (user: string, pass: string): boolean => user.trim().toUpperCase() === LOGIN_USER && pass === currentPass();
 
 /** Changes the password after checking the current one. Returns an error message, or '' when done. */

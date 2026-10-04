@@ -74,7 +74,7 @@ for (const [name, sel] of [['Silver rate', '[data-testid=silver-input]'], ['Gold
 await page.setViewportSize(FULL); await page.click('[data-testid=rates-close]'); await page.waitForSelector('[data-testid=rates-modal]', { state: 'detached' });
 
 await page.click('[data-testid=tile-stock]'); await page.waitForSelector('[data-testid=stock-page]'); await wait(300);
-await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-modal]'); await wait(500);
+await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-entry-page]'); await wait(500);
 for (const [name, sel] of [['Weight', '[data-testid=stock-weight]'], ['Tunch', '[data-testid=stock-tunch]'], ['Pieces', '[data-testid=stock-pcs]'], ['Note', '[data-testid=stock-note]']]) {
   const m = await withKeyboard(sel);
   check(`Stock pop-up, ${name}: visible above the keyboard`, visible(m) && m.top >= 0 && m.bottom <= m.vh, JSON.stringify(m));

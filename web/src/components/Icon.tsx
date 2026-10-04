@@ -15,6 +15,7 @@ const paths: Record<string, string> = {
   products: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
   gem: 'M6 4h12l4 6-10 11L2 10zM2 10h20M9 4l-2 6 5 11 5-11-2-6',
   stock: 'M3 9l9-5 9 5v10l-9 5-9-5zM3 9l9 5 9-5M7.5 6.5l9 5M12 14v10',
+  gallery: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M8.5 9.5v.01',
   camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   cash: 'M3 7h18v10H3zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 10v.01M18 14v.01',
   search: 'M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM16 16l5 5',
