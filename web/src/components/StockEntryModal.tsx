@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { fmtWeight, newId, stockTotals, today, validateStockEntry, type Product, type StockEntry, type StockType } from '@shared';
+import { availableStock, fmtDate, fmtWeight, newId, searchStock, stockTotals, today, validateStockEntry, type Product, type StockEntry, type StockType } from '@shared';
 import { useBackLayer } from '../lib/backStack';
 import { deletePhoto, putPhoto } from '../lib/photos';
+import { usePhotoUrl } from '../lib/photos';
 import { Icon } from './Icon';
+import { SearchBar } from './SearchBar';
 import { NumField } from './NumField';
 import { PhotoField } from './PhotoField';
 import { ProductPicker } from './ProductPicker';
@@ -14,6 +16,18 @@ import type { LabourMode } from '@shared';
 export const newStockEntry = (type: StockType): StockEntry => ({
   id: newId(), date: today(), type, metal: 'gold', item: '', tunch: 0, weight: 0, pcs: 0, note: '', createdAt: new Date().toISOString(),
 });
+
+function Piece({ piece, on, onPick }: { piece: StockEntry; on: boolean; onPick: () => void }) {
+  const url = usePhotoUrl(piece.photoId);
+  return (
+    <button type="button" className={`find-piece${on ? ' on' : ''}`} onClick={onPick} data-testid="find-piece">
+      <span className="find-photo">{url ? <img src={url} alt="" /> : <span className="muted small">No photo</span>}</span>
+      <b>{fmtWeight(piece.weight)} g</b>
+      <span className="muted small">{piece.item}</span>
+      <span className="muted small">{fmtDate(`${piece.date}T12:00:00`)}</span>
+    </button>
+  );
+}
 
 /**
  * Pop-up (blurred page behind) to add or edit one stock movement: photo of the product, its
@@ -40,6 +54,10 @@ export function StockEntryModal({ initial, isNew, entries, products, defaultLabo
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const isIn = e.type === 'in';
+  const [find, setFind] = useState('');
+  const [pickedId, setPickedId] = useState('');
+  // Stock OUT: pieces still in stock for the chosen metal / category, searchable, to pick the one leaving.
+  const pieces = e.type === 'out' ? searchStock(availableStock(entries.filter((x) => x.id !== e.id)).filter((x) => x.metal === e.metal && (!e.item || x.item.trim().toLowerCase() === e.item.trim().toLowerCase())), find) : [];
 
   // For an OUT, warn (do not block) when more is going out than the register says is in stock.
   const left = stockTotals(entries.filter((x) => x.id !== e.id), e.metal).netWt;
@@ -74,10 +92,6 @@ export function StockEntryModal({ initial, isNew, entries, products, defaultLabo
             <button className="bar-btn close-x" onClick={() => leave(onClose)} aria-label="Close" data-testid="stock-close">✕</button>
           </div>
           <div className="stack">
-            <div className="seg wide" role="group" aria-label="Direction">
-              <button type="button" className={isIn ? 'on' : ''} onClick={() => setE({ ...e, type: 'in' })} data-testid="stock-type-in">IN (came into shop)</button>
-              <button type="button" className={!isIn ? 'on' : ''} onClick={() => setE({ ...e, type: 'out' })} data-testid="stock-type-out">OUT (left the shop)</button>
-            </div>
             <PhotoField photoId={e.photoId} pending={photo} onChange={setPhoto} />
             <div className="seg wide" role="group" aria-label="Metal">
               <button type="button" className={e.metal === 'gold' ? 'on' : ''} onClick={() => setE({ ...e, metal: 'gold' })} data-testid="stock-gold">Gold</button>
@@ -92,6 +106,18 @@ export function StockEntryModal({ initial, isNew, entries, products, defaultLabo
                 </button>
               </span>
             </label>
+            {e.type === 'out' && (
+              <div className="find-box" data-testid="find-box">
+                <SearchBar value={find} onChange={setFind} placeholder="Find the piece: item, weight, tunch, date…" label="Search pieces in stock" testId="find-search" />
+                {pieces.length === 0 ? <p className="muted small">No piece in stock for this choice.</p> : (
+                  <div className="find-row">
+                    {pieces.map((p) => (
+                      <Piece key={p.id} piece={p} on={pickedId === p.id} onPick={() => { setPickedId(p.id); setE({ ...e, item: p.item, metal: p.metal, weight: p.weight, tunch: p.tunch, pcs: p.pcs }); }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid-2">
               <NumField label="Weight" value={e.weight} onChange={(n) => setE({ ...e, weight: n })} step="weight" suffix="g" testId="stock-weight" />
               <NumField label="Tunch" value={e.tunch} onChange={(n) => setE({ ...e, tunch: n })} step="percent" suffix="%" testId="stock-tunch" />

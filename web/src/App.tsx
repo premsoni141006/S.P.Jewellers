@@ -13,6 +13,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { StockPage } from './pages/StockPage';
 import { PreviewScreen } from './pages/PreviewScreen';
 import { LoginScreen } from './pages/LoginScreen';
+import { RangePage } from './pages/RangePage';
 import { StockMatchModal } from './components/StockMatchModal';
 import { isUnlocked } from './lib/auth';
 import { billFileName, billPdf, saveBlob, shareBill } from './lib/billExport';
@@ -20,7 +21,7 @@ import { RatesModal } from './components/RatesModal';
 import { useBackLayer } from './lib/backStack';
 import { ProductsModal } from './components/ProductsModal';
 
-type Tab = 'home' | 'estimate' | 'history' | 'printer' | 'settings' | 'stock';
+type Tab = 'home' | 'estimate' | 'history' | 'printer' | 'settings' | 'stock' | 'cash' | 'stockrange' | 'cashrange';
 // The bar has exactly three things: Home, "+" (new estimate) and History.
 // Settings opens from the gear on Home; Printer settings lives inside Settings.
 const TABS_LEFT: Array<{ id: Tab; label: string }> = [{ id: 'home', label: 'Home' }];
@@ -165,7 +166,7 @@ function AppMain() {
   //  - a screen other than Home is a layer: Printer -> Settings, everything else -> Home
   //  - the preview screen is a layer on top of it
   //  - while printing, Back is swallowed (the printing overlay cannot be dismissed)
-  useBackLayer(tab !== 'home', () => setTab(tab === 'printer' ? 'settings' : 'home'));
+  useBackLayer(tab !== 'home', () => setTab(tab === 'printer' ? 'settings' : tab === 'stockrange' ? 'stock' : tab === 'cashrange' ? 'cash' : 'home'));
   useBackLayer(!!preview, () => setPreview(null));
   useBackLayer(!!busy, () => undefined);
 
@@ -173,8 +174,8 @@ function AppMain() {
     <div className="app">
       {tab !== 'home' && (
         <AppBar
-          title={{ estimate: 'Estimate', history: 'History', printer: 'Printer settings', settings: 'Settings', stock: 'Shop stock', home: '' }[tab]}
-          onBack={tab === 'estimate' || tab === 'settings' || tab === 'stock' ? () => setTab('home') : tab === 'printer' ? () => setTab('settings') : undefined}
+          title={{ estimate: 'Estimate', history: 'History', printer: 'Printer settings', settings: 'Settings', stock: 'Shop stock', cash: 'Cash', stockrange: 'Silver / Gold report', cashrange: 'Cash report', home: '' }[tab]}
+          onBack={tab === 'estimate' || tab === 'settings' || tab === 'stock' || tab === 'cash' ? () => setTab('home') : tab === 'printer' ? () => setTab('settings') : tab === 'stockrange' ? () => setTab('stock') : tab === 'cashrange' ? () => setTab('cash') : undefined}
           right={
             <>
               {!store.storageOk && <span className="pill pill-warn">Not saving</span>}
@@ -191,6 +192,7 @@ function AppMain() {
             onProducts={() => setProductsOpen(true)}
             onRates={() => setRatesOpen(true)}
             onStock={() => setTab('stock')}
+            onCash={() => setTab('cash')}
             onHistory={() => setTab('history')}
             onView={(e) => setPreview({ est: e, fromEditor: false })}
           />
@@ -210,7 +212,9 @@ function AppMain() {
             confirm={confirm}
           />
         )}
-        {tab === 'stock' && <StockPage store={store} confirm={confirm} setToast={setToast} />}
+        {(tab === 'stock' || tab === 'cash') && <StockPage key={tab} section={tab === 'cash' ? 'cash' : 'metal'} onRange={() => setTab(tab === 'cash' ? 'cashrange' : 'stockrange')} store={store} confirm={confirm} setToast={setToast} />}
+        {tab === 'stockrange' && <RangePage kind="metal" store={store} />}
+        {tab === 'cashrange' && <RangePage kind="cash" store={store} />}
         {tab === 'history' && (
           <HistoryPage
             store={store}
@@ -298,9 +302,11 @@ function AppMain() {
             setToast(`Bill ${fmtEstimateNo(stored.number)} saved to history.`);
             return stored;
           }}
-          onStatus={(status) => {
+          onStatus={async (status) => {
             const fromEditor = preview.fromEditor;
             const target = fromEditor ? est : preview.est;
+            if (target.billStatus === 'clear') return; // a Clear bill is final
+            if (status === 'clear' && !(await confirm('Mark this bill Clear?', 'Once a bill is Clear it cannot be changed again.', 'Yes, Clear'))) return;
             const issues = validateEstimate(target);
             if (issues.length) {
               setPreview(null);

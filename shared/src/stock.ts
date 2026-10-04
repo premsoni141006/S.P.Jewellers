@@ -85,22 +85,29 @@ const WEIGHT_TOL = 0.0005;
 const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
- * Pieces still in stock that look like a sold item: the same metal and category (item name) and
- * the same weight (grams). An IN entry counts as used up once OUT entries of that same lot
- * (metal + item + weight) add up to it, oldest IN first. Newest first in the result.
+ * IN entries that are still in stock, newest first. An IN entry counts as used up once OUT
+ * entries of the same lot (metal + item + weight) add up to it, oldest IN first.
  */
-export function stockMatchesForSale(stock: StockEntry[], sold: { metal: Metal; description: string; weight: number }): StockEntry[] {
-  const wt = num(sold.weight);
-  if (!(wt > 0) || !sold.description.trim()) return [];
-  const lot = (e: StockEntry) => e.metal === sold.metal && sameName(e.item, sold.description) && Math.abs(num(e.weight) - wt) <= WEIGHT_TOL;
-  const ins = stock.filter((e) => e.type === 'in' && lot(e)).sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date.localeCompare(b.date)));
-  let pool = stock.filter((e) => e.type === 'out' && lot(e)).reduce((acc, e) => acc + num(e.weight), 0);
+export function availableStock(stock: StockEntry[]): StockEntry[] {
+  const lotKey = (e: StockEntry) => `${e.metal}|${e.item.trim().toLowerCase()}|${Math.round(num(e.weight) * 1000)}`;
+  const pools = new Map<string, number>();
+  for (const e of stock) if (e.type === 'out') pools.set(lotKey(e), (pools.get(lotKey(e)) ?? 0) + num(e.weight));
   const left: StockEntry[] = [];
+  const ins = stock.filter((e) => e.type === 'in').sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date.localeCompare(b.date)));
   for (const e of ins) {
-    if (pool >= num(e.weight) - WEIGHT_TOL) pool -= num(e.weight);
+    const k = lotKey(e);
+    const pool = pools.get(k) ?? 0;
+    if (pool >= num(e.weight) - WEIGHT_TOL) pools.set(k, pool - num(e.weight));
     else left.push(e);
   }
   return left.reverse();
+}
+
+/** Pieces still in stock that look like a sold item: same metal, category (item name) and weight (grams). */
+export function stockMatchesForSale(stock: StockEntry[], sold: { metal: Metal; description: string; weight: number }): StockEntry[] {
+  const wt = num(sold.weight);
+  if (!(wt > 0) || !sold.description.trim()) return [];
+  return availableStock(stock).filter((e) => e.metal === sold.metal && sameName(e.item, sold.description) && Math.abs(num(e.weight) - wt) <= WEIGHT_TOL);
 }
 
 /** The OUT movement that takes a matched IN piece out of stock after it is sold. */

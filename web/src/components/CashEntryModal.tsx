@@ -26,10 +26,6 @@ export function CashEntryModal({ initial, isNew, onSave, onClose }: { initial: C
           <button className="bar-btn close-x" onClick={() => leave(onClose)} aria-label="Close" data-testid="cash-close">✕</button>
         </div>
         <div className="stack">
-          <div className="seg wide" role="group" aria-label="Direction">
-            <button type="button" className={isIn ? 'on' : ''} onClick={() => setE({ ...e, type: 'in' })} data-testid="cash-type-in">IN (cash received)</button>
-            <button type="button" className={!isIn ? 'on' : ''} onClick={() => setE({ ...e, type: 'out' })} data-testid="cash-type-out">OUT (cash paid)</button>
-          </div>
           <NumField label="Amount (₹)" value={e.amount} onChange={(n) => setE({ ...e, amount: n })} step="int" testId="cash-amount" />
           <label className="field">
             <span className="field-label">Date</span>

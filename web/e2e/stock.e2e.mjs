@@ -53,11 +53,11 @@ async function addCash(type, amount, note = '') {
 }
 
 // ------------------------------------------------------------ the page and its two cards
-check('Home has a Shop stock card', (await page.locator('.tile').count()) === 3 && (await page.locator('[data-testid=tile-stock]').innerText()).includes('Shop stock'));
+check('Home has a Shop stock card', (await page.locator('.tile').count()) === 4 && (await page.locator('[data-testid=tile-cash]').innerText()).includes('Cash') && (await page.locator('[data-testid=tile-stock]').innerText()).includes('Shop stock'));
 await page.click('[data-testid=tile-stock]');
 await page.waitForSelector('[data-testid=stock-page]'); await settle();
-check('two cards: Silver / Gold and Cash', (await page.locator('[data-testid=card-metal]').innerText()).includes('Silver / Gold') && (await page.locator('[data-testid=card-cash]').innerText()).includes('Cash'));
-check('Silver / Gold card is selected first; zero totals; empty state', (await page.locator('[data-testid=card-metal]').getAttribute('aria-selected')) === 'true' && (await txt('stock-gold-sum-net')) === '0.000 g' && (await page.getByText('No stock entries yet.').count()) === 1);
+check('Stock page shows the Silver / Gold card and no Cash card', (await page.locator('[data-testid=card-metal]').innerText()).includes('Silver / Gold') && (await page.locator('[data-testid=card-cash]').count()) === 0);
+check('Silver / Gold card is selected first; zero totals; empty state', (await page.locator('[data-testid=card-metal]').isVisible()) && (await txt('stock-gold-sum-net')) === '0.000 g' && (await page.getByText('No stock entries yet.').count()) === 1);
 await page.screenshot({ path: SHOTS + 'web-stock-empty.png' });
 
 // ------------------------------------------------------------ validation
@@ -126,9 +126,9 @@ await page.click('[data-testid=stock-save]'); await page.waitForSelector('[data-
 check('editing updates the totals (100 - 40 = 60)', (await txt('stock-gold-sum-net')) === '60.000 g');
 
 // ------------------------------------------------------------ cash card
-await page.click('[data-testid=card-cash]');
+await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-cash]');
 await page.waitForSelector('[data-testid=section-cash]'); await settle();
-check('Cash card shows the cash register (empty, ₹0)', (await page.locator('[data-testid=card-cash]').getAttribute('aria-selected')) === 'true' && (await flat('cash-balance')) === '₹0' && (await page.getByText('No cash entries yet.').count()) === 1);
+check('Cash card shows the cash register (empty, ₹0)', (await page.locator('[data-testid=card-cash]').isVisible()) && (await flat('cash-balance')) === '₹0' && (await page.getByText('No cash entries yet.').count()) === 1);
 await page.click('[data-testid=cash-add-in]'); await page.waitForSelector('[data-testid=cash-modal]');
 await page.click('[data-testid=cash-save]');
 check('cash entry without amount is refused', (await txt('cash-error')).toLowerCase().includes('amount'));
@@ -136,8 +136,15 @@ await page.click('[data-testid=cash-close]'); await page.waitForSelector('[data-
 await addCash('in', 50000, 'Sale – Ramesh');
 await addCash('out', 12000, 'Rent');
 await addCash('in', 2500, 'Advance');
-check('cash: in 52,500, out 12,000, balance ₹40,500', (await flat('cash-balance')) === '₹40,500' && (await flat('cash-in-total')) === '₹52,500' && (await flat('cash-out-total')) === '₹12,000' && (await crows().count()) === 3);
-check('Silver / Gold card still shows the metal stock while on Cash', (await txt('stock-gold-sum-net')) === '60.000 g');
+check('cash: balance ₹40,500 on the Cash card, 3 rows', (await flat('cash-balance')) === '₹40,500' && (await crows().count()) === 3);
+await page.click('[data-testid=card-cash]'); await page.waitForSelector('[data-testid=range-cash]');
+const year = new Date().getFullYear();
+check('clicking the Cash card opens the report, defaulting to the ongoing year', (await page.inputValue('[data-testid=range-from]')) === `${year}-01-01` && (await page.inputValue('[data-testid=range-to]')) === `${year}-12-31`);
+check('report: in 52,500, out 12,000, difference 40,500', (await flat('range-cash-in')) === '₹52,500' && (await flat('range-cash-out')) === '₹12,000' && (await flat('range-cash-net')) === '₹40,500' && (await page.locator('[data-testid=range-entry]').count()) === 3);
+await page.fill('[data-testid=range-from]', `${year + 1}-01-01`); await page.fill('[data-testid=range-to]', `${year + 1}-12-31`);
+check('another year shows nothing', (await flat('range-cash-in')) === '₹0' && (await page.locator('[data-testid=range-entry]').count()) === 0);
+await page.click('[data-testid=bar-back]'); await page.waitForSelector('[data-testid=section-cash]');
+check('Cash page has no Silver / Gold card', (await page.locator('[data-testid=card-metal]').count()) === 0);
 await page.waitForSelector('[data-testid=section-cash]');
 const cbar = page.locator('[data-testid=stock-search]');
 const cfind = async (q) => { await cbar.fill(q); await settle(); return crows().count(); };
@@ -167,7 +174,7 @@ await page.click('[data-testid=tile-stock]'); await page.waitForSelector('[data-
 check('metal entries, totals and photos survive closing and reopening the app', (await rows().count()) === 3 && (await txt('stock-gold-sum-net')) === '60.000 g' && (await photoCount()) === 2);
 await page.waitForFunction(() => document.querySelectorAll('[data-testid=stock-thumb]').length === 2, null, { timeout: 4000 }).catch(() => {});
 check('thumbnails load from the phone after restart', (await page.locator('[data-testid=stock-thumb]').count()) === 2 && (await page.locator('[data-testid=stock-thumb]').first().evaluate((i) => i.complete && i.naturalWidth > 0)));
-await page.click('[data-testid=card-cash]'); await settle();
+await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-cash]'); await settle();
 check('cash entries survive too', (await crows().count()) === 3 && (await flat('cash-balance')) === '₹42,500');
 
 // ------------------------------------------------------------ deletes
@@ -175,7 +182,7 @@ await crows().filter({ hasText: 'Advance' }).locator('[data-testid=cash-delete]'
 await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 await page.waitForSelector('.sheet', { state: 'detached' });
 check('deleting a cash entry asks first, then updates the balance (₹40,000)', (await crows().count()) === 2 && (await flat('cash-balance')) === '₹40,000');
-await page.click('[data-testid=card-metal]'); await settle();
+await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-stock]'); await settle();
 await rows().filter({ hasText: 'Silver Anklet' }).locator('[data-testid=stock-delete]').click();
 await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 await page.waitForSelector('.sheet', { state: 'detached' });

@@ -13,7 +13,7 @@ const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
  * Shows the exact bill that is printed. It opens fitted to the screen and can be zoomed (buttons,
  * two-finger pinch, double-tap) and saved as an image or a PDF.
  */
-export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved }: { est: Estimate; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void }) {
+export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved }: { est: Estimate; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void | Promise<void> }) {
   const wrap = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const [fit, setFit] = useState(0.4); // scale that fits the bill to the screen width
@@ -141,10 +141,10 @@ export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatu
           <button className="btn btn-outline btn-sm" onClick={() => void run('share')} disabled={!!busy} data-testid="share-bill">{busy === 'share' ? 'Preparing…' : 'Share'}</button>
         </div>
       </div>
-      <div className="status-group" role="group" aria-label="Bill status">
+      {est.billStatus !== 'clear' && <div className="status-group" role="group" aria-label="Bill status">
         <button className={`btn btn-outline btn-sm status-pending${est.billStatus === 'pending' ? ' on' : ''}`} onClick={() => onStatus('pending')} data-testid="mark-pending">Pending</button>
-        <button className={`btn btn-outline btn-sm status-clear${est.billStatus === 'clear' ? ' on' : ''}`} onClick={() => onStatus('clear')} data-testid="mark-clear">Clear</button>
-      </div>
+        <button className={`btn btn-outline btn-sm status-clear`} onClick={() => onStatus('clear')} data-testid="mark-clear">Clear</button>
+      </div>}
       {error && <p className="err small preview-error" role="alert" data-testid="download-error">{error}</p>}
 
       <div

@@ -10,13 +10,14 @@ interface Props {
   onProducts: () => void;
   onRates: () => void;
   onStock: () => void;
+  onCash: () => void;
   onHistory: () => void;
   onView: (e: Estimate) => void;
 }
 
 const STATUS = { printed: ['Printed', 'ok'], failed: ['Print failed', 'bad'], not_printed: ['Not printed', 'muted'] } as const;
 
-export function HomePage({ store, onSettings, onProducts, onRates, onStock, onHistory, onView }: Props) {
+export function HomePage({ store, onSettings, onProducts, onRates, onStock, onCash, onHistory, onView }: Props) {
   const { settings, history, products } = store;
   const [q, setQ] = useState('');
   const searching = q.trim() !== '';
@@ -28,6 +29,7 @@ export function HomePage({ store, onSettings, onProducts, onRates, onStock, onHi
     { icon: 'products', title: 'Products', sub: 'Manage items', on: onProducts, id: 'tile-products' },
     { icon: 'rates', title: 'Rates', sub: 'Gold / Silver rates', on: onRates, id: 'tile-rates' },
     { icon: 'stock', title: 'Shop stock', sub: 'Stock in and out', on: onStock, id: 'tile-stock' },
+    { icon: 'cash', title: 'Cash', sub: 'Cash in and out', on: onCash, id: 'tile-cash' },
   ];
 
   return (
@@ -61,7 +63,7 @@ export function HomePage({ store, onSettings, onProducts, onRates, onStock, onHi
         <div className="tiles">
           {tiles.map((t) => (
             <button key={t.id} className="tile" onClick={t.on} data-testid={t.id}>
-              <span className="tile-icon"><Icon name={t.icon} size={30} /></span>
+              <span className="tile-icon"><Icon name={t.icon} size={24} /></span>
               <span className="tile-text"><b>{t.title}</b><span className="small">{t.sub}</span></span>
             </button>
           ))}

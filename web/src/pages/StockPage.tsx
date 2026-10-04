@@ -28,9 +28,8 @@ function TypeSeg({ value, onChange }: { value: TypeFilter; onChange: (v: TypeFil
   );
 }
 
-export function StockPage({ store, confirm, setToast }: { store: AppStore; confirm: Confirm; setToast: (s: string) => void }) {
+export function StockPage({ section, onRange, store, confirm, setToast }: { section: Section; onRange: () => void; store: AppStore; confirm: Confirm; setToast: (s: string) => void }) {
   const { stock, cash, products, settings } = store;
-  const [section, setSection] = useState<Section>('metal');
   const [stockEdit, setStockEdit] = useState<{ entry: StockEntry; isNew: boolean } | null>(null);
   const [cashEdit, setCashEdit] = useState<{ entry: CashEntry; isNew: boolean } | null>(null);
   const [typeF, setTypeF] = useState<TypeFilter>('all');
@@ -58,32 +57,27 @@ export function StockPage({ store, confirm, setToast }: { store: AppStore; confi
         testId="stock-search"
       />
 
-      {/* The two cards: pick which register to look at */}
-      <div className="stock-cards" role="tablist" aria-label="Shop stock">
-        <button role="tab" aria-selected={section === 'metal'} className={`stock-card${section === 'metal' ? ' on' : ''}`} onClick={() => setSection('metal')} data-testid="card-metal">
-          <span className="stock-card-title"><Icon name="gem" size={18} /> Silver / Gold</span>
-          <span className="stock-card-line"><span>Gold</span><b data-testid="stock-gold-sum-net" className={gold.netWt < 0 ? 'neg' : ''}>{fmtWeight(gold.netWt)} g</b></span>
-          <span className="stock-card-line"><span>Silver</span><b data-testid="stock-silver-sum-net" className={silver.netWt < 0 ? 'neg' : ''}>{fmtWeight(silver.netWt)} g</b></span>
-        </button>
-        <button role="tab" aria-selected={section === 'cash'} className={`stock-card${section === 'cash' ? ' on' : ''}`} onClick={() => setSection('cash')} data-testid="card-cash">
-          <span className="stock-card-title"><Icon name="cash" size={18} /> Cash</span>
-          <span className="stock-card-line"><span>In hand</span><b data-testid="cash-balance" className={cashT.balance < 0 ? 'neg' : ''}>{fmtRupees(cashT.balance)}</b></span>
-          <span className="stock-card-line muted small"><span>In {fmtRupees(cashT.inAmt)}</span><span>Out {fmtRupees(cashT.outAmt)}</span></span>
-        </button>
+      {/* One summary card for the register being shown (Cash has its own card on Home) */}
+      <div className="stock-cards one">
+        {section === 'metal' ? (
+          <button type="button" className="stock-card on" onClick={onRange} data-testid="card-metal" aria-label="Open Silver / Gold report">
+            <span className="stock-card-title"><Icon name="gem" size={18} /> Silver / Gold</span>
+            <span className="stock-card-row">
+              <span className="stock-card-line"><span>Gold</span><b data-testid="stock-gold-sum-net" className={gold.netWt < 0 ? 'neg' : ''}>{fmtWeight(gold.netWt)} g</b></span>
+              <span className="stock-card-line"><span>Silver</span><b data-testid="stock-silver-sum-net" className={silver.netWt < 0 ? 'neg' : ''}>{fmtWeight(silver.netWt)} g</b></span>
+            </span>
+          </button>
+        ) : (
+          <button type="button" className="stock-card on" onClick={onRange} data-testid="card-cash" aria-label="Open Cash report">
+            <span className="stock-card-title"><Icon name="cash" size={18} /> Cash</span>
+            <span className="stock-card-line"><span>In hand</span><b data-testid="cash-balance" className={cashT.balance < 0 ? 'neg' : ''}>{fmtRupees(cashT.balance)}</b></span>
+            <span className="stock-card-line muted small"><span>In {fmtRupees(cashT.inAmt)}</span><span>Out {fmtRupees(cashT.outAmt)}</span></span>
+          </button>
+        )}
       </div>
 
       {section === 'metal' ? (
         <div className="stack" data-testid="section-metal">
-          <section className="card stock-summary">
-            {([['Gold', gold, 'stock-gold-sum'], ['Silver', silver, 'stock-silver-sum']] as const).map(([label, t, id]) => (
-              <div className="stock-sum" key={id} data-testid={id}>
-                <div className="stock-sum-label">{label}</div>
-                <div className="muted small">In {fmtWeight(t.inWt)} g · Out {fmtWeight(t.outWt)} g</div>
-                <div className="muted small">{t.netPcs} pcs in stock</div>
-              </div>
-            ))}
-          </section>
-
           <div className="grid-2">
             <button className="btn btn-primary" onClick={() => setStockEdit({ entry: newStockEntry('in'), isNew: true })} data-testid="stock-add-in"><Icon name="plus" size={18} /> Stock IN</button>
             <button className="btn btn-outline" onClick={() => setStockEdit({ entry: newStockEntry('out'), isNew: true })} data-testid="stock-add-out"><Icon name="plus" size={18} /> Stock OUT</button>
@@ -149,11 +143,6 @@ export function StockPage({ store, confirm, setToast }: { store: AppStore; confi
         </div>
       ) : (
         <div className="stack" data-testid="section-cash">
-          <section className="card stock-summary">
-            <div className="stock-sum"><div className="stock-sum-label">Cash in</div><div className="stock-sum-big" style={{ color: '#1f7a45' }} data-testid="cash-in-total">{fmtRupees(cashT.inAmt)}</div></div>
-            <div className="stock-sum"><div className="stock-sum-label">Cash out</div><div className="stock-sum-big" style={{ color: '#b3261e' }} data-testid="cash-out-total">{fmtRupees(cashT.outAmt)}</div></div>
-          </section>
-
           <div className="grid-2">
             <button className="btn btn-primary" onClick={() => setCashEdit({ entry: newCashEntry('in'), isNew: true })} data-testid="cash-add-in"><Icon name="plus" size={18} /> Cash IN</button>
             <button className="btn btn-outline" onClick={() => setCashEdit({ entry: newCashEntry('out'), isNew: true })} data-testid="cash-add-out"><Icon name="plus" size={18} /> Cash OUT</button>
