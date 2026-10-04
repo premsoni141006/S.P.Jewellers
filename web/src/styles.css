@@ -705,3 +705,11 @@ html.kb-open .sheet { padding-bottom: 40vh; }
 .login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; align-items: stretch; background: #fff; border-radius: 18px; padding: 24px 20px; box-shadow: 0 6px 24px rgba(60, 10, 14, .12); }
 .login-card .home-logo { align-self: center; border-radius: 16px; }
 .login-card h1 { margin: 0; text-align: center; font: 700 22px/1.2 Georgia, serif; color: #5e0a10; letter-spacing: .5px; }
+
+/* Behaves like an app in the browser: the page itself cannot be pinched or double-tap zoomed. */
+html, body { touch-action: pan-x pan-y; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+button, a, [role="button"] { touch-action: manipulation; }
+/* iPhone Safari zooms into any field smaller than 16px (the page zoom above shrinks 16px a little), so fields are a touch bigger there. */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: 17px !important; }
+}
