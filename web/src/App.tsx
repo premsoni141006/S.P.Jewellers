@@ -372,7 +372,7 @@ function AppMain() {
           }}
         />
       )}
-      {locked && <AppLock onUnlock={() => setLocked(false)} />}
+      {locked && <AppLock onUnlock={() => setLocked(false)} onGallery={() => { setLocked(false); setTab('gallery'); }} />}
       {sheet && <Sheet title={sheet.title} actions={sheet.actions} onClose={() => setSheet(null)}>{sheet.body}</Sheet>}
       {busy && (
         <div className="busy" role="status" aria-live="polite">

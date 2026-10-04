@@ -57,6 +57,11 @@ check('no lock while inside the Gallery', (await page.locator('[data-testid=app-
 await page.click('[data-testid=gallery-back]');
 await page.waitForSelector('[data-testid=app-lock]');
 check('coming back from the Gallery shows the blurred lock asking for the password', /blur/.test(await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid=app-lock]')).backdropFilter || getComputedStyle(document.querySelector('[data-testid=app-lock]')).webkitBackdropFilter)));
+await page.click('[data-testid=lock-gallery]');
+await page.waitForSelector('[data-testid=gallery-page]');
+check('the lock offers a way back into the Gallery (no password needed)', (await page.locator('[data-testid=app-lock]').count()) === 0);
+await page.click('[data-testid=gallery-back]');
+await page.waitForSelector('[data-testid=app-lock]');
 await page.fill('[data-testid=lock-pass]', 'wrong'); await page.click('[data-testid=lock-submit]');
 check('a wrong password keeps it locked', await page.locator('[data-testid=lock-error]').isVisible());
 await page.fill('[data-testid=lock-pass]', '443262'); await page.click('[data-testid=lock-submit]');
