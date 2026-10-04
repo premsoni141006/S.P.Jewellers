@@ -5,14 +5,20 @@
 // Layout follows the shop's sample: SP_Jewellers_Simple_Demo_Estimate_v2.pdf.
 
 import { calcEstimate, ratePerGram } from './calc';
-import { fmtDateTime, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
+import { fmtDate, fmtDateTime, fmtEstimateNo, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
 import { LOGO_ASPECT, LOGO_BW_DATA_URI } from './logo';
 import type { Estimate } from './types';
 
 export interface PrintHeader {
   shopName: string;
   shopCode: string;
-  /** Owner name and contact number, printed under the shop name (e.g. "Sandeep Soni · M. 94166 25950"). */
+  /** Owner's name: printed at the top right of the bill. */
+  ownerName?: string;
+  /** Owner's mobile number: printed under the owner's name. */
+  ownerPhone?: string;
+  /** Shop address: printed under the shop name. */
+  address?: string;
+  /** Older single-line form "Name · M. number"; only used when ownerName / ownerPhone are not given. */
   ownerLine?: string;
   /** Print the black-and-white shop logo above the shop name (A4 only). Default off for callers that omit it. */
   logo?: boolean;
@@ -70,12 +76,20 @@ body {
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 .sheet { width: 190mm; }
-.logo { display: block; margin: 0 auto 1mm; height: 17mm; width: auto; }
-.shop { text-align: center; font-size: 21pt; font-weight: 700; letter-spacing: 0.3pt; }
-.code-gap { height: 3mm; }
-.owner-line { text-align: center; font-size: 10.5pt; font-weight: 700; margin: 1mm 0 3mm; }
-.code { text-align: center; font-size: 9.5pt; margin: 0.5mm 0 3mm; }
-.customer { display: flex; justify-content: space-between; font-size: 9pt; margin-bottom: 2mm; }
+/* Top row: ESTIMATE in the middle, owner name and mobile at the right */
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; margin-bottom: 1mm; }
+.estimate-title { font-size: 11pt; font-weight: 700; text-decoration: underline; letter-spacing: 0.5pt; text-align: center; }
+.top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
+/* Brand row: logo at the far left, shop name in the middle */
+.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; }
+.brand-logo { justify-self: start; }
+.logo { display: block; height: 16mm; width: auto; }
+.shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
+.address { text-align: center; font-size: 9.5pt; margin: 1mm 0 3mm; }
+.code { text-align: center; font-size: 9.5pt; margin: 0 0 2mm; }
+/* Row above the table: customer on the left, bill number and date on the right */
+.bill-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; font-size: 9.5pt; line-height: 1.35; margin-bottom: 2mm; }
+.bill-meta-r { text-align: right; }
 table { width: 190mm; table-layout: fixed; border-collapse: collapse; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; break-inside: avoid; }
@@ -96,9 +110,35 @@ tr.grand td { background: #f0f0f0; font-weight: 700; }
 }
 `;
 
-function headerHtml(h: PrintHeader, withLogo = true): string {
-  const logo = withLogo && h.logo ? `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(17 * LOGO_ASPECT * 10) / 10}mm" height="17mm" alt="">` : '';
-  return `${logo}<div class="shop">${escapeHtml(h.shopName)}</div>${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}${(h.ownerLine ?? '').trim() ? `<div class="owner-line">${escapeHtml(h.ownerLine as string)}</div>` : '<div class="code-gap"></div>'}`;
+function ownerOf(h: PrintHeader): { name: string; phone: string } {
+  if (h.ownerName || h.ownerPhone) return { name: (h.ownerName ?? '').trim(), phone: (h.ownerPhone ?? '').trim() };
+  const m = /^(.*?)\s*·\s*M\.\s*(.*)$/.exec(h.ownerLine ?? '');
+  return m ? { name: m[1].trim(), phone: m[2].trim() } : { name: (h.ownerLine ?? '').trim(), phone: '' };
+}
+
+/** The top of the bill: ESTIMATE, owner name + mobile (right), logo (left), shop name (middle), address. */
+function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string {
+  const o = ownerOf(h);
+  const logo = withLogo && h.logo ? `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(16 * LOGO_ASPECT * 10) / 10}mm" height="16mm" alt="">` : '';
+  const right = `${o.name ? `<b>${escapeHtml(o.name)}</b>` : ''}${o.phone ? `<span>M.: ${escapeHtml(o.phone)}</span>` : ''}`;
+  return `<div class="top"><span></span><span class="estimate-title">${escapeHtml(title)}</span><span class="top-right">${right}</span></div>
+<div class="brand"><span class="brand-logo">${logo}</span><div class="shop">${escapeHtml(h.shopName)}</div><span></span></div>
+${(h.address ?? '').trim() ? `<div class="address">${escapeHtml((h.address as string).trim())}</div>` : '<div style="height:3mm"></div>'}${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}`;
+}
+
+/** Compact top of the narrow receipt: same facts as the A4 bill, stacked. */
+function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
+  const o = ownerOf(h);
+  const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
+  const owner = [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ');
+  return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
+<div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
+}
+
+/** Customer name + mobile on the left; bill number + date on the right. */
+function metaHtml(est: Estimate): string {
+  const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
+  return `<div class="bill-meta"><div class="bill-meta-l"><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div><div class="bill-meta-r"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div></div></div>`;
 }
 
 export interface RenderOptions {
@@ -138,6 +178,7 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
   return `<!doctype html><html><head><meta charset="utf-8"><title>Estimate</title><style>${A4_CSS}</style></head>
 <body><div class="sheet">
 ${headerHtml(header)}
+${metaHtml(est)}
 <table>
 <colgroup>${COL_MM.map((w) => `<col style="width:${w}mm">`).join('')}</colgroup>
 <thead><tr>${PRINT_COLUMNS.map((c) => `<th>${c}</th>`).join('')}</tr></thead>
@@ -154,7 +195,7 @@ export function renderTestPageHtml(header: PrintHeader, printerName: string, whe
 .meta { text-align: center; font-size: 11pt; margin-top: 4mm; }
 .box { border: 0.75pt solid #000; margin-top: 12mm; padding: 4mm; font-size: 9pt; text-align: center; }
 </style></head><body><div class="sheet">
-${headerHtml(header)}
+${headerHtml(header, true, 'PRINTER TEST')}
 <div class="msg">Printer Test Successful</div>
 <div class="meta">${escapeHtml(fmtDateTime(when.toISOString()))}</div>
 <div class="meta">Printer: ${escapeHtml(printerName)}</div>
@@ -200,6 +241,9 @@ body { font-family: Arial, "Segoe UI", sans-serif; font-size: ${fs}px; line-heig
 .shop { text-align: center; font-size: ${Math.round(fs * 1.6)}px; font-weight: 700; }
 .code { text-align: center; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
 .owner-line { text-align: center; font-weight: 700; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
+.estimate { text-align: center; font-weight: 700; text-decoration: underline; font-size: ${Math.round(fs * 0.95)}px; margin-bottom: 2px; }
+.rmeta { margin-bottom: 8px; }
+.rmeta div { padding: 1px 0; }
 .cust { margin-bottom: 6px; }
 table.it { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: -2px; }
 table.it td { border: 2px solid #000; padding: 2px 4px; vertical-align: top; }
@@ -211,7 +255,7 @@ td.d { font-weight: 700; }
 .row { display: flex; justify-content: space-between; padding: 2px 0; }
 .grand { border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: 700; font-size: ${Math.round(fs * 1.2)}px; padding: 4px 0; margin-top: 4px; }
 </style></head><body>
-${headerHtml(header, false)}
+${receiptHeaderHtml(est, header)}
 ${items}
 <div class="sum">${sums}</div>
 </body></html>`;

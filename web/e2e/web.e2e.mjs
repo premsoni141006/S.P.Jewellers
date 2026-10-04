@@ -259,13 +259,18 @@ await go(page, 'history');
 await page.locator('[data-testid=reprint]').first().click();
 await page.waitForFunction(() => /print dialog/i.test(document.querySelector('[data-testid=toast]')?.textContent || ''));
 const printed = await page.evaluate(() => window.__printedHtml || '');
-check('reprint sends A4 document to print dialog', !printed.includes('ELNABAAD') && printed.includes('S.P. JEWELLERS') && printed.includes('Sandeep Soni · M. 94166 25950') && !printed.includes('Ramesh Kumar') && printed.includes('Silver/Gold'));
+check('reprint sends A4 document to print dialog', !printed.includes('ELNABAAD') && printed.includes('S.P. JEWELLERS') && printed.includes('ESTIMATE') && printed.includes('Sandeep Soni') && printed.includes('M.: 94166 25950') && printed.includes('Main Bazar, Near Gandhi Chowk, Ellenabad-125102') && printed.includes('Customer: <b>Ramesh Kumar</b>') && printed.includes('Bill No.: <b>E-0001</b>') && printed.includes('Silver/Gold'));
 check('history shows printed', (await page.locator('[data-testid=history-row]').first().textContent()).includes('Printed'));
 
 // settings
 await go(page, 'settings');
 await page.screenshot({ path: SHOTS + 'web-settings.png', fullPage: true });
-check('products listed', (await page.locator('[data-testid=product]').count()) === 6);
+{
+  const t = await page.locator('[data-testid=settings-page]').innerText();
+  const titles = await page.locator('[data-testid=settings-page] .section-title').allTextContents();
+  check('Settings no longer has the Rates and pricing or Products cards (they are on Home)', titles.join(',') === 'Shop,GST' && !t.includes('Default gold rate') && (await page.locator('[data-testid=product]').count()) === 0, titles.join(','));
+  check('Settings keeps Printer settings, Shop, and the GST switch', t.includes('Printer settings') && t.includes('Shop') && t.includes('Charge GST'));
+}
 
 // Description picker pop-up: blurred page, all saved items, "+" last, new items only via Settings
 await page.click('[data-testid=fab-new]');

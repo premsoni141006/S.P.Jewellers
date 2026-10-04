@@ -5,6 +5,7 @@
 import { calcEstimate } from './calc';
 import { fmtMoney, fmtPcs, fmtPercent, fmtWeight } from './format';
 import { bhavText, metalName, metalsBought } from './template';
+import { fmtDate, fmtEstimateNo } from './format';
 import type { PrintHeader } from './template';
 import type { Estimate } from './types';
 
@@ -138,7 +139,18 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   const b = paperMm === 80 ? [12, 14, 22] : [8, 9, 14]; // Making Silver Amount
   const rule = '-'.repeat(W);
 
-  const p = new EscPos().init().align('center').bold(true).size(2, 2).line(header.shopName).size(1, 1).line(header.shopCode.trim() ? header.shopCode : '').bold(false).line((header.ownerLine ?? '').trim()).align('left').line(rule);
+  const ownerName = (header.ownerName ?? '').trim();
+  const ownerPhone = (header.ownerPhone ?? '').trim();
+  const owner = ownerName || ownerPhone ? [ownerName, ownerPhone ? `M.: ${ownerPhone}` : ''].filter(Boolean).join(' - ') : (header.ownerLine ?? '').trim();
+  const p = new EscPos().init().align('center').bold(true).line('ESTIMATE').size(2, 2).line(header.shopName).size(1, 1).bold(false);
+  if ((header.address ?? '').trim()) p.line((header.address as string).trim());
+  if (owner) p.line(owner);
+  p.align('left').line(rule);
+  p.line(`Bill No.: ${est.number > 0 ? fmtEstimateNo(est.number) : '-'}`);
+  p.line(`Date: ${fmtDate(est.createdAt)}`);
+  p.line(`Customer: ${est.customerName.trim()}`);
+  p.line(`Mobile: ${est.customerPhone.trim()}`);
+  p.line(rule);
 
   p.line('Description');
   p.line(cols(['G.Wt.', 'Less', 'Net Wt.', 'Tunch', 'Pcs'], a));

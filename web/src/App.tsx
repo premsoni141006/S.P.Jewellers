@@ -34,8 +34,10 @@ export default function App() {
   const header = {
     shopName: settings.shopName,
     shopCode: '',
-    // Owner name and contact number print under the shop name (customer details are not printed).
-    ownerLine: [settings.ownerName?.trim(), settings.phone.trim() ? `M. ${settings.phone.trim()}` : ''].filter(Boolean).join(' · '),
+    // Top of the bill: owner name and mobile at the right, shop address under the shop name.
+    ownerName: settings.ownerName?.trim() ?? '',
+    ownerPhone: settings.phone.trim(),
+    address: settings.address.trim(),
     logo: settings.printLogo !== false,
   };
 
@@ -218,7 +220,7 @@ export default function App() {
           />
         )}
         {tab === 'printer' && <PrinterPage store={store} header={header} setBusy={setBusy} setToast={setToast} setSheet={setSheet} />}
-        {tab === 'settings' && <SettingsPage store={store} confirm={confirm} setToast={setToast} onPrinter={() => setTab('printer')} />}
+        {tab === 'settings' && <SettingsPage store={store} onPrinter={() => setTab('printer')} />}
       </main>
 
       {tab !== 'estimate' && (

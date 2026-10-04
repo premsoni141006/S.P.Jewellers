@@ -125,7 +125,10 @@ describe('print template', () => {
     expect(ths).toEqual([...PRINT_COLUMNS]);
     expect(html).toContain('S.P. JEWELLERS');
     expect(html).toContain('ELNABAAD (S0012)'); // still printed when a second line is given
-    expect(html).not.toMatch(/Bill No|ESTIMATE<|Date:/);
+    // the bill now carries ESTIMATE, the bill number and the date (the shop's own layout)
+    expect(html).toMatch(/ESTIMATE</);
+    expect(html).toMatch(/Bill No\./);
+    expect(html).toMatch(/Date:/);
     expect(html).toContain('SILVER BHAV');
     expect(html).toContain('GOLD BHAV'); // the sample has both metals
     expect(html).toContain('TOTAL');
@@ -171,19 +174,50 @@ describe('print template', () => {
     expect(html).not.toContain('ELNABAAD');
     expect(html).not.toContain('<div class="code">');
   });
-  it('bill header: owner name and contact number at the top; customer details are never printed', () => {
+  it('bill header: ESTIMATE on top, owner name + mobile right, logo left, shop name middle, address below', () => {
     const est = sampleEstimate(DEFAULT_SETTINGS);
+    est.number = 7;
     est.customerName = 'Ramesh Kumar';
-    est.customerLocality = 'Gandhi Chowk';
     est.customerPhone = '98765 43210';
-    const html = renderEstimateHtml(est, { ...header, ownerLine: 'Sandeep Soni · M. 94166 25950' });
-    expect(html).toContain('Sandeep Soni · M. 94166 25950');
-    expect(html).not.toContain('Ramesh Kumar');
-    expect(html).not.toContain('Gandhi Chowk');
-    expect(html).not.toContain('98765 43210');
-    expect(html).not.toContain('class="customer"');
-    expect(html.indexOf('S.P. JEWELLERS')).toBeLessThan(html.indexOf('Sandeep Soni'));
-    expect(html.indexOf('Sandeep Soni')).toBeLessThan(html.indexOf('<table'));
+    est.createdAt = new Date(2026, 9, 4, 12).toISOString();
+    const html = renderEstimateHtml(est, { ...header, logo: true, ownerName: 'Sandeep Soni', ownerPhone: '94166 25950', address: 'Main Bazar, Near Gandhi Chowk, Ellenabad-125102' });
+    const at = (t: string) => html.indexOf(t);
+    expect(html).toContain('class="estimate-title">ESTIMATE<');
+    expect(html).toContain('<b>Sandeep Soni</b><span>M.: 94166 25950</span>');
+    expect(at('class="top-right"')).toBeGreaterThan(at('class="estimate-title"'));
+    expect(at('class="brand-logo"><img')).toBeGreaterThan(-1);
+    expect(at('class="brand-logo"')).toBeLessThan(at('class="shop"'));
+    expect(at('class="shop"')).toBeLessThan(at('class="address"'));
+    expect(html).toContain('Main Bazar, Near Gandhi Chowk, Ellenabad-125102');
+    expect(at('class="estimate-title"')).toBeLessThan(at('class="brand"'));
+    // the row above the table: customer + mobile (left), bill number + date (right)
+    expect(html).toContain('Customer: <b>Ramesh Kumar</b>');
+    expect(html).toContain('Mobile: <b>98765 43210</b>');
+    expect(html).toContain('Bill No.: <b>E-0007</b>');
+    expect(html).toContain('Date: <b>04 Oct 2026</b>');
+    expect(at('class="bill-meta"')).toBeGreaterThan(at('class="address"'));
+    expect(at('class="bill-meta"')).toBeLessThan(at('<table>'));
+    expect(at('class="bill-meta-l"')).toBeLessThan(at('class="bill-meta-r"'));
+    expect(html).toContain('.bill-meta-r { text-align: right; }');
+    // left-to-right order inside the brand row: logo, then name
+    expect(html).toMatch(/grid-template-columns: 24mm 1fr 24mm/);
+  });
+  it('the customer row is always there (blank values) and an unsaved bill shows a dash for the number', () => {
+    const est = sampleEstimate(DEFAULT_SETTINGS);
+    est.customerName = est.customerPhone = '';
+    const html = renderEstimateHtml(est, header);
+    expect(html).toContain('Customer: <b></b>');
+    expect(html).toContain('Mobile: <b></b>');
+    expect(html).toContain('Bill No.: <b>—</b>');
+  });
+  it('receipt layouts carry the same facts', () => {
+    const est = sampleEstimate(DEFAULT_SETTINGS);
+    est.number = 3; est.customerName = 'Ramesh'; est.customerPhone = '98765';
+    const h = { ...header, ownerName: 'Sandeep Soni', ownerPhone: '94166 25950', address: 'Main Bazar' };
+    const img = renderReceiptHtml(est, h, 576);
+    for (const t of ['ESTIMATE', 'Sandeep Soni', 'M.: 94166 25950', 'Main Bazar', 'Bill No.: <b>E-0003</b>', 'Customer: <b>Ramesh</b>', 'Mobile: <b>98765</b>']) expect(img).toContain(t);
+    const text = Buffer.from(buildEstimateEscPosText(est, h, 80)).toString('latin1');
+    for (const t of ['ESTIMATE', 'Sandeep Soni', 'Main Bazar', 'Bill No.: E-0003', 'Customer: Ramesh', 'Mobile: 98765']) expect(text).toContain(t);
   });
   it('Silver/Gold column names the metal on each row; bhav rows only for metals bought', () => {
     const mk = (metals: Array<'gold' | 'silver'>) => {
