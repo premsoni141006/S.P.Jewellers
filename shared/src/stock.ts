@@ -23,6 +23,8 @@ export interface StockEntry {
   pcs: number;
   note: string;
   createdAt: string;
+  /** Set when the record is changed after it was made (e.g. its photo was deleted); the cloud keeps the newest. */
+  updatedAt?: string;
 }
 
 export interface StockTotals {

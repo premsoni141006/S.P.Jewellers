@@ -19,6 +19,7 @@ export const KEYS = {
   cloud: 'spj.cloud.v1',
   cloudStamps: 'spj.cloud.stamps.v1',
   cloudPhotos: 'spj.cloud.photos.v1',
+  cloudPhotoDeletes: 'spj.cloud.photodeletes.v1',
 } as const;
 
 export function load<T>(key: string, fallback: T): T {

@@ -1060,3 +1060,13 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 
 .gx-cur { margin: 0 auto 6px; width: fit-content; max-width: 86%; padding: 6px 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.85); border: 1px solid var(--glass-edge); font-size: 13px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gx-cur b { color: var(--ink); }
+
+/* Gallery: picking photos to delete */
+.gx-pcard.sel { outline: 3px solid var(--acc-b); outline-offset: -3px; }
+.gx-tick { position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; background: rgba(20, 16, 10, 0.35); color: #fff; font: 700 16px/24px inherit; text-align: center; z-index: 2; }
+.gx-tick.on { background: linear-gradient(135deg, var(--acc-a), var(--acc-b)); color: var(--acc-ink); border-color: #fff; }
+.gx-danger { color: #c62828; }
+.gx-danger:disabled { opacity: 0.35; }
+.gx-btn.danger { border: 0; background: #c62828; color: #fff; }
+.gx-err { margin: 0; color: #c62828; font-size: 13.5px; font-weight: 600; }
+.gx-open { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }

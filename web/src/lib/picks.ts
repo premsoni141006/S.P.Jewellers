@@ -37,6 +37,16 @@ export function removeSessionPick(list: Pick[], entryId: string, since: string):
   return next;
 }
 
+/** Drops every pick of the given pieces (their photos are gone), remembering the removals for the cloud. */
+export function removePicksOf(list: Pick[], entryIds: string[]): Pick[] {
+  const gone = list.filter((p) => entryIds.includes(p.entryId)).map((p) => p.id);
+  if (gone.length === 0) return list;
+  save(KEYS.picksRemoved, [...new Set([...load<string[]>(KEYS.picksRemoved, []), ...gone])]);
+  const next = list.filter((p) => !gone.includes(p.id));
+  save(KEYS.picks, next);
+  return next;
+}
+
 export interface CustomerPicks { key: string; name: string; count: number; last: string }
 
 /** Customers who have picked something, most recent first. */

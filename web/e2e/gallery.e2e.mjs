@@ -21,6 +21,7 @@ await page.reload();
 await page.waitForSelector('[data-testid=home-page]');
 await page.click('[data-testid=open-gallery]');
 await page.waitForSelector('[data-testid=gallery-page]');
+const ls = (pg, key) => pg.evaluate((k) => JSON.parse(localStorage.getItem(k) || 'null'), key);
 const n = () => page.locator('[data-testid=gallery-photo]').count();
 check('opens on Gold, gold look, top switch Silver | Gold, All shows compact gold cards with only the item and its weight (no price, no + button, no pills)', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && /^Gold Ring – Classic 5\.5 g$/.test((await page.locator('[data-testid=gallery-card]').first().innerText()).replace(/\s+/g, ' ').trim()));
 { const sw = await page.locator('[data-testid=gallery-switch]').boundingBox(); const vw = page.viewportSize().width; check('the Silver | Gold switch sits in the middle of the page', Math.abs((sw.x + sw.width / 2) - vw / 2) < 4 && sw.width < vw * 0.7, JSON.stringify(sw)); }
@@ -99,6 +100,29 @@ check('a wrong password keeps it locked', await page.locator('[data-testid=lock-
 await page.fill('[data-testid=lock-pass]', '443262'); await page.click('[data-testid=lock-submit]');
 await page.waitForSelector('[data-testid=app-lock]', { state: 'detached' });
 check('the right password unlocks the app (Home)', await page.locator('[data-testid=home-page]').isVisible());
+// ---- press and hold to pick photos, delete them for good (password asked)
+await page.click('[data-testid=open-gallery]'); await page.waitForSelector('[data-testid=gallery-page]');
+const hold = async (loc) => { const b = await loc.boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(750); await page.mouse.up(); };
+const goldBefore = await n();
+await hold(page.locator('[data-testid=gallery-photo]').first());
+check('press and hold starts picking: the bar shows 1 selected and the photo is not opened', (await page.locator('[data-testid=gallery-selected-count]').innerText()) === '1 selected' && (await page.locator('[data-testid=gallery-viewer]').count()) === 0);
+await page.locator('[data-testid=gallery-photo]').nth(1).click();
+check('tapping another photo adds it', (await page.locator('[data-testid=gallery-selected-count]').innerText()) === '2 selected');
+await page.click('[data-testid=gallery-select-cancel]');
+check('cancel leaves picking mode, nothing deleted', (await page.locator('[data-testid=gallery-select-bar]').count()) === 0 && (await n()) === goldBefore);
+await hold(page.locator('[data-testid=gallery-photo]').first());
+await page.locator('[data-testid=gallery-photo]').nth(1).click();
+await page.click('[data-testid=gallery-delete]');
+check('Delete asks for the password and warns it is for good', (await page.locator('[data-testid=delete-window]').innerText()).includes('2 photos forever'));
+await page.fill('[data-testid=delete-pass]', 'wrong'); await page.click('[data-testid=delete-confirm]');
+check('a wrong password deletes nothing', (await page.locator('[data-testid=delete-error]').count()) === 1 && (await ls(page, 'spj.stock.v1')).filter((e) => e.photoId).length === 3);
+await page.fill('[data-testid=delete-pass]', '443262'); await page.click('[data-testid=delete-confirm]');
+await page.waitForSelector('[data-testid=delete-window]', { state: 'detached' });
+await page.waitForTimeout(400);
+const stockNow = await ls(page, 'spj.stock.v1');
+check('the right password deletes the photos: they leave the Gallery (no gold photo is left, so it shows Silver)', (await n()) === 1 && (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'silver' && (await page.locator('[data-testid=gallery-select-bar]').count()) === 0, JSON.stringify([goldBefore, await n(), await page.locator('[data-testid=gallery-select-bar]').count()]));
+check('the stock entries stay (weight, tunch...) but without a photo', stockNow.length === 5 && stockNow.filter((e) => e.photoId).length === 1 && stockNow.find((e) => e.id === 'a').weight === 5.5 && !!stockNow.find((e) => e.id === 'a').updatedAt);
+check('the pictures are gone from the phone for good', await page.evaluate(async () => { const db = await new Promise((res, rej) => { const r = indexedDB.open('spj-photos', 1); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); const get = (id) => new Promise((res) => { const q = db.transaction('photos').objectStore('photos').get(id); q.onsuccess = () => res(q.result); }); return !(await get('p1')) && !(await get('p2')) && !!(await get('p3')); }));
 await browser.close();
 console.log(`${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

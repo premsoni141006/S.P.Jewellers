@@ -6,6 +6,7 @@
 //                                    for the first write). 412 when somebody else wrote in between.
 //   PUT  /v1/p/<id>               -> store one photo (image bytes)
 //   GET  /v1/p/<id>  /  HEAD      -> the photo (404 when it is not there)
+//   DELETE /v1/p/<id>             -> remove the photo for good
 //
 // Every request needs  Authorization: Bearer <SYNC_TOKEN>.  The token is a Worker secret, never in the code.
 
@@ -21,7 +22,7 @@ const MAX_PHOTO = 4 * 1024 * 1024;
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, PUT, HEAD, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PUT, HEAD, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
   'Access-Control-Expose-Headers': 'X-Etag',
   'Access-Control-Max-Age': '86400',
@@ -80,6 +81,10 @@ export default {
         const bytes = await req.arrayBuffer();
         if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO) return json({ error: 'Bad size.' }, 413);
         await env.BUCKET.put(key, bytes, { httpMetadata: { contentType: req.headers.get('Content-Type') || 'image/jpeg' } });
+        return json({ ok: true });
+      }
+      if (req.method === 'DELETE') {
+        await env.BUCKET.delete(key); // gone for good
         return json({ ok: true });
       }
       if (req.method === 'GET' || req.method === 'HEAD') {

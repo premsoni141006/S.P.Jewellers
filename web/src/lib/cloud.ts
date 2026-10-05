@@ -5,7 +5,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { fixBillNumbers, maxBillNumber, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
 import { KEYS, load, save } from './storage';
-import { getPhoto, putPhoto } from './photos';
+import { deletePhoto, getPhoto, putPhoto } from './photos';
 import { loadPicks, type Pick } from './picks';
 
 export interface CloudConfig { url: string; key: string }
@@ -146,6 +146,29 @@ async function syncPhotos(cfg: CloudConfig): Promise<boolean> {
   return changed;
 }
 
+// ---------------------------------------------------------------- deleting photos for good
+/** Removes pictures from this device now and from the cloud as soon as it can be reached (retried on the next sync). */
+export async function forgetPhotos(ids: string[]): Promise<void> {
+  const unique = [...new Set(ids)];
+  for (const id of unique) await deletePhoto(id);
+  save(KEYS.cloudPhotos, load<string[]>(KEYS.cloudPhotos, []).filter((x) => !unique.includes(x)));
+  save(KEYS.cloudPhotoDeletes, [...new Set([...load<string[]>(KEYS.cloudPhotoDeletes, []), ...unique])]);
+  const cfg = loadCloudConfig();
+  if (cfg) void flushPhotoDeletes(cfg);
+}
+
+async function flushPhotoDeletes(cfg: CloudConfig): Promise<void> {
+  const pending = load<string[]>(KEYS.cloudPhotoDeletes, []);
+  const left: string[] = [];
+  for (const id of pending) {
+    try {
+      const res = await call(cfg, `/p/${id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 404) left.push(id);
+    } catch { left.push(id); }
+  }
+  save(KEYS.cloudPhotoDeletes, left);
+}
+
 // ---------------------------------------------------------------- one full sync
 let running = false;
 let suppress = false;
@@ -159,10 +182,11 @@ export async function syncAll(cfg: CloudConfig): Promise<boolean> {
   setStatus({ state: 'syncing', error: '' });
   let changed = false;
   try {
+    await flushPhotoDeletes(cfg);
     changed = (await listCollection<Estimate>(cfg, 'history', KEYS.history, (e) => e.updatedAt, (l) => fixBillNumbers(l))) || changed;
     const n = maxBillNumber(load<Estimate[]>(KEYS.history, []));
     if (n + 1 > load<number>(KEYS.nextNo, 1)) save(KEYS.nextNo, n + 1);
-    changed = (await listCollection<StockEntry>(cfg, 'stock', KEYS.stock, (e) => e.createdAt)) || changed;
+    changed = (await listCollection<StockEntry>(cfg, 'stock', KEYS.stock, (e) => e.updatedAt ?? e.createdAt)) || changed;
     changed = (await listCollection<CashEntry>(cfg, 'cash', KEYS.cash, (e) => e.createdAt)) || changed;
     changed = (await picksCollection(cfg)) || changed;
     changed = (await wholeDoc(cfg, 'products', KEYS.products)) || changed;
@@ -190,7 +214,7 @@ export async function pingCloud(cfg: CloudConfig): Promise<string> {
   }
 }
 
-const WATCHED = new Set<string>([KEYS.history, KEYS.stock, KEYS.cash, KEYS.picks, KEYS.picksRemoved, KEYS.products, KEYS.settings]);
+const WATCHED = new Set<string>([KEYS.history, KEYS.cloudPhotoDeletes, KEYS.stock, KEYS.cash, KEYS.picks, KEYS.picksRemoved, KEYS.products, KEYS.settings]);
 
 /** Keeps the app in step with the cloud: on start, when the app comes back, when online again, and shortly after any change. */
 export function useCloudSync(reload: () => void): void {
