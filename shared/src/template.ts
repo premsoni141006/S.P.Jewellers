@@ -100,8 +100,8 @@ body {
 /* the shop name sits 4.2 mm lower, which is real space now (the tagline and the address follow it) */
 .brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; margin-top: 4.2mm; }
 .brand-logo { justify-self: start; position: relative; top: 2mm; left: 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
-.logo { display: block; height: 16mm; width: auto; }
-.logo.custom { max-width: 24mm; object-fit: contain; filter: grayscale(1) contrast(1.35); } /* an uploaded logo prints in black and white */
+.logo { display: block; height: 18.4mm; width: auto; } /* 15 % bigger than before (16 mm) */
+.logo.custom { max-width: 27.6mm; object-fit: contain; filter: grayscale(1) contrast(1.35); } /* an uploaded logo prints in black and white */
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
 .address-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 3mm; margin: 0 0 3mm; }
 .address-col { text-align: center; }
@@ -110,11 +110,13 @@ body {
 .code { text-align: center; font-size: 9.5pt; margin: 0 0 2mm; }
 /* First row of the table: customer + mobile (left, 7 columns); bill number + date (right, starting at Silver/Gold) */
 tr.meta-row td { text-align: left; white-space: normal; height: auto; padding: 1.6mm 2mm; font-size: 9.5pt; line-height: 1.4; font-variant-numeric: normal; }
-table { width: 190mm; table-layout: fixed; border-collapse: collapse; }
+table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+/* One box around the whole bill: header, table and thank-you. */
+.frame { border: 1pt solid #000; padding: 2mm; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; break-inside: avoid; }
 th, td { border: 0.75pt solid #000; padding: 0 1.4mm; height: 7mm; vertical-align: middle; font-size: 8.5pt; }
-th { background: #f0f0f0; font-weight: 700; text-align: center; font-size: 8pt; }
+th { background: #f0f0f0; font-weight: 700; text-align: center; font-size: 8pt; white-space: nowrap; padding: 0 0.6mm; }
 td { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 td.d { text-align: left; white-space: normal; overflow-wrap: anywhere; }
 td.r { text-align: right; }
@@ -150,8 +152,8 @@ function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string
   const owners = ownersOf(h);
   const logo = withLogo && h.logo
     ? (typeof h.logo === 'string'
-      ? `<img class="logo custom" src="${h.logo}" height="16mm" alt="">`
-      : `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(16 * LOGO_ASPECT * 10) / 10}mm" height="16mm" alt="">`)
+      ? `<img class="logo custom" src="${h.logo}" height="18.4mm" alt="">`
+      : `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(18.4 * LOGO_ASPECT * 10) / 10}mm" height="18.4mm" alt="">`)
     : '';
   const right = owners.length > 1
     ? owners.map((o) => `<span>${o.name ? `<b>${escapeHtml(o.name)}</b>` : ''}${o.phone ? ` M.: ${escapeHtml(o.phone)}` : ''}</span>`).join('')
@@ -222,16 +224,16 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
   ].join('');
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>Estimate</title><style>${A4_CSS}</style></head>
-<body><div class="sheet">
+<body><div class="sheet"><div class="frame">
 ${headerHtml(header)}
 <table>
-<colgroup>${COL_MM.map((w) => `<col style="width:${w}mm">`).join('')}</colgroup>
+<colgroup>${COL_MM.map((w) => `<col style="width:${Math.round((w / 190) * 10000) / 100}%">`).join('')}</colgroup>
 <thead>${metaRowHtml(est)}<tr>${PRINT_COLUMNS.map((c) => `<th>${c}</th>`).join('')}</tr></thead>
 <tbody>${rows.join('')}${summary}</tbody>
 </table>
 ${opts.note ? `<div class="note">${escapeHtml(opts.note)}</div>` : ''}
 ${thanksHtml(header)}
-</div></body></html>`;
+</div></div></body></html>`;
 }
 
 /** Printed by "Test Print" on a document (A4) printer. */
