@@ -298,6 +298,31 @@ public class SpjPrinterPlugin extends Plugin {
         }
     }
 
+    /** Colours the phone's status bar and navigation bar (the Gallery matches them to its gold / silver look). */
+    @PluginMethod
+    public void setBars(PluginCall call) {
+        final String status = call.getString("status");
+        final String nav = call.getString("nav");
+        final boolean darkIcons = Boolean.TRUE.equals(call.getBoolean("darkIcons", false));
+        if (status == null || nav == null) {
+            call.reject("Colours missing.", "BAD_ARGS");
+            return;
+        }
+        getActivity().runOnUiThread(() -> {
+            try {
+                android.view.Window w = getActivity().getWindow();
+                w.setStatusBarColor(android.graphics.Color.parseColor(status));
+                w.setNavigationBarColor(android.graphics.Color.parseColor(nav));
+                androidx.core.view.WindowInsetsControllerCompat c = new androidx.core.view.WindowInsetsControllerCompat(w, w.getDecorView());
+                c.setAppearanceLightStatusBars(darkIcons);
+                c.setAppearanceLightNavigationBars(true);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject("Could not colour the bars: " + e.getMessage(), "BARS_FAILED");
+            }
+        });
+    }
+
     /** Opens the phone's share sheet with the bill (PDF or picture) attached. */
     @PluginMethod
     public void shareFile(PluginCall call) {

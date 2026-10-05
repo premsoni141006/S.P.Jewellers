@@ -19,6 +19,7 @@ interface SpjPrinterPlugin {
   openBluetoothSettings(): Promise<void>;
   saveFile(o: { name: string; mime: string; data: string }): Promise<{ location: string }>;
   shareFile(o: { name: string; mime: string; data: string }): Promise<void>;
+  setBars(o: { status: string; nav: string; darkIcons: boolean }): Promise<void>;
 }
 
 interface CapacitorGlobal {
@@ -82,3 +83,6 @@ export const nativeSaveFile = (o: { name: string; mime: string; data: string }):
 
 /** Opens the phone's share sheet with a file (base64 data) attached. */
 export const nativeShareFile = (o: { name: string; mime: string; data: string }): Promise<void> => call((p) => p.shareFile(o));
+
+/** Colours the phone's status and navigation bars (the Android app only; a no-op elsewhere). */
+export const nativeSetBars = (o: { status: string; nav: string; darkIcons: boolean }): Promise<void> => call((p) => p.setBars(o));

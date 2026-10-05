@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type StockEntry } from '@shared';
 import { Icon } from '../components/Icon';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
+import { GALLERY_BARS, restoreBarColors, setBarColors } from '../lib/barColors';
 import { KEYS, load, save } from '../lib/storage';
 import { addPick, customersOf, loadPicks, picksOf, type Pick } from '../lib/picks';
 import type { AppStore } from '../lib/store';
@@ -165,6 +166,9 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   // The switch at the top picks the metal; the page takes that metal's look (gold or silver).
   const hasGold = all.some((e) => e.metal === 'gold');
   const active: 'gold' | 'silver' = metal ?? (hasGold || all.length === 0 ? 'gold' : 'silver');
+  // The phone's status bar and bottom bar take the page's colour (gold / silver) while the Gallery is open.
+  useEffect(() => { setBarColors(GALLERY_BARS[active]); }, [active]);
+  useEffect(() => restoreBarColors, []);
   const ofMetal = all.filter((e) => e.metal === active);
   const cats = categories.filter((c) => c.metal === active);
   const keyOf = (e: StockEntry) => `${e.metal}|${e.item.trim().toLowerCase()}`;

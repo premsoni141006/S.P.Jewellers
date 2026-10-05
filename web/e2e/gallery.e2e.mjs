@@ -24,6 +24,8 @@ await page.waitForSelector('[data-testid=gallery-page]');
 const n = () => page.locator('[data-testid=gallery-photo]').count();
 check('opens on Gold, gold look, top switch Silver | Gold, All shows compact gold cards with only the item and its weight (no price, no + button, no pills)', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && /^Gold Ring – Classic 5\.5 g$/.test((await page.locator('[data-testid=gallery-card]').first().innerText()).replace(/\s+/g, ' ').trim()));
 { const sw = await page.locator('[data-testid=gallery-switch]').boundingBox(); const vw = page.viewportSize().width; check('the Silver | Gold switch sits in the middle of the page', Math.abs((sw.x + sw.width / 2) - vw / 2) < 4 && sw.width < vw * 0.7, JSON.stringify(sw)); }
+const themeColor = () => page.getAttribute('meta[name=theme-color]', 'content');
+check('the status / address bar takes the gold page colour', (await themeColor()) === '#fffbf0', await themeColor());
 check('bottom bar has only Fav, All and Albums', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === 'Fav|All|Albums');
 await page.click('[data-testid=gallery-tab-albums]');
 check('Albums: one album per category with its photo count', (await page.locator('[data-testid=gallery-album]').count()) === 1 && (await page.locator('[data-testid=gallery-album] .gx-count').innerText()) === '2');
@@ -33,6 +35,7 @@ await page.click('[data-testid=gallery-albums-back]');
 check('back to the albums list', (await page.locator('[data-testid=gallery-album]').count()) === 1);
 await page.click('[data-testid=gallery-silver]');
 check('Silver switch: silver look and only the silver photo / albums', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'silver' && (await page.locator('[data-testid=gallery-album]').count()) === 1 && (await page.locator('[data-testid=gallery-album]').innerText()).includes('Silver Anklet'));
+check('Silver switches it to the silver colour', (await themeColor()) === '#fdfcff');
 await page.click('[data-testid=gallery-gold]');
 await page.click('[data-testid=gallery-tab-all]');
 // customer picks: + on a photo, name window, Fav list per customer
@@ -76,6 +79,7 @@ await page.waitForSelector('[data-testid=gallery-viewer]', { state: 'detached' }
 check('no lock while inside the Gallery', (await page.locator('[data-testid=app-lock]').count()) === 0);
 await page.click('[data-testid=gallery-back]');
 await page.waitForSelector('[data-testid=app-lock]');
+check('leaving the Gallery restores the house maroon bars', (await themeColor()) === '#6b0f1a');
 check('coming back from the Gallery shows the blurred lock asking for the password', /blur/.test(await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid=app-lock]')).backdropFilter || getComputedStyle(document.querySelector('[data-testid=app-lock]')).webkitBackdropFilter)));
 await page.click('[data-testid=lock-gallery]');
 await page.waitForSelector('[data-testid=gallery-page]');
