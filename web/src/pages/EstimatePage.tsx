@@ -142,6 +142,14 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
         <div className="kv"><span>Total Fine wt.</span><span>{fmtWeight(totals.fineWt)} g</span></div>
       </section>
 
+      <section className="card summary-card" data-testid="deposit-card">
+        <div className="section-title">Payment</div>
+        <NumField label="Amount deposited (₹)" value={est.advance ?? 0} onChange={(n) => update({ advance: n })} step="int" testId="deposit" />
+        <div className="kv"><span>Bill total</span><span data-testid="dep-total">{fmtRupees(totals.grandTotal)}</span></div>
+        <div className="kv"><span>Left to pay</span><b data-testid="dep-left">{fmtRupees(Math.max(0, totals.grandTotal - Math.round(est.advance ?? 0)))}</b></div>
+        <p className="muted small">The amount is saved with today's day and date when you save the bill. More can be added later from the bill.</p>
+      </section>
+
       <div className="totals-bar" data-testid="totals">
         <div className="totals-small">
           <span>Subtotal <b data-testid="subtotal">{fmtMoney(totals.subtotal)}</b></span>

@@ -181,6 +181,8 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
     p.bold(true);
     kv('BALANCE', `Rs. ${fmtMoney(balanceLeft(est))}`);
   }
-  p.bold(false).feed(4).cut();
+  p.bold(false).feed(1);
+  p.align('center').line('Thank you for visiting!').line('Please visit us again.').align('left');
+  p.feed(4).cut();
   return p.bytes();
 }

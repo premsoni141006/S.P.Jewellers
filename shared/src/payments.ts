@@ -26,3 +26,14 @@ export function validatePayment(est: Estimate, amount: number): string | null {
 export function withPayment(est: Estimate, amount: number, id: string, at: string): Estimate {
   return { ...est, payments: [...(est.payments ?? []), { id, amount: Math.round(amount), at }], updatedAt: at };
 }
+
+/**
+ * The amount typed in the bill's "deposited" card becomes a real payment record (stamped with `at`).
+ * Returns the bill unchanged when nothing was deposited.
+ */
+export function settleAdvance(est: Estimate, id: string, at: string): Estimate {
+  const amount = Math.round(est.advance ?? 0);
+  const { advance: _advance, ...rest } = est;
+  if (amount <= 0) return rest;
+  return { ...rest, payments: [...(est.payments ?? []), { id, amount, at }] };
+}

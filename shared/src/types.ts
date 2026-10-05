@@ -93,6 +93,8 @@ export interface Estimate {
   billStatus?: 'pending' | 'clear';
   /** Payments received so far (added from the final bill until it is marked Clear). */
   payments?: Payment[];
+  /** Amount deposited, typed while the bill is being made; becomes the first payment (with the day and time) when the bill is saved. */
+  advance?: number;
 }
 
 export interface ShopSettings {

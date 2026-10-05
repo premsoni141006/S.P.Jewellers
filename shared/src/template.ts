@@ -115,6 +115,10 @@ tr.sum td.lbl { text-align: left; }
 tr.sum td.mid { text-align: center; }
 tr.grand td { background: #f0f0f0; font-weight: 700; }
 .note { font-size: 8pt; margin-top: 2mm; }
+.thanks { margin-top: 5mm; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.thanks-main { font-size: 12pt; font-weight: 700; }
+.thanks-sub { font-size: 9.5pt; margin-top: 1mm; }
+.thanks-small { font-size: 8pt; margin-top: 2.5mm; color: #333; }
 @media screen {
   html { background: #d6d6d6; }
   body { padding: 24px 0; }
@@ -146,6 +150,13 @@ function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
   const owner = [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ');
   return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
 <div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
+}
+
+/** Closing lines under the table: thanks and a reminder that this is an estimate. */
+function thanksHtml(h: PrintHeader): string {
+  return `<div class="thanks"><div class="thanks-main">Thank you for visiting ${escapeHtml(h.shopName)}!</div>
+<div class="thanks-sub">It was a pleasure serving you. Please visit us again.</div>
+<div class="thanks-small">This is an estimate, not a tax invoice. Gold and silver rates change daily.</div></div>`;
 }
 
 /** One big first row of the table: customer + mobile on the left, bill number + date in the last two columns. */
@@ -201,6 +212,7 @@ ${headerHtml(header)}
 <tbody>${rows.join('')}${summary}</tbody>
 </table>
 ${opts.note ? `<div class="note">${escapeHtml(opts.note)}</div>` : ''}
+${thanksHtml(header)}
 </div></body></html>`;
 }
 
@@ -259,6 +271,7 @@ html, body { background: #fff; color: #000; width: ${widthPx}px; }
 body { font-family: Arial, "Segoe UI", sans-serif; font-size: ${fs}px; line-height: 1.2; padding: 0 ${big ? 6 : 4}px; }
 .shop { text-align: center; font-size: ${Math.round(fs * 1.6)}px; font-weight: 700; }
 .code { text-align: center; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
+.thanks-r { text-align: center; font-weight: 700; margin: 8px 0 4px; font-size: ${fs}px; }
 .owner-line { text-align: center; font-weight: 700; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
 .estimate { text-align: center; font-weight: 700; text-decoration: underline; font-size: ${Math.round(fs * 0.95)}px; margin-bottom: 2px; }
 .rmeta { margin-bottom: 8px; }
@@ -277,5 +290,6 @@ td.d { font-weight: 700; }
 ${receiptHeaderHtml(est, header)}
 ${items}
 <div class="sum">${sums}</div>
+<div class="thanks-r">Thank you for visiting!<br>Please visit us again.</div>
 </body></html>`;
 }

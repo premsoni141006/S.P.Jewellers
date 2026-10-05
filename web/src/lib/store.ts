@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  DEFAULT_SETTINGS, SAMPLE_PRODUCTS, calcEstimate, newEstimate, normalizeMaking,
+  DEFAULT_SETTINGS, SAMPLE_PRODUCTS, calcEstimate, newEstimate, newId, normalizeMaking, settleAdvance,
   type Estimate, type EstimateSummary, type Product, type ShopSettings, type StockEntry, type CashEntry,
 } from '@shared';
 import { KEYS, load, save } from './storage';
@@ -102,7 +102,8 @@ export function useAppStore() {
       number = Math.max(load<number>(KEYS.nextNo, 1), used + 1);
       save(KEYS.nextNo, number + 1);
     }
-    const stored: Estimate = { ...e, number, updatedAt: new Date().toISOString() };
+    const now = new Date().toISOString();
+    const stored: Estimate = { ...settleAdvance(e, newId(), now), number, updatedAt: now }; // an amount typed as deposited becomes the first payment
     const idx = current.findIndex((x) => x.id === stored.id);
     const next = idx >= 0 ? current.map((x, i) => (i === idx ? stored : x)) : [stored, ...current];
     writeHistory(next);

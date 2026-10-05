@@ -666,3 +666,13 @@ describe('payments on a bill', () => {
     expect(mergeBills([m], [a])[0]).toEqual(m);
   });
 });
+
+describe('bill closing lines', () => {
+  it('the A4 bill ends with thanks and the estimate note (no contact line)', () => {
+    const html = renderEstimateHtml(sampleEstimate(DEFAULT_SETTINGS), { shopName: 'S.P. JEWELLERS', shopCode: '', ownerName: 'Sandeep Soni', ownerPhone: '94166 25950', address: 'Main Bazar, Ellenabad' });
+    expect(html).toContain('Thank you for visiting S.P. JEWELLERS!');
+    expect(html).toContain('Please visit us again.');
+    expect(html).toContain('not a tax invoice');
+    expect(html).not.toContain('thanks-contact');
+  });
+});

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { DEFAULT_KARAT_TABLE, balanceLeft, fmtEstimateNo, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { DEFAULT_KARAT_TABLE, balanceLeft, settleAdvance, fmtEstimateNo, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
 import { AppBar } from './components/AppBar';
 import { Icon } from './components/Icon';
 import { Sheet, type SheetAction } from './components/Sheet';
@@ -319,7 +319,7 @@ function AppMain() {
 
       {preview && (
         <PreviewScreen
-          est={preview.fromEditor ? est : preview.est}
+          est={preview.fromEditor ? settleAdvance(est, 'preview-advance', est.updatedAt) : preview.est}
           header={header}
           onClose={() => {
             // A bill that has been made is final: leaving its preview returns to History with a fresh editor.

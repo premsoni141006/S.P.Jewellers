@@ -166,7 +166,7 @@ export interface ValidationIssue {
 }
 
 /** Problems that must be fixed before an estimate is printed. */
-export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pricing'>): ValidationIssue[] {
+export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pricing'> & { advance?: number }): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (est.items.length === 0) issues.push({ itemId: null, message: 'Add at least one item.' });
   est.items.forEach((it, idx) => {
@@ -185,6 +185,8 @@ export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 
   est.otherCharges.forEach((c, idx) => {
     if (!c.label.trim()) issues.push({ itemId: null, message: `Other charge ${idx + 1}: enter a name.` });
   });
+  if (num(est.advance) < 0) issues.push({ itemId: null, message: 'Amount deposited cannot be negative.' });
+  if (num(est.advance) > calcEstimate(est).grandTotal) issues.push({ itemId: null, message: 'Amount deposited is more than the bill total.' });
   if (num(est.pricing.gstPercent) < 0) issues.push({ itemId: null, message: 'GST % cannot be negative.' });
   return issues;
 }
