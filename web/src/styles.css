@@ -1057,3 +1057,6 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .gx-grid { align-items: start; }
 .gx-like-heart { align-self: center; width: 54px; height: 54px; margin: 0 0 calc(var(--safe-b, 0px) + 22px); border-radius: 50%; border: 0; background: #fff; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(60, 44, 10, 0.18); }
 .gx-like-heart.liked { background: linear-gradient(135deg, var(--acc-a), var(--acc-b)); color: var(--acc-ink); box-shadow: 0 6px 18px var(--acc-glow); }
+
+.gx-cur { margin: 0 auto 6px; width: fit-content; max-width: 86%; padding: 6px 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.85); border: 1px solid var(--glass-edge); font-size: 13px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-cur b { color: var(--ink); }

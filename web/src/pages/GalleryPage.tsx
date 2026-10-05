@@ -5,7 +5,7 @@ import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
 import { GALLERY_BARS, restoreBarColors, setBarColors } from '../lib/barColors';
 import { KEYS, load, save } from '../lib/storage';
-import { addPick, customersOf, loadPicks, picksOf, type Pick } from '../lib/picks';
+import { addPick, customersOf, removeSessionPick, loadPicks, picksOf, type Pick } from '../lib/picks';
 import type { AppStore } from '../lib/store';
 
 const wt = (w: number): string => `${Math.round(w * 1000) / 1000} g`;
@@ -146,8 +146,26 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   // Hearts show the picks of the customer being served now. The refresh button starts a new customer:
   // the hearts clear, while every customer's list stays in Fav.
   const [sessionStart, setSessionStart] = useState<string>(() => load<string>(KEYS.picksSession, ''));
+  // Once a name has been asked for, every further heart goes to the same customer until refresh is pressed.
+  const [customer, setCustomer] = useState<string>(() => load<string>(KEYS.picksCustomer, ''));
   const likedIds = useMemo(() => new Set(picks.filter((p) => p.at >= sessionStart).map((p) => p.entryId)), [picks, sessionStart]);
   const customers = useMemo(() => customersOf(picks), [picks]);
+  const flash = (text: string) => { setNote(text); window.setTimeout(() => setNote(''), 2200); };
+  const addFor = (name: string, entry: StockEntry) => {
+    setPicks(addPick(picks, name, entry.id));
+    flash(`Added for ${name}`);
+  };
+  // Heart tapped: a chosen piece is un-chosen; otherwise ask for the name the first time and after that
+  // save straight to the same customer.
+  const onHeart = (entry: StockEntry) => {
+    if (likedIds.has(entry.id)) {
+      setPicks(removeSessionPick(picks, entry.id, sessionStart));
+      flash('Removed from the choice');
+      return;
+    }
+    if (!customer) { setLikeFor(entry); return; }
+    addFor(customer, entry);
+  };
 
   const { categories, all } = useMemo(() => {
     const withPhoto = store.stock.filter((e) => e.photoId && e.type === 'in');
@@ -196,7 +214,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
         <div className="gx-title"><span>Gallery</span><small>{inCustomerList ? `${customers.length} customer${customers.length === 1 ? '' : 's'}` : tab === 'fav' ? favName : inAlbumList ? `${albums.length} album${albums.length === 1 ? '' : 's'}` : album ? albums.find((a) => a.key === album)?.item ?? '' : `${shown.length} piece${shown.length === 1 ? '' : 's'}`}</small></div>
         <div className="gx-actions">
           <button className={`gx-round${searchOpen ? ' on' : ''}`} onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setQ(''); }} aria-label="Search" data-testid="gallery-search-btn"><Icon name="search" size={20} /></button>
-          <button className="gx-round" onClick={() => { const now = new Date().toISOString(); setSessionStart(now); save(KEYS.picksSession, now); setNote('Ready for a new customer'); window.setTimeout(() => setNote(''), 2200); }} aria-label="New customer: clear the hearts" data-testid="gallery-refresh"><Icon name="refresh" size={20} /></button>
+          <button className="gx-round" onClick={() => { const now = new Date().toISOString(); setSessionStart(now); save(KEYS.picksSession, now); setCustomer(''); save(KEYS.picksCustomer, ''); flash('Ready for a new customer'); }} aria-label="New customer: clear the hearts" data-testid="gallery-refresh"><Icon name="refresh" size={20} /></button>
         </div>
       </header>
       <div className="gx-switch" role="group" aria-label="Metal" data-testid="gallery-switch">
@@ -204,6 +222,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
           <button key={m} className={active === m ? 'on' : ''} aria-pressed={active === m} onClick={() => { setMetal(m); setAlbum(null); setType('all'); setHideBars(false); }} data-testid={`gallery-${m}`}>{m === 'gold' ? 'Gold' : 'Silver'}</button>
         ))}
       </div>
+      {customer && <div className="gx-cur" data-testid="gallery-current">Choosing for <b>{customer}</b></div>}
       {searchOpen && (
         <div className="gx-search">
           <Icon name="search" size={18} />
@@ -247,7 +266,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
             {album && <button className="gx-crumb" onClick={() => setAlbum(null)} data-testid="gallery-albums-back"><Icon name="back" size={16} /> Albums</button>}
             {tab === 'fav' && favCustomer && <button className="gx-crumb" onClick={() => setFavCustomer(null)} data-testid="gallery-customers-back"><Icon name="back" size={16} /> Customers</button>}
             <div className="gx-grid" key={`${tab}-${album}-${active}`}>
-              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} liked={likedIds.has(e.id)} onOpen={() => setOpenIdx(i)} onLike={tab === 'fav' ? undefined : () => setLikeFor(e)} />)}
+              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} liked={likedIds.has(e.id)} onOpen={() => setOpenIdx(i)} onLike={tab === 'fav' ? undefined : () => onHeart(e)} />)}
             </div>
           </>
         )}
@@ -259,17 +278,19 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
           <button key={id} className={`gx-chip${tab === id ? ' on' : ''}`} onClick={() => { setTab(id); setAlbum(null); setFavCustomer(null); setHideBars(false); }} data-testid={`gallery-tab-${id}`}><Icon name={icon} size={19} fill={id === 'fav' ? 'currentColor' : 'none'} /><span>{label}</span></button>
         ))}
       </nav>
-      {openIdx !== null && shown[openIdx] && <Detail list={shown} index={openIdx} liked={(id) => likedIds.has(id)} onIndex={setOpenIdx} onLike={tab === 'fav' ? undefined : setLikeFor} onClose={() => setOpenIdx(null)} />}
+      {openIdx !== null && shown[openIdx] && <Detail list={shown} index={openIdx} liked={(id) => likedIds.has(id)} onIndex={setOpenIdx} onLike={tab === 'fav' ? undefined : onHeart} onClose={() => setOpenIdx(null)} />}
       {likeFor && (
         <LikeWindow
           entry={likeFor}
           picks={picks}
           onClose={() => setLikeFor(null)}
           onSave={(name) => {
-            setPicks(addPick(picks, name, likeFor.id));
+            const clean = name.trim().replace(/\s+/g, ' ');
+            const known = customersOf(picks).find((c) => c.name.toLowerCase() === clean.toLowerCase())?.name ?? clean;
+            setCustomer(known);
+            save(KEYS.picksCustomer, known);
+            addFor(known, likeFor);
             setLikeFor(null);
-            setNote(`Added for ${name}`);
-            window.setTimeout(() => setNote(''), 2200);
           }}
         />
       )}

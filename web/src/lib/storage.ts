@@ -14,6 +14,7 @@ export const KEYS = {
   auth: 'spj.auth.v1',
   picks: 'spj.picks.v1',
   picksSession: 'spj.picks.session.v1',
+  picksCustomer: 'spj.picks.customer.v1',
 } as const;
 
 export function load<T>(key: string, fallback: T): T {

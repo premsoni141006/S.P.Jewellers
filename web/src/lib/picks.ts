@@ -26,6 +26,13 @@ export function addPick(list: Pick[], customer: string, entryId: string): Pick[]
   return next;
 }
 
+/** Takes a piece back out of the picks made since `since` (the heart tapped a second time). Returns the new list. */
+export function removeSessionPick(list: Pick[], entryId: string, since: string): Pick[] {
+  const next = list.filter((p) => !(p.entryId === entryId && p.at >= since));
+  if (next.length !== list.length) save(KEYS.picks, next);
+  return next;
+}
+
 export interface CustomerPicks { key: string; name: string; count: number; last: string }
 
 /** Customers who have picked something, most recent first. */
