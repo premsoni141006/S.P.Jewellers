@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { fmtDateTime, fmtEstimateNo, fmtRupees, searchEstimates, type Estimate } from '@shared';
+import { balanceLeft, fmtDateTime, fmtEstimateNo, fmtRupees, paidTotal, searchEstimates, type Estimate } from '@shared';
 import { SearchBar } from '../components/SearchBar';
 import { summarize, type AppStore } from '../lib/store';
 
@@ -81,6 +81,7 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
               <span>{s.customerName.trim() || <span className="muted">No customer</span>}</span>
               <span className="muted">{s.itemCount} item{s.itemCount === 1 ? '' : 's'}</span>
             </div>
+            {paidTotal(e) > 0 && <div className="hist-pay muted small" data-testid="hist-pay">Paid {fmtRupees(paidTotal(e))} · Left {fmtRupees(balanceLeft(e))}</div>}
             {e.printStatus === 'failed' && e.lastPrintError && <p className="err small">{e.lastPrintError}</p>}
             <div className="hist-actions">
               <button className="btn btn-plain btn-sm" onClick={() => onView(e)} data-testid="hist-view">View</button>

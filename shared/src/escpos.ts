@@ -5,7 +5,8 @@
 import { calcEstimate } from './calc';
 import { fmtMoney, fmtPcs, fmtPercent, fmtWeight } from './format';
 import { bhavText, makingText, metalName, metalsBought } from './template';
-import { fmtDate, fmtEstimateNo } from './format';
+import { fmtDate, fmtDayDateTime, fmtEstimateNo } from './format';
+import { balanceLeft, paymentsOf } from './payments';
 import type { PrintHeader } from './template';
 import type { Estimate } from './types';
 
@@ -174,6 +175,12 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   if (est.pricing.gstEnabled) kv(`GST ${fmtPercent(est.pricing.gstPercent)}%`, fmtMoney(t.gst));
   p.line(rule).bold(true);
   kv('TOTAL', `Rs. ${fmtMoney(t.grandTotal)}`);
+  if (paymentsOf(est).length) {
+    p.bold(false);
+    paymentsOf(est).forEach((pay) => kv(`Paid ${toAscii(fmtDayDateTime(pay.at))}`.slice(0, W - 8), fmtMoney(pay.amount)));
+    p.bold(true);
+    kv('BALANCE', `Rs. ${fmtMoney(balanceLeft(est))}`);
+  }
   p.bold(false).feed(4).cut();
   return p.bytes();
 }

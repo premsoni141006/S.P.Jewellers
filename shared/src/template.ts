@@ -5,7 +5,8 @@
 // Layout follows the shop's sample: SP_Jewellers_Simple_Demo_Estimate_v2.pdf.
 
 import { calcEstimate, ratePerGram, usesTunch } from './calc';
-import { fmtDate, fmtDateTime, fmtEstimateNo, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
+import { balanceLeft, paymentsOf } from './payments';
+import { fmtDate, fmtDateTime, fmtDayDateTime, fmtEstimateNo, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
 import { LOGO_ASPECT, LOGO_BW_DATA_URI } from './logo';
 import type { Estimate } from './types';
 
@@ -184,6 +185,10 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
     ...est.otherCharges.map((c) => sum(escapeHtml(c.label.toUpperCase()), '', fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [sum(`GST ${fmtPercent(p.gstPercent)}%`, '', fmtRupeeCell(t.gst))] : []),
     sum('TOTAL', '', fmtRupeeCell(t.grandTotal), 'grand'),
+    // Money received so far (each with its day and date) and what is left.
+    ...(paymentsOf(est).length
+      ? [...paymentsOf(est).map((pay) => sum(`Paid · ${escapeHtml(fmtDayDateTime(pay.at))}`, '', fmtRupeeCell(pay.amount))), sum('BALANCE', '', fmtRupeeCell(balanceLeft(est)), 'grand')]
+      : []),
   ].join('');
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>Estimate</title><style>${A4_CSS}</style></head>
@@ -242,6 +247,9 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
     ...est.otherCharges.map((c) => line(c.label.toUpperCase(), fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [line(`GST ${fmtPercent(p.gstPercent)}%`, fmtRupeeCell(t.gst))] : []),
     line('TOTAL', fmtRupeeCell(t.grandTotal), 'grand'),
+    ...(paymentsOf(est).length
+      ? [...paymentsOf(est).map((pay) => line(`Paid ${fmtDayDateTime(pay.at)}`, fmtRupeeCell(pay.amount))), line('BALANCE', fmtRupeeCell(balanceLeft(est)), 'grand')]
+      : []),
   ].join('');
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>

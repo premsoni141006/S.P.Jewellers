@@ -62,6 +62,15 @@ export interface EstimatePricing {
 
 export type PrintStatus = 'not_printed' | 'printed' | 'failed';
 
+/** Money received from the customer against a bill. Records are never edited or removed; each one lowers the balance. */
+export interface Payment {
+  id: string;
+  /** Whole rupees. */
+  amount: number;
+  /** When it was received (ISO); the day name and date shown on the bill come from this. */
+  at: string;
+}
+
 export interface Estimate {
   id: string;
   /** 0 until the estimate is saved for the first time. */
@@ -80,6 +89,8 @@ export interface Estimate {
   lastPrintError: string | null;
   /** Set from the preview: 'pending' shows a red dot in history, 'clear' a green one, unset shows no dot. */
   billStatus?: 'pending' | 'clear';
+  /** Payments received so far (added from the final bill until it is marked Clear). */
+  payments?: Payment[];
 }
 
 export interface ShopSettings {

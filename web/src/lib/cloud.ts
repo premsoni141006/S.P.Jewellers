@@ -3,7 +3,7 @@
 // Merging is by id, so two devices never overwrite each other's records (see shared/src/sync.ts).
 
 import { useEffect, useSyncExternalStore } from 'react';
-import { fixBillNumbers, maxBillNumber, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
+import { fixBillNumbers, maxBillNumber, mergeBills, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
 import { KEYS, load, save } from './storage';
 import { deletePhoto, getPhoto, putPhoto } from './photos';
 import { loadPicks, type Pick } from './picks';
@@ -82,11 +82,11 @@ async function syncDoc<T>(cfg: CloudConfig, name: string, merge: (remote: T | nu
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const byId = <T extends { id: string }>(l: T[]) => [...l].sort((a, b) => a.id.localeCompare(b.id));
 
-function listCollection<T extends { id: string }>(cfg: CloudConfig, name: string, key: string, stamp: (x: T) => string, post?: (l: T[]) => T[]): Promise<boolean> {
+function listCollection<T extends { id: string }>(cfg: CloudConfig, name: string, key: string, stamp: (x: T) => string, post?: (l: T[]) => T[], join?: (l: T[], r: T[]) => T[]): Promise<boolean> {
   let changed = false;
   return syncDoc<{ items: T[] }>(cfg, name, (remote) => {
     const local = load<T[]>(key, []);
-    let merged = mergeById(local, remote?.items ?? [], stamp);
+    let merged = join ? join(local, remote?.items ?? []) : mergeById(local, remote?.items ?? [], stamp);
     if (post) merged = post(merged);
     const pushRemote = !remote || !same(byId(merged), byId(remote.items));
     return { merged: { items: merged }, pushRemote, applyLocal: () => { if (!same(byId(merged), byId(local))) { save(key, merged); changed = true; } } };
@@ -183,7 +183,7 @@ export async function syncAll(cfg: CloudConfig): Promise<boolean> {
   let changed = false;
   try {
     await flushPhotoDeletes(cfg);
-    changed = (await listCollection<Estimate>(cfg, 'history', KEYS.history, (e) => e.updatedAt, (l) => fixBillNumbers(l))) || changed;
+    changed = (await listCollection<Estimate>(cfg, 'history', KEYS.history, (e) => e.updatedAt, (l) => fixBillNumbers(l), mergeBills)) || changed;
     const n = maxBillNumber(load<Estimate[]>(KEYS.history, []));
     if (n + 1 > load<number>(KEYS.nextNo, 1)) save(KEYS.nextNo, n + 1);
     changed = (await listCollection<StockEntry>(cfg, 'stock', KEYS.stock, (e) => e.updatedAt ?? e.createdAt)) || changed;

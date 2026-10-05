@@ -34,3 +34,24 @@ export function fixBillNumbers(list: Estimate[], now: string = new Date().toISOS
 
 /** Highest bill number in use, so the next one is always free. */
 export const maxBillNumber = (list: Estimate[]): number => list.reduce((m, e) => Math.max(m, e.number), 0);
+
+/**
+ * Two copies of the same bill (from two devices): the newer one wins, but payments from both are kept
+ * (nothing received is ever lost) and a bill that is Clear on either device stays Clear.
+ */
+export function mergeBill(local: Estimate, remote: Estimate): Estimate {
+  const base = remote.updatedAt > local.updatedAt ? remote : local;
+  const byId = new Map<string, { id: string; amount: number; at: string }>();
+  for (const p of [...(remote.payments ?? []), ...(local.payments ?? [])]) byId.set(p.id, p);
+  const payments = [...byId.values()].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+  const clear = local.billStatus === 'clear' || remote.billStatus === 'clear';
+  return { ...base, ...(payments.length ? { payments } : {}), ...(clear ? { billStatus: 'clear' as const } : {}) };
+}
+
+/** Joins two lists of bills by id using {@link mergeBill}. */
+export function mergeBills(local: Estimate[], remote: Estimate[]): Estimate[] {
+  const out = new Map<string, Estimate>();
+  for (const r of remote) out.set(r.id, r);
+  for (const l of local) { const r = out.get(l.id); out.set(l.id, r ? mergeBill(l, r) : l); }
+  return [...out.values()];
+}

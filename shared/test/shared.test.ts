@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, PRINT_COLUMNS, buildEstimateEscPosText, buildTestPrintEscPos, calcEstimate, calcItem,
   newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
-  searchStock, searchCash, mergeById, fixBillNumbers, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
+  searchStock, searchCash, paidTotal, balanceLeft, validatePayment, withPayment, mergeBills, mergeById, fixBillNumbers, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
 } from '../src';
 
 const pricing = { ...pricingFromSettings(DEFAULT_SETTINGS), silverRate: 100000, silverRateUnit: 'per_kg' as const, goldRate: 100000, goldRateUnit: 'per_10g' as const, roundGrandTotal: false };
@@ -624,5 +624,45 @@ describe('cloud sync merge', () => {
     expect(fixed.find((e) => e.id === 'b')?.number).toBe(7);
     expect(fixed.find((e) => e.id === 'c')?.number).toBe(6);
     expect(fixBillNumbers(fixed)).toEqual(fixed);
+  });
+});
+
+describe('payments on a bill', () => {
+  const bill = () => ({ ...sampleEstimate(DEFAULT_SETTINGS), id: 'b1', number: 3 });
+  it('paid and balance follow each payment', () => {
+    let e = bill();
+    const total = calcEstimate(e).grandTotal;
+    expect(balanceLeft(e)).toBe(total);
+    e = withPayment(e, 1000, 'p1', '2026-10-05T10:00:00Z');
+    e = withPayment(e, 500, 'p2', '2026-10-06T10:00:00Z');
+    expect(paidTotal(e)).toBe(1500);
+    expect(balanceLeft(e)).toBe(total - 1500);
+    expect((e.payments ?? []).map((p) => p.id)).toEqual(['p1', 'p2']);
+  });
+  it('rules: saved bill, whole rupees, not above the balance, nothing after Clear', () => {
+    const e = bill();
+    const total = calcEstimate(e).grandTotal;
+    expect(validatePayment({ ...e, number: 0 }, 100)).toMatch(/Save the bill/);
+    expect(validatePayment(e, 0)).toMatch(/Enter the amount/);
+    expect(validatePayment(e, 10.5)).toMatch(/whole rupees/);
+    expect(validatePayment(e, total + 1)).toMatch(/is left/);
+    expect(validatePayment(e, total)).toBeNull();
+    expect(validatePayment({ ...e, billStatus: 'clear' }, 100)).toMatch(/Clear/);
+  });
+  it('the printed bill lists each payment with its day and date, then the balance', () => {
+    const e = withPayment(bill(), 2000, 'p1', '2026-10-05T10:12:00');
+    const html = renderEstimateHtml(e, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(html).toMatch(/Paid · Mon, 05 Oct, 2026/);
+    expect(html).toContain('BALANCE');
+    expect(renderEstimateHtml(bill(), { shopName: 'S.P. JEWELLERS', shopCode: '' })).not.toContain('BALANCE');
+  });
+  it('merging two devices keeps every payment and a Clear stays Clear', () => {
+    const base = bill();
+    const a = withPayment(base, 100, 'pa', '2026-10-05T10:00:00Z');
+    const b = { ...withPayment(base, 200, 'pb', '2026-10-05T11:00:00Z'), billStatus: 'clear' as const };
+    const m = mergeBills([a], [b])[0];
+    expect((m.payments ?? []).map((p) => p.id)).toEqual(['pa', 'pb']);
+    expect(m.billStatus).toBe('clear');
+    expect(mergeBills([m], [a])[0]).toEqual(m);
   });
 });

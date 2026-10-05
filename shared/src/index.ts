@@ -9,3 +9,4 @@ export * from './stock';
 export * from './search';
 export * from './pdf';
 export * from './sync';
+export * from './payments';

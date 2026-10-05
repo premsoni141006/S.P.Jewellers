@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { fmtEstimateNo, fmtWeight, newId, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { balanceLeft, fmtEstimateNo, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
 import { AppBar } from './components/AppBar';
 import { Icon } from './components/Icon';
 import { Sheet, type SheetAction } from './components/Sheet';
@@ -326,6 +326,14 @@ function AppMain() {
             if (preview.saved) { setEst(blankEstimate(settings)); setPreview(null); setTab('history'); } else setPreview(null);
           }}
           onNotice={setToast}
+          onAddPayment={(amount) => {
+            const target = preview.fromEditor ? est : preview.est;
+            if (validatePayment(target, amount)) return;
+            const stored = saveEstimate(withPayment(target, amount, newId(), new Date().toISOString()));
+            if (preview.fromEditor || target.id === est.id) setEst(stored);
+            setPreview({ ...preview, est: stored });
+            setToast(`${fmtRupees(amount)} added. Left ${fmtRupees(balanceLeft(stored))}.`);
+          }}
           onEnsureSaved={() => {
             if (!preview.fromEditor) return preview.est;
             const issues = validateEstimate(est);
@@ -341,7 +349,7 @@ function AppMain() {
             const fromEditor = preview.fromEditor;
             const target = fromEditor ? est : preview.est;
             if (target.billStatus === 'clear') return; // a Clear bill is final
-            if (status === 'clear' && !(await confirm('Mark this bill Clear?', 'Once a bill is Clear it cannot be changed again.', 'Yes, Clear'))) return;
+            if (status === 'clear' && !(await confirm('Mark this bill Clear?', balanceLeft(target) > 0 ? `${fmtRupees(balanceLeft(target))} is still left on this bill. Once a bill is Clear it cannot be changed again.` : 'Once a bill is Clear it cannot be changed again.', 'Yes, Clear'))) return;
             const issues = validateEstimate(target);
             if (issues.length) {
               setPreview(null);
