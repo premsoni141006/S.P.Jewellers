@@ -1046,3 +1046,14 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .gx-content:has(.gx-customers), .gx-content:has(.gx-empty) { padding-top: 10px; }
 
 .gx-detail { z-index: 12; }
+
+/* Gallery v6: compact cards (photo, name, weight) with only a heart to choose */
+.gx-pphoto { aspect-ratio: 1.45; }
+.gx-pcard { padding: 4px; border-radius: 16px; }
+.gx-pinfo { min-height: 0; padding: 7px 6px 6px; gap: 1px; flex: none; }
+.gx-pname { min-height: 0; font-size: 12.5px; padding-right: 0; -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; overflow: hidden; }
+.gx-pwt { font-size: 17px; }
+.gx-heart { width: 32px; height: 32px; }
+.gx-grid { align-items: start; }
+.gx-like-heart { align-self: center; width: 54px; height: 54px; margin: 0 0 calc(var(--safe-b, 0px) + 22px); border-radius: 50%; border: 0; background: #fff; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(60, 44, 10, 0.18); }
+.gx-like-heart.liked { background: linear-gradient(135deg, var(--acc-a), var(--acc-b)); color: var(--acc-ink); box-shadow: 0 6px 18px var(--acc-glow); }

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { fmtRupees, ratePerGram, type StockEntry } from '@shared';
+import { type StockEntry } from '@shared';
 import { Icon } from '../components/Icon';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
@@ -19,7 +19,7 @@ const TYPES: Array<{ id: string; label: string; icon: string; words: RegExp }> =
 ];
 const typeOf = (item: string): string => TYPES.find((t) => t.words.test(item))?.id ?? 'other';
 
-function Card({ entry, index, price, liked, badge, onOpen, onLike }: { entry: StockEntry; index: number; price: number; liked: boolean; badge?: string; onOpen: () => void; onLike?: () => void }) {
+function Card({ entry, index, liked, onOpen, onLike }: { entry: StockEntry; index: number; liked: boolean; onOpen: () => void; onLike?: () => void }) {
   const url = usePhotoUrl(entry.photoId);
   return (
     <div className="gx-pcard" style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }} data-testid="gallery-card">
@@ -27,14 +27,11 @@ function Card({ entry, index, price, liked, badge, onOpen, onLike }: { entry: St
         <button type="button" className="gx-open" onClick={onOpen} data-testid="gallery-photo" aria-label={`${entry.item} ${wt(entry.weight)}`}>
           {url ? <img src={url} alt="" loading="lazy" /> : <span className="gx-blank" />}
         </button>
-        {badge && <span className="gx-badge-pill" data-testid="gallery-pill">{badge === 'BESTSELLER' ? '★' : '🔥'} {badge}</span>}
         {onLike && <button type="button" className={`gx-heart${liked ? ' liked' : ''}`} onClick={onLike} aria-label="A customer likes this" data-testid="gallery-heart"><Icon name="heart" size={18} fill={liked ? 'currentColor' : 'none'} /></button>}
       </div>
       <div className="gx-pinfo">
         <span className="gx-pname">{entry.item}</span>
         <span className="gx-pwt">{wt(entry.weight)}</span>
-        <span className="gx-pprice">{price > 0 ? fmtRupees(price) : ''}</span>
-        {onLike && <button type="button" className={`gx-pplus${liked ? ' liked' : ''}`} onClick={onLike} aria-label="Customer likes this" data-testid="gallery-plus">{liked ? '✓' : entry.metal === 'silver' ? <Icon name="cart" size={22} /> : '+'}</button>}
       </div>
     </div>
   );
@@ -108,7 +105,7 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
         <button className="gx-round gx-next" onClick={() => onIndex(index + 1)} disabled={index === list.length - 1} aria-label="Next" data-testid="gallery-next"><Icon name="next" size={22} /></button>
       </div>
       <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt">{wt(entry.weight)}</span></div>
-      {onLike && <button type="button" className={`gx-like-big${liked(entry.id) ? ' liked' : ''}`} onClick={() => onLike(entry)} data-testid="gallery-detail-plus">{liked(entry.id) ? '✓ Liked' : '+ Customer likes this'}</button>}
+      {onLike && <button type="button" className={`gx-like-heart${liked(entry.id) ? ' liked' : ''}`} onClick={() => onLike(entry)} aria-label="A customer likes this" data-testid="gallery-detail-plus"><Icon name="heart" size={26} fill={liked(entry.id) ? 'currentColor' : 'none'} /></button>}
     </div>
   );
 }
@@ -146,23 +143,6 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   const [note, setNote] = useState('');
   const likedIds = useMemo(() => new Set(picks.map((p) => p.entryId)), [picks]);
   const customers = useMemo(() => customersOf(picks), [picks]);
-  // BESTSELLER: the piece most customers picked; TRENDING: other pieces picked in the last week.
-  const badges = useMemo(() => {
-    const m = new Map<string, string>();
-    const counts = new Map<string, number>();
-    for (const p of picks) counts.set(p.entryId, (counts.get(p.entryId) ?? 0) + 1);
-    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (top) m.set(top[0], 'BESTSELLER');
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-    for (const p of picks) if (p.at >= weekAgo && !m.has(p.entryId)) m.set(p.entryId, 'TRENDING');
-    return m;
-  }, [picks]);
-  const { settings } = store;
-  // Approximate value at today's rate: weight x tunch x rate (making charges are not included).
-  const priceOf = (e: StockEntry): number => {
-    const rate = e.metal === 'gold' ? ratePerGram(settings.defaultGoldRate, settings.goldRateUnit) : ratePerGram(settings.defaultSilverRate, settings.silverRateUnit);
-    return Math.round(e.weight * (e.tunch > 0 ? e.tunch : 100) / 100 * rate);
-  };
 
   const { categories, all } = useMemo(() => {
     const withPhoto = store.stock.filter((e) => e.photoId && e.type === 'in');
@@ -259,7 +239,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
             {album && <button className="gx-crumb" onClick={() => setAlbum(null)} data-testid="gallery-albums-back"><Icon name="back" size={16} /> Albums</button>}
             {tab === 'fav' && favCustomer && <button className="gx-crumb" onClick={() => setFavCustomer(null)} data-testid="gallery-customers-back"><Icon name="back" size={16} /> Customers</button>}
             <div className="gx-grid" key={`${tab}-${album}-${active}`}>
-              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} price={priceOf(e)} liked={likedIds.has(e.id)} badge={badges.get(e.id)} onOpen={() => setOpenIdx(i)} onLike={tab === 'fav' ? undefined : () => setLikeFor(e)} />)}
+              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} liked={likedIds.has(e.id)} onOpen={() => setOpenIdx(i)} onLike={tab === 'fav' ? undefined : () => setLikeFor(e)} />)}
             </div>
           </>
         )}

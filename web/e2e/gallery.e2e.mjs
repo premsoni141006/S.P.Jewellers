@@ -22,7 +22,7 @@ await page.waitForSelector('[data-testid=home-page]');
 await page.click('[data-testid=open-gallery]');
 await page.waitForSelector('[data-testid=gallery-page]');
 const n = () => page.locator('[data-testid=gallery-photo]').count();
-check('opens on Gold, gold look, top switch Silver | Gold, All shows the gold cards with item, weight and price', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && /Gold Ring – Classic 5\.5 g ₹/.test((await page.locator('[data-testid=gallery-card]').first().innerText()).replace(/\s+/g, ' ')));
+check('opens on Gold, gold look, top switch Silver | Gold, All shows compact gold cards with only the item and its weight (no price, no + button, no pills)', (await page.getAttribute('[data-testid=gallery-page]', 'data-theme')) === 'gold' && (await page.locator('[data-testid=gallery-switch] button').allInnerTexts()).join('|') === 'Silver|Gold' && (await n()) === 2 && /^Gold Ring – Classic 5\.5 g$/.test((await page.locator('[data-testid=gallery-card]').first().innerText()).replace(/\s+/g, ' ').trim()));
 { const sw = await page.locator('[data-testid=gallery-switch]').boundingBox(); const vw = page.viewportSize().width; check('the Silver | Gold switch sits in the middle of the page', Math.abs((sw.x + sw.width / 2) - vw / 2) < 4 && sw.width < vw * 0.7, JSON.stringify(sw)); }
 check('bottom bar has only Fav, All and Albums', (await page.locator('[data-testid=gallery-nav] button').allInnerTexts()).join('|') === 'Fav|All|Albums');
 await page.click('[data-testid=gallery-tab-albums]');
@@ -36,19 +36,19 @@ check('Silver switch: silver look and only the silver photo / albums', (await pa
 await page.click('[data-testid=gallery-gold]');
 await page.click('[data-testid=gallery-tab-all]');
 // customer picks: + on a photo, name window, Fav list per customer
-await page.locator('[data-testid=gallery-plus]').nth(0).click();
+await page.locator('[data-testid=gallery-heart]').nth(0).click();
 check('+ on a photo opens a window asking the customer name; Add is off until a name is typed', await page.locator('[data-testid=like-window]').isVisible() && await page.locator('[data-testid=like-save]').isDisabled());
 await page.fill('[data-testid=like-name]', 'Ramesh Kumar'); await page.click('[data-testid=like-save]');
 await page.waitForSelector('[data-testid=like-window]', { state: 'detached' });
-check('the photo shows it was picked (tick) and a note confirms', (await page.locator('[data-testid=gallery-plus]').nth(0).innerText()) === '✓' && (await page.locator('[data-testid=gallery-note]').innerText()).includes('Ramesh Kumar'));
-await page.locator('[data-testid=gallery-plus]').nth(1).click();
+check('the heart turns gold once picked and a note confirms', (await page.locator('[data-testid=gallery-heart]').nth(0).getAttribute('class')).includes('liked') && (await page.locator('[data-testid=gallery-note]').innerText()).includes('Ramesh Kumar'));
+await page.locator('[data-testid=gallery-heart]').nth(1).click();
 check('earlier customers are offered as quick buttons', (await page.locator('[data-testid=like-known]').allInnerTexts()).join('|') === 'Ramesh Kumar');
 await page.fill('[data-testid=like-name]', 'sunita devi'); await page.click('[data-testid=like-save]');
 await page.waitForSelector('[data-testid=like-window]', { state: 'detached' });
 await page.click('[data-testid=gallery-tab-fav]');
 check('Fav lists every customer who has picked something, with their count', (await page.locator('[data-testid=gallery-customer]').count()) === 2 && (await page.locator('[data-testid=gallery-customers]').innerText()).replace(/\s+/g, ' ').includes('Ramesh Kumar 1'));
 await page.locator('[data-testid=gallery-customer]').filter({ hasText: 'Ramesh' }).click();
-check('tapping a customer shows all their selected photos (no + there)', (await n()) === 1 && (await page.locator('[data-testid=gallery-plus]').count()) === 0 && (await page.locator('.gx-title small').innerText()).toLowerCase().includes('ramesh kumar'), JSON.stringify([await n(), await page.locator('[data-testid=gallery-plus]').count(), await page.locator('.gx-title small').innerText()]));
+check('tapping a customer shows all their selected photos (no heart there)', (await n()) === 1 && (await page.locator('[data-testid=gallery-heart]').count()) === 0 && (await page.locator('.gx-title small').innerText()).toLowerCase().includes('ramesh kumar'), JSON.stringify([await n(), await page.locator('[data-testid=gallery-heart]').count(), await page.locator('.gx-title small').innerText()]));
 await page.click('[data-testid=gallery-customers-back]');
 check('back to the customers list', (await page.locator('[data-testid=gallery-customer]').count()) === 2);
 await page.reload(); await page.waitForSelector('[data-testid=home-page]'); await page.click('[data-testid=open-gallery]'); await page.click('[data-testid=gallery-tab-fav]');
