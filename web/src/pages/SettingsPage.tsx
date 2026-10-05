@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { NumField } from '../components/NumField';
 import type { AppStore } from '../lib/store';
 import { changePassword } from '../lib/auth';
-import { loadCloudConfig, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
+import { DEFAULT_CLOUD_URL, loadCloudConfig, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
 import { fmtDateTime } from '@shared';
 
 interface Props {
@@ -16,7 +16,7 @@ interface Props {
 function CloudCard({ onSynced }: { onSynced: () => void }) {
   const cfg = loadCloudConfig();
   const st = useCloudStatus();
-  const [url, setUrl] = useState(cfg?.url ?? '');
+  const [url, setUrl] = useState(cfg?.url ?? DEFAULT_CLOUD_URL);
   const [key, setKey] = useState(cfg?.key ?? '');
   const [msg, setMsg] = useState('');
   const connect = async () => {

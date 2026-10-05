@@ -10,6 +10,9 @@ import { loadPicks, type Pick } from './picks';
 
 export interface CloudConfig { url: string; key: string }
 
+/** The shop's Worker address (not a secret; only the key opens it). Pre-filled in Settings → Cloud backup. */
+export const DEFAULT_CLOUD_URL = 'https://spj-cloud.premsoni119220.workers.dev';
+
 export const loadCloudConfig = (): CloudConfig | null => {
   const c = load<CloudConfig | null>(KEYS.cloud, null);
   if (c?.url && c.key) return c;
