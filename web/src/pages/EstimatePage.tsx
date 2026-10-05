@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ProductPicker } from '../components/ProductPicker';
 import { ProductsModal } from '../components/ProductsModal';
-import { calcEstimate, cloneItem, defaultTunch, usesTunch, fmtMoney, fmtPercent, fmtRupees, fmtWeight,
+import { calcEstimate, cloneItem, defaultTunch, DEFAULT_KARAT, purityForKarat, usesTunch, fmtMoney, fmtPercent, fmtRupees, fmtWeight,
   itemFromProduct, newItem, switchMakingMode, type EstimateItem,
 } from '@shared';
 import { Icon } from '../components/Icon';
@@ -73,7 +73,7 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
               <span className="item-no">Item {idx + 1}</span>
               <div className="seg" role="group" aria-label="Metal">
                 {(['gold', 'silver'] as const).map((m) => (
-                  <button key={m} className={it.metal === m ? 'on' : ''} onClick={() => it.metal !== m && setItem(it.id, { metal: m, tunch: defaultTunch(m), labourRate: 0, labourMode: m === 'gold' ? 'percent' : 'fixed' })} aria-pressed={it.metal === m}>
+                  <button key={m} className={it.metal === m ? 'on' : ''} onClick={() => it.metal !== m && setItem(it.id, { metal: m, tunch: m === 'gold' ? purityForKarat(settings.karatTable, DEFAULT_KARAT) : defaultTunch(m), karat: m === 'gold' ? DEFAULT_KARAT : undefined, labourRate: 0, labourMode: m === 'gold' ? 'percent' : 'fixed' })} aria-pressed={it.metal === m}>
                     {m === 'gold' ? 'Gold' : 'Silver'}
                   </button>
                 ))}
@@ -97,7 +97,9 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
                   </button>
                 </span>
               </label>
-              {usesTunch(it, est.pricing) && <NumField label="Tunch" value={it.tunch} onChange={(n) => setItem(it.id, { tunch: n })} step="percent" suffix="%" testId="tunch" />}
+              {it.metal === 'gold' && it.karat !== undefined
+                ? <NumField label="Karat" value={it.karat} onChange={(n) => setItem(it.id, { karat: n, tunch: purityForKarat(settings.karatTable, n) })} step="int" suffix="K" testId="karat" />
+                : usesTunch(it, est.pricing) && <NumField label="Tunch" value={it.tunch} onChange={(n) => setItem(it.id, { tunch: n })} step="percent" suffix="%" testId="tunch" />}
             </div>
             <div className="grid-3">
               <NumField label="G. Wt." value={it.grossWt} onChange={(n) => setItem(it.id, { grossWt: n })} step="weight" suffix="g" testId="gross" />

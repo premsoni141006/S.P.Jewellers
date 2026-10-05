@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { balanceLeft, fmtEstimateNo, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { DEFAULT_KARAT_TABLE, balanceLeft, fmtEstimateNo, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
 import { AppBar } from './components/AppBar';
 import { Icon } from './components/Icon';
 import { Sheet, type SheetAction } from './components/Sheet';
@@ -305,12 +305,12 @@ function AppMain() {
 
       {ratesOpen && (
         <RatesModal
-          initial={{ silverRate: settings.defaultSilverRate, silverUnit: settings.silverRateUnit, goldRate: settings.defaultGoldRate, goldUnit: settings.goldRateUnit, goldKarat: settings.goldKarat ?? '24' }}
+          initial={{ silverRate: settings.defaultSilverRate, silverUnit: settings.silverRateUnit, goldRate: settings.defaultGoldRate, goldUnit: settings.goldRateUnit, karatTable: { ...DEFAULT_KARAT_TABLE, ...settings.karatTable } }}
           onClose={() => setRatesOpen(false)}
           onSave={(v) => {
-            store.setSettings({ ...settings, defaultSilverRate: v.silverRate, silverRateUnit: v.silverUnit, defaultGoldRate: v.goldRate, goldRateUnit: v.goldUnit, goldKarat: v.goldKarat });
+            store.setSettings({ ...settings, defaultSilverRate: v.silverRate, silverRateUnit: v.silverUnit, defaultGoldRate: v.goldRate, goldRateUnit: v.goldUnit, karatTable: v.karatTable });
             // An estimate that has not been saved yet takes today's rates too; saved ones keep theirs.
-            if (est.number === 0) store.setEst({ ...est, pricing: { ...est.pricing, silverRate: v.silverRate, silverRateUnit: v.silverUnit, goldRate: v.goldRate, goldRateUnit: v.goldUnit, goldKarat: v.goldKarat } });
+            if (est.number === 0) store.setEst({ ...est, pricing: { ...est.pricing, silverRate: v.silverRate, silverRateUnit: v.silverUnit, goldRate: v.goldRate, goldRateUnit: v.goldUnit } });
             setRatesOpen(false);
             setToast('Rates updated.');
           }}

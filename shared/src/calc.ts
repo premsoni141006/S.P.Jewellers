@@ -175,6 +175,7 @@ export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 
     if (!(num(it.grossWt) > 0)) issues.push({ itemId: it.id, message: `${row}: G. Wt. must be more than 0.` });
     if (num(it.lessWt) < 0) issues.push({ itemId: it.id, message: `${row}: Less Wt. cannot be negative.` });
     if (num(it.lessWt) > num(it.grossWt)) issues.push({ itemId: it.id, message: `${row}: Less Wt. is more than G. Wt.` });
+    if (it.metal === 'gold' && it.karat !== undefined && (!(num(it.karat) > 0) || num(it.karat) > 24)) issues.push({ itemId: it.id, message: `${row}: Karat must be between 1 and 24.` });
     if (num(it.tunch) < 0 || num(it.tunch) > 100) issues.push({ itemId: it.id, message: `${row}: Tunch must be between 0 and 100.` });
     if (num(it.pcs) < 0 || !Number.isInteger(num(it.pcs))) issues.push({ itemId: it.id, message: `${row}: Pcs must be a whole number.` });
     if (num(it.labourRate) < 0) issues.push({ itemId: it.id, message: `${row}: Making charge cannot be negative.` });

@@ -30,6 +30,8 @@ export interface EstimateItem {
   grossWt: number;
   lessWt: number;
   tunch: number;
+  /** Gold only: the karat the owner typed (24, 22, 18...). Printed as "24K"; `tunch` holds the purity % that karat has in the Rates table. */
+  karat?: number;
   /** @deprecated Wastage was removed; old saved values are ignored. Always 0 for new items. */
   wastage: number;
   pcs: number;
@@ -107,8 +109,10 @@ export interface ShopSettings {
   ownerFamily?: string;
   phone: string;
   gstNumber: string;
-  /** Which gold the gold rate is for: 22K (no tunch asked) or 24K (tunch 92 by default). */
+  /** @deprecated Replaced by karatTable. */
   goldKarat?: '22' | '24';
+  /** Purity % of each gold karat (set in the Rates pop-up), e.g. { "24": 100, "22": 92, "18": 75 }. */
+  karatTable?: Record<string, number>;
   defaultGoldRate: number;
   goldRateUnit: RateUnit;
   defaultSilverRate: number;

@@ -33,7 +33,7 @@ const open = async () => {
 const connect = async (page, url = CLOUD, key = KEY) => {
   if (!(await page.locator('[data-testid=cloud-thin], [data-testid=cloud-card]').count())) await page.click('[data-testid=open-settings]');
   if (!(await page.locator('[data-testid=cloud-card]').count())) {
-    for (let i = 0; i < 5; i++) await page.click('[data-testid=cloud-thin]');
+    for (let i = 0; i < 5; i++) await page.locator('[data-testid=cloud-thin]').dispatchEvent('click');
     await page.fill('[data-testid=cloud-gate-pass]', '200614');
     await page.click('[data-testid=cloud-gate-ok]');
   }
@@ -47,7 +47,7 @@ const connect = async (page, url = CLOUD, key = KEY) => {
 const reveal = async (pg) => {
   if (await pg.locator('[data-testid=cloud-card]').count()) return;
   if (!(await pg.locator('[data-testid=cloud-thin]').count())) await pg.click('[data-testid=open-settings]');
-  for (let i = 0; i < 5; i++) await pg.click('[data-testid=cloud-thin]');
+  for (let i = 0; i < 5; i++) await pg.locator('[data-testid=cloud-thin]').dispatchEvent('click');
   await pg.fill('[data-testid=cloud-gate-pass]', '200614'); await pg.click('[data-testid=cloud-gate-ok]');
   await pg.waitForSelector('[data-testid=cloud-card]');
 };
@@ -69,9 +69,9 @@ await A.evaluate(async (bill) => {
 await A.reload(); await A.waitForSelector('[data-testid=home-page]');
 await A.click('[data-testid=open-settings]');
 check('the Cloud backup card is hidden; only a thin spj-img card shows', (await A.locator('[data-testid=cloud-card]').count()) === 0 && (await A.locator('[data-testid=cloud-thin]').innerText()) === 'spj-img');
-for (let i = 0; i < 4; i++) await A.click('[data-testid=cloud-thin]');
+for (let i = 0; i < 4; i++) await A.locator('[data-testid=cloud-thin]').dispatchEvent('click');
 check('four taps do nothing', (await A.locator('[data-testid=cloud-gate]').count()) === 0);
-await A.click('[data-testid=cloud-thin]');
+await A.locator('[data-testid=cloud-thin]').dispatchEvent('click');
 check('the fifth tap in a row opens the password window', await A.locator('[data-testid=cloud-gate]').isVisible());
 await A.fill('[data-testid=cloud-gate-pass]', '000000'); await A.click('[data-testid=cloud-gate-ok]');
 check('a wrong password keeps the card hidden', (await A.locator('[data-testid=cloud-gate-error]').count()) === 1 && (await A.locator('[data-testid=cloud-card]').count()) === 0);

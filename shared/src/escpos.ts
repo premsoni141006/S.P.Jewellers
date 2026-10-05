@@ -161,7 +161,7 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   est.items.forEach((it, i) => {
     const c = t.items[i];
     p.bold(true).line(it.description.slice(0, W)).bold(false);
-    p.line(cols([fmtWeight(it.grossWt), fmtWeight(it.lessWt), fmtWeight(c.netWt), (it.metal === 'gold' && est.pricing.goldKarat === '22') ? '22K' : fmtPercent(it.tunch), fmtPcs(it.pcs)], a));
+    p.line(cols([fmtWeight(it.grossWt), fmtWeight(it.lessWt), fmtWeight(c.netWt), (it.metal === 'gold' && it.karat) ? `${Math.round(it.karat * 10) / 10}K` : (it.metal === 'gold' && est.pricing.goldKarat === '22') ? '22K' : fmtPercent(it.tunch), fmtPcs(it.pcs)], a));
     p.line(cols([it.labourMode === 'percent' ? makingText(it, c.labour) : fmtMoney(c.labour), metalName(it.metal), fmtMoney(c.amount)], b));
   });
   p.line(rule);

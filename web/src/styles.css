@@ -1079,3 +1079,5 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .pay-sum { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .pay-sum span { display: flex; justify-content: space-between; }
 .hist-pay { margin-top: 2px; }
+
+.karat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }

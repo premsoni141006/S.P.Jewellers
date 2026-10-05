@@ -42,7 +42,7 @@ export function pricingFromSettings(s: ShopSettings): EstimatePricing {
   return {
     goldRate: s.defaultGoldRate,
     goldRateUnit: s.goldRateUnit,
-    goldKarat: s.goldKarat ?? '24',
+    goldKarat: '24', // the old 22K-rate switch is gone: karat and purity come from the Rates table
     silverRate: s.defaultSilverRate,
     silverRateUnit: s.silverRateUnit,
     fineFormula: s.fineFormula,
@@ -52,17 +52,29 @@ export function pricingFromSettings(s: ShopSettings): EstimatePricing {
   };
 }
 
-/** Tunch every new item starts with: gold 92, silver 100. */
+/** Purity % of each gold karat until the owner changes them in the Rates pop-up. */
+export const DEFAULT_KARAT_TABLE: Record<string, number> = { '24': 100, '22': 92, '21': 87.5, '20': 83.3, '18': 75, '14': 58.5 };
+export const KARATS = Object.keys(DEFAULT_KARAT_TABLE).map(Number);
+export const DEFAULT_KARAT = 22;
+
+/** Purity % for a karat: from the owner's table, otherwise karat / 24. */
+export function purityForKarat(table: Record<string, number> | undefined, karat: number): number {
+  const v = (table ?? DEFAULT_KARAT_TABLE)[String(karat)];
+  return typeof v === 'number' && v > 0 ? v : Math.round((karat / 24) * 10000) / 100;
+}
+
+/** Tunch every new item starts with: gold 92 (22K), silver 100. */
 export const defaultTunch = (metal: Metal): number => (metal === 'gold' ? 92 : 100);
 
-export function newItem(_s: ShopSettings, metal: Metal = 'silver'): EstimateItem {
+export function newItem(s: ShopSettings, metal: Metal = 'silver'): EstimateItem {
   return {
     id: newId(),
     description: '',
     metal,
     grossWt: 0,
     lessWt: 0,
-    tunch: defaultTunch(metal),
+    tunch: metal === 'gold' ? purityForKarat(s.karatTable, DEFAULT_KARAT) : defaultTunch(metal),
+    ...(metal === 'gold' ? { karat: DEFAULT_KARAT } : {}),
     wastage: 0,
     pcs: 1,
     // Gold: making charge is a percentage; Silver: a rupee amount. Nothing is pre-filled.
@@ -77,7 +89,8 @@ export function itemFromProduct(p: Product, base: EstimateItem): EstimateItem {
     ...base,
     description: p.name,
     // The metal is chosen on the item when the estimate is made, not stored on the product.
-    tunch: defaultTunch(base.metal),
+    tunch: base.tunch,
+    karat: base.karat,
     wastage: 0,
   };
 }

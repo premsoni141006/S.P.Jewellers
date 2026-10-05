@@ -43,7 +43,7 @@ await page.screenshot({ path: SHOTS + 'web-home.png' });
 await page.click('[data-testid=tile-rates]');
 await page.waitForSelector('[data-testid=rates-modal]');
 check('rates pop-up: page behind is blurred', /blur/.test(await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid=rates-backdrop]')).backdropFilter || getComputedStyle(document.querySelector('[data-testid=rates-backdrop]')).webkitBackdropFilter || '')));
-check('rates pop-up: only Silver then Gold', (await page.locator('[data-testid=rates-modal] h3').allTextContents()).join(',') === 'Silver,Gold' && (await page.locator('[data-testid=rates-modal] input').count()) === 2);
+check('rates pop-up: Silver, Gold, then the gold karat table', (await page.locator('[data-testid=rates-modal] h3').allTextContents()).join(',') === 'Silver,Gold,Gold karat → purity %' && (await page.locator('[data-testid=rates-modal] input').count()) === 8);
 await page.screenshot({ path: SHOTS + 'web-rates.png' });
 check('rates are fixed per 10 grams: no unit switch, existing 231/g shows as 2310 and 7200/g as 72000', (await page.locator('[data-testid=rates-modal] .seg').count()) === 0 && (await page.inputValue('[data-testid=silver-input]')) === '2310' && (await page.inputValue('[data-testid=gold-input]')) === '72000' && (await page.locator('[data-testid=rates-modal]').innerText()).includes('per 10 grams') && !(await page.locator('[data-testid=rates-modal]').innerText()).includes('Per gram'));
 await page.fill('[data-testid=gold-input]', '73000');

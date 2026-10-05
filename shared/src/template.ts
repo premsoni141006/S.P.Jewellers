@@ -40,7 +40,8 @@ export const PRINT_COLUMNS = [
 
 /** The bill always shows at least this many item rows (blank rows fill the rest); more items = more rows. */
 /** Tunch as printed; 22K gold has none (the rate is already for 22K), so it shows "22K". */
-function tunchText(it: { metal: string; tunch: number }, pricing: Estimate['pricing']): string {
+function tunchText(it: { metal: string; tunch: number; karat?: number }, pricing: Estimate['pricing']): string {
+  if (it.metal === 'gold' && it.karat) return `${Math.round(it.karat * 10) / 10}K`; // gold shows its karat (24K, 22K...)
   return usesTunch({ metal: it.metal as 'gold' | 'silver' }, pricing) ? fmtPercent(it.tunch) : '22K';
 }
 
