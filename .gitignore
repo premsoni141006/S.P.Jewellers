@@ -11,3 +11,4 @@ mobile/android/app/src/main/assets/public/
 mobile/android/local.properties
 *.log
 .wrangler/
+.cloud-key
