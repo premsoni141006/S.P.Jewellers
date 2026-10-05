@@ -1126,3 +1126,14 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 @keyframes layer-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 @keyframes layer-dim { from { opacity: 0; } to { opacity: 1; } }
 .toast { animation: rise 0.28s var(--ease-out) both; }
+
+.desc-edit { flex: none; width: 36px; height: 36px; margin-right: 2px; border: 0; border-radius: 50%; background: transparent; color: var(--muted, #8a7f72); display: inline-flex; align-items: center; justify-content: center; }
+.desc-edit:active { background: rgba(0, 0, 0, 0.06); }
+.desc-input { width: 100%; }
+
+/* Gallery photo zoom */
+.gx-stage { overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.gx-stage img { transform-origin: center; will-change: transform; -webkit-user-drag: none; }
+.gx-zoomctl { position: absolute; top: 10px; right: 12px; z-index: 3; display: flex; flex-direction: column; gap: 8px; }
+.gx-zoomctl .gx-round:disabled { opacity: 0.3; }
+.gx-zoomlevel { font: 700 13px/1 inherit; }

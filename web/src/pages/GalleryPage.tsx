@@ -138,10 +138,77 @@ function AlbumCard({ album, index, onOpen }: { album: { item: string; photos: St
   );
 }
 
+const MAX_ZOOM = 5;
+
 function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockEntry[]; index: number; liked: (id: string) => boolean; onIndex: (i: number) => void; onLike?: (e: StockEntry) => void; onClose: () => void }) {
   const entry = list[index];
   const url = usePhotoUrl(entry.photoId);
   useBackLayer(true, onClose);
+
+  // Zoom: pinch with two fingers, double-tap (or double-click), the + / - buttons, or the mouse wheel.
+  // When zoomed in, one finger drags the picture around. (The page itself cannot be zoomed, so this is built on pointer events.)
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [busy, setBusy] = useState(false); // a finger is down: follow it without easing
+  const img = useRef<HTMLImageElement>(null);
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d0: number; z0: number } | null>(null);
+  const start = useRef({ x: 0, y: 0 });
+  const moved = useRef(false);
+  const tap = useRef<{ t: number; x: number; y: number } | null>(null);
+  useEffect(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, [index]); // a new photo starts fitted
+
+  const clampPan = (p: { x: number; y: number }, z: number) => {
+    const el = img.current;
+    const mx = el ? ((z - 1) * el.offsetWidth) / 2 : 0;
+    const my = el ? ((z - 1) * el.offsetHeight) / 2 : 0;
+    return { x: Math.max(-mx, Math.min(mx, p.x)), y: Math.max(-my, Math.min(my, p.y)) };
+  };
+  const zoomTo = (next: number) => {
+    const z = Math.max(1, Math.min(MAX_ZOOM, next));
+    setZoom(z);
+    setPan((p) => (z === 1 ? { x: 0, y: 0 } : clampPan(p, z)));
+  };
+  const dist = () => { const [a, b] = [...pts.current.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  const isButton = (e: React.PointerEvent) => !!(e.target as Element).closest('button');
+
+  const down = (e: React.PointerEvent) => {
+    if (isButton(e)) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    moved.current = false;
+    start.current = { x: e.clientX, y: e.clientY };
+    setBusy(true);
+    if (pts.current.size === 2) pinch.current = { d0: Math.max(1, dist()), z0: zoom };
+  };
+  const move = (e: React.PointerEvent) => {
+    const prev = pts.current.get(e.pointerId);
+    if (!prev) return;
+    pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.current.size === 2 && pinch.current) {
+      moved.current = true;
+      zoomTo(pinch.current.z0 * (dist() / pinch.current.d0));
+    } else if (pts.current.size === 1) {
+      if (Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 8) moved.current = true;
+      if (zoom > 1) setPan((p) => clampPan({ x: p.x + e.clientX - prev.x, y: p.y + e.clientY - prev.y }, zoom));
+    }
+  };
+  const up = (e: React.PointerEvent) => {
+    if (!pts.current.has(e.pointerId)) return;
+    const wasOne = pts.current.size === 1;
+    pts.current.delete(e.pointerId);
+    if (pts.current.size < 2) pinch.current = null;
+    if (pts.current.size === 0) setBusy(false);
+    if (e.type === 'pointerup' && wasOne && !moved.current) {
+      const now = Date.now();
+      const prev = tap.current;
+      if (prev && now - prev.t < 320 && Math.hypot(prev.x - e.clientX, prev.y - e.clientY) < 30) {
+        tap.current = null;
+        zoomTo(zoom > 1.05 ? 1 : 2.5); // double-tap: zoom in, or back to fitted
+      } else tap.current = { t: now, x: e.clientX, y: e.clientY };
+    }
+  };
+
   return (
     <div className="gx-detail" role="dialog" aria-modal="true" aria-label="Photo" data-testid="gallery-viewer">
       <header className="gx-top">
@@ -149,10 +216,23 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
         <div className="gx-title"><span>{index + 1} / {list.length}</span></div>
         <span className="gx-round gx-ghost" aria-hidden="true" />
       </header>
-      <div className="gx-stage">
-        <button className="gx-round gx-prev" onClick={() => onIndex(index - 1)} disabled={index === 0} aria-label="Previous" data-testid="gallery-prev"><Icon name="back" size={22} /></button>
-        {url && <img src={url} alt="" />}
-        <button className="gx-round gx-next" onClick={() => onIndex(index + 1)} disabled={index === list.length - 1} aria-label="Next" data-testid="gallery-next"><Icon name="next" size={22} /></button>
+      <div
+        className="gx-stage"
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        onWheel={(e) => zoomTo(zoom * (e.deltaY < 0 ? 1.12 : 0.89))}
+        data-testid="gallery-stage"
+      >
+        {zoom === 1 && <button className="gx-round gx-prev" onClick={() => onIndex(index - 1)} disabled={index === 0} aria-label="Previous" data-testid="gallery-prev"><Icon name="back" size={22} /></button>}
+        {url && <img ref={img} src={url} alt="" draggable={false} data-testid="gallery-zoom-img" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transition: busy ? 'none' : 'transform 0.22s cubic-bezier(0.22, 0.9, 0.3, 1)' }} />}
+        {zoom === 1 && <button className="gx-round gx-next" onClick={() => onIndex(index + 1)} disabled={index === list.length - 1} aria-label="Next" data-testid="gallery-next"><Icon name="next" size={22} /></button>}
+        <div className="gx-zoomctl" role="group" aria-label="Zoom">
+          <button className="gx-round" onClick={() => zoomTo(zoom * 1.5)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in" data-testid="gallery-zoom-in"><Icon name="zoomin" size={20} /></button>
+          <button className="gx-round" onClick={() => zoomTo(zoom / 1.5)} disabled={zoom <= 1} aria-label="Zoom out" data-testid="gallery-zoom-out"><Icon name="zoomout" size={20} /></button>
+          {zoom > 1 && <button className="gx-round gx-zoomlevel" onClick={() => zoomTo(1)} aria-label="Back to fitted" data-testid="gallery-zoom-reset">{Math.round(zoom * 10) / 10}×</button>}
+        </div>
       </div>
       <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt">{wt(entry.weight)}</span></div>
       {onLike && <button type="button" className={`gx-like-heart${liked(entry.id) ? ' liked' : ''}`} onClick={() => onLike(entry)} aria-label="A customer likes this" data-testid="gallery-detail-plus"><Icon name="heart" size={26} fill={liked(entry.id) ? 'currentColor' : 'none'} /></button>}

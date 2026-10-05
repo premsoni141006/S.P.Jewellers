@@ -24,6 +24,11 @@ const card = page.locator('[data-testid=item-card]').first();
 await card.getByRole('button', { name: 'Gold', exact: true }).click();
 await page.waitForFunction(() => document.querySelector('[data-testid=karat]')?.value === '22', null, { timeout: 3000 }).catch(() => {});
 check('a gold item shows Karat (22 by default), not Tunch', (await card.locator('[data-testid=karat]').count()) === 1 && (await card.locator('[data-testid=tunch]').count()) === 0 && (await card.locator('[data-testid=karat]').inputValue()) === '22', await card.locator('[data-testid=karat]').inputValue().catch(() => 'none'));
+// the item name can be typed over (the pencil beside the chooser)
+await card.locator('[data-testid=desc-edit]').click();
+await card.locator('[data-testid=desc-input]').fill('Heavy Gold Ring 22K');
+await card.locator('[data-testid=desc-input]').press('Enter');
+check('the item name can be edited by hand', (await card.locator('[data-testid=desc]').getAttribute('data-value')) === 'Heavy Gold Ring 22K' && (await card.locator('[data-testid=desc-input]').count()) === 0);
 await card.locator('[data-testid=gross]').fill('10');
 await page.waitForFunction(() => document.querySelector('[data-testid=amount]')?.textContent.replace(/\s/g, '') === '₹66,240', null, { timeout: 3000 }).catch(() => {});
 check('22K uses 92 %: 10 g -> ₹66,240', (await flat(card.locator('[data-testid=amount]'))) === '₹66,240', await flat(card.locator('[data-testid=amount]')));

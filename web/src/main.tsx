@@ -10,7 +10,7 @@ initKeyboardFocus();
 // iPhone Safari ignores user-scalable=no: block its pinch gestures directly (double-tap zoom is off through touch-action).
 // (The bill preview has its own zoom, built on pointer events, which this does not touch.)
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault());
-document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && !(e.target as Element | null)?.closest?.('.preview-body')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && !(e.target as Element | null)?.closest?.('.preview-body, .gx-stage')) e.preventDefault(); }, { passive: false });
 async function start(): Promise<void> {
   // Development only: ?demo=stock loads sample stock to try Stock OUT.
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === 'stock') {

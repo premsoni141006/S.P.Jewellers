@@ -81,6 +81,24 @@ check('scrolling back up brings them back', (await page.locator('.gx.hide-bars')
 await page.evaluate(() => { document.querySelector('[data-testid=gallery-body]').scrollTop = 0; });
 await page.locator('[data-testid=gallery-photo]').first().click();
 check('tapping a photo opens it on its own page (big, with its item and weight)', await page.locator('[data-testid=gallery-viewer]').isVisible() && (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('5.5 g'));
+// ---- zoom the photo
+const scaleOf = async () => page.evaluate(() => { const m = new DOMMatrix(getComputedStyle(document.querySelector('[data-testid=gallery-zoom-img]')).transform); return Math.round(m.a * 100) / 100; });
+const txOf = async () => page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('[data-testid=gallery-zoom-img]')).transform).e);
+check('the photo opens fitted (1x) with + and - buttons', (await scaleOf()) === 1 && await page.locator('[data-testid=gallery-zoom-in]').isVisible() && await page.locator('[data-testid=gallery-zoom-out]').isDisabled());
+await page.click('[data-testid=gallery-zoom-in]'); await page.waitForTimeout(400);
+check('+ zooms in (1.5x) and a 1.5× reset button appears; previous / next step aside', (await scaleOf()) === 1.5 && (await page.locator('[data-testid=gallery-zoom-reset]').innerText()).includes('1.5') && (await page.locator('[data-testid=gallery-next]').count()) === 0);
+await page.click('[data-testid=gallery-zoom-in]'); await page.click('[data-testid=gallery-zoom-in]'); await page.waitForTimeout(400);
+const box = await page.locator('[data-testid=gallery-stage]').boundingBox();
+const before = await txOf();
+await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 - 40, box.y + box.height / 2, { steps: 4 }); await page.mouse.up();
+await page.waitForTimeout(300);
+check('when zoomed in, dragging moves the picture', (await txOf()) < before - 20, `${before} -> ${await txOf()}`);
+await page.click('[data-testid=gallery-zoom-reset]'); await page.waitForTimeout(400);
+check('reset brings it back to fitted', (await scaleOf()) === 1 && (await txOf()) === 0);
+await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(400);
+check('double-tap zooms to 2.5x', (await scaleOf()) === 2.5, String(await scaleOf()));
+await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(400);
+check('double-tap again goes back to fitted', (await scaleOf()) === 1);
 await page.click('[data-testid=gallery-next]');
 check('next shows the following piece', (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('6 g'));
 await page.click('[data-testid=gallery-viewer-back]');

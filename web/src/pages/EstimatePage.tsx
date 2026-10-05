@@ -19,6 +19,8 @@ interface Props {
 
 export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Props) {
   const [pickFor, setPickFor] = useState<string | null>(null);
+  // The item whose name is being typed (the pencil beside the item chooser).
+  const [editName, setEditName] = useState<string | null>(null);
   // "+" in the picker opens the Products pop-up right here; closing it brings the picker back.
   const [managingFor, setManagingFor] = useState<string | null>(null);
   const { est, setEst, settings, products } = store;
@@ -91,10 +93,27 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
               <label className="field">
                 <span className="field-label">Description</span>
                 <span className="field-box">
-                  <button type="button" className={`picker-field${it.description ? '' : ' empty'}`} onClick={() => setPickFor(it.id)} data-testid="desc" data-value={it.description} aria-haspopup="dialog">
-                    <span>{it.description || 'Choose an item'}</span>
-                    <Icon name="chevron" size={18} />
-                  </button>
+                  {editName === it.id ? (
+                    <input
+                      className="desc-input"
+                      autoFocus
+                      value={it.description}
+                      onChange={(e) => setItem(it.id, { description: e.target.value })}
+                      onBlur={() => setEditName(null)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      placeholder="Item name"
+                      autoComplete="off"
+                      data-testid="desc-input"
+                    />
+                  ) : (
+                    <>
+                      <button type="button" className={`picker-field${it.description ? '' : ' empty'}`} onClick={() => setPickFor(it.id)} data-testid="desc" data-value={it.description} aria-haspopup="dialog">
+                        <span>{it.description || 'Choose an item'}</span>
+                        <Icon name="chevron" size={18} />
+                      </button>
+                      <button type="button" className="desc-edit" onClick={() => setEditName(it.id)} aria-label="Edit the item name" data-testid="desc-edit"><Icon name="draft" size={17} /></button>
+                    </>
+                  )}
                 </span>
               </label>
               {it.metal === 'gold' && it.karat !== undefined
