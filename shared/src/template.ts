@@ -121,7 +121,6 @@ tr.grand td { background: #f0f0f0; font-weight: 700; }
 .thanks { margin-top: 5mm; text-align: center; page-break-inside: avoid; break-inside: avoid; }
 .thanks-main { font-size: 12pt; font-weight: 700; }
 .thanks-sub { font-size: 9.5pt; margin-top: 1mm; }
-.thanks-small { font-size: 8pt; margin-top: 2.5mm; color: #333; }
 @media screen {
   html { background: #d6d6d6; }
   body { padding: 24px 0; }
@@ -166,11 +165,10 @@ function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
 <div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
 }
 
-/** Closing lines under the table: thanks and a reminder that this is an estimate. */
-function thanksHtml(h: PrintHeader): string {
-  return `<div class="thanks"><div class="thanks-main">Thank you for visiting ${escapeHtml(h.shopName)}!</div>
-<div class="thanks-sub">It was a pleasure serving you. Please visit us again.</div>
-<div class="thanks-small">This is an estimate, not a tax invoice. Gold and silver rates change daily.</div></div>`;
+/** Closing lines under the table: a thank-you (no shop name, no estimate note). */
+function thanksHtml(_h: PrintHeader): string {
+  return `<div class="thanks"><div class="thanks-main">Thank you for visiting!</div>
+<div class="thanks-sub">It was a pleasure serving you. Please visit us again.</div></div>`;
 }
 
 /** One big first row of the table: customer + mobile on the left, bill number + date in the last two columns. */
