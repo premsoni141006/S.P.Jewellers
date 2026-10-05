@@ -1089,3 +1089,40 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 
 .login-mark { height: 84px; display: flex; align-items: center; justify-content: center; }
 .login-letters { font: 700 44px/1 Georgia, 'Times New Roman', serif; letter-spacing: 6px; background: linear-gradient(135deg, #f6dc9b, #d9a93a 55%, #9a6a12); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 2px 10px rgba(217, 169, 58, 0.25); max-width: 100%; overflow: hidden; white-space: nowrap; }
+
+/* ===== Smooth motion v2: pop-ups and new screens glide in as one piece, no piece-by-piece popping ===== */
+:root { --ease-out: cubic-bezier(0.22, 0.9, 0.3, 1); --ease-in: cubic-bezier(0.4, 0, 1, 1); }
+
+/* A new page fades in as a whole (opacity only: a transform here would shift fixed bars while it plays).
+   The old per-card staggered "rise" is gone: cards appearing one after another looked like flicker. */
+.page, .home { animation: page-fade 0.26s var(--ease-out) both; }
+.page > .card, .page > .row-actions, .home-panel > * { animation: none; }
+@keyframes page-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Pop-ups: the dim and the blur grow together (never a sudden blurred flash), the card rises and settles. */
+.modal-backdrop, .sheet-backdrop { animation: popup-unlock 0s linear 0.3s forwards, backdrop-grow 0.26s var(--ease-out) both; }
+@keyframes backdrop-grow {
+  from { background-color: rgba(40, 8, 14, 0); -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px); }
+  to { background-color: rgba(40, 8, 14, 0.38); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+}
+@keyframes backdrop-shrink {
+  from { background-color: rgba(40, 8, 14, 0.38); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  to { background-color: rgba(40, 8, 14, 0); -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px); }
+}
+.modal-backdrop.leaving, .sheet-backdrop.leaving { animation: backdrop-shrink 0.18s var(--ease-in) forwards; pointer-events: none; }
+.rates-card { animation: card-rise 0.32s var(--ease-out) both; will-change: transform, opacity; }
+.modal-backdrop.leaving .rates-card { animation: card-sink 0.18s var(--ease-in) forwards; }
+@keyframes card-rise { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes card-sink { to { opacity: 0; transform: translateY(12px) scale(0.98); } }
+.sheet { animation: sheet-in 0.32s var(--ease-out) both; will-change: transform; }
+.sheet-backdrop.leaving .sheet { animation: sheet-out 0.2s var(--ease-in) forwards; }
+
+/* Full-screen layers (final bill, Gallery, photo page, locks, Gallery windows) enter smoothly too. */
+.preview { animation: layer-up 0.32s var(--ease-out) both; }
+.gx { animation: layer-up 0.34s var(--ease-out) both; }
+.gx-detail { animation: page-fade 0.26s var(--ease-out) both; }
+.gx-modal, .app-lock { animation: layer-dim 0.26s var(--ease-out) both; }
+.gx-modal-card { animation: card-rise 0.32s var(--ease-out) both; }
+@keyframes layer-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@keyframes layer-dim { from { opacity: 0; } to { opacity: 1; } }
+.toast { animation: rise 0.28s var(--ease-out) both; }
