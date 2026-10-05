@@ -14,7 +14,7 @@ Everything also stays on each device, so the app still works with no internet.
    cd cloud
    npm install
    npx wrangler login                      # opens the browser, log in to Cloudflare
-   npx wrangler r2 bucket create spj-data  # the bucket that holds the data
+   npx wrangler r2 bucket create spj-img  # the bucket that holds the data
    npx wrangler secret put SYNC_TOKEN      # type a long secret key when asked; this is the "cloud key"
    npx wrangler deploy                     # prints the address, e.g. https://spj-cloud.<account>.workers.dev
    ```
