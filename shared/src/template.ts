@@ -92,7 +92,7 @@ body {
 .top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
 /* Brand row: logo at the far left, shop name in the middle */
 .brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; position: relative; top: 4.2mm; } /* shop name and logo sit down onto the empty line above the address (visual only: nothing else moves) */
-.brand-logo { justify-self: start; position: relative; top: 2mm; } /* the logo's visual centre lines up with the middle of the shop name */
+.brand-logo { justify-self: start; position: relative; top: 2mm; left: 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
 .logo { display: block; height: 16mm; width: auto; }
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
 .address-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 3mm; margin: 0 0 3mm; }

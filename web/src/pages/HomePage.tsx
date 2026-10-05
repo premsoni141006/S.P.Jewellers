@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { calcEstimate, fmtDate, fmtEstimateNo, fmtRupees, searchEstimates, searchProducts, type Estimate } from '@shared';
+import { calcEstimate, fmtDateTime, fmtEstimateNo, fmtRupees, searchEstimates, searchProducts, type Estimate } from '@shared';
 import { Icon } from '../components/Icon';
 import { Ornament } from '../components/AppBar';
 import { summarize, type AppStore } from '../lib/store';
@@ -95,7 +95,7 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
                     <b>{fmtEstimateNo(e.number)}</b>
                     <b className="result-amt">{fmtRupees(calcEstimate(e).grandTotal)}</b>
                   </span>
-                  <span className="muted small">{fmtDate(e.createdAt)}{e.customerName.trim() ? ` · ${e.customerName.trim()}` : ''}{(e.customerLocality ?? '').trim() ? ` · ${(e.customerLocality ?? '').trim()}` : ''}</span>
+                  <span className="muted small">{fmtDateTime(e.createdAt)}{e.customerName.trim() ? ` · ${e.customerName.trim()}` : ''}{(e.customerLocality ?? '').trim() ? ` · ${(e.customerLocality ?? '').trim()}` : ''}</span>
                   <span className="muted small result-items">{names.slice(0, 2).join(', ')}{names.length > 2 ? ` +${names.length - 2} more` : ''}</span>
                 </button>
               );
@@ -118,7 +118,7 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
                     <li key={e.id}>
                       <button className="recent-row" onClick={() => onView(e)}>
                         <span className="recent-ico"><Icon name="estimate" size={22} /></span>
-                        <span className="recent-l"><b>{fmtEstimateNo(s.number)}</b><span className="muted small">{fmtDate(s.updatedAt)}</span></span>
+                        <span className="recent-l"><b>{fmtEstimateNo(s.number)}</b><span className="muted small">{fmtDateTime(s.updatedAt)}</span></span>
                         <span className="recent-r"><b>{fmtRupees(s.grandTotal)}</b><span className={`small st-${tone}`}>{label}</span></span>
                         <span className="recent-go" aria-hidden="true"><Icon name="next" size={16} /></span>
                       </button>
