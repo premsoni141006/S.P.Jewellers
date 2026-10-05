@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  DEFAULT_SETTINGS, SAMPLE_PRODUCTS, calcEstimate, newEstimate, newId, normalizeMaking, settleAdvance,
+  SAMPLE_PRODUCTS, calcEstimate, newEstimate, newId, normalizeMaking, settleAdvance,
   type Estimate, type EstimateSummary, type Product, type ShopSettings, type StockEntry, type CashEntry,
 } from '@shared';
 import { KEYS, load, save } from './storage';
 import { DEFAULT_PRINTER, type PrinterConfig } from './printing';
 import { markEdited } from './cloud';
+import { shopDefaults } from './auth';
 
 /** Older saved estimates: Gold making becomes a %, Silver making a rupee total (same rupees as before); manual amounts (no longer editable) are cleared. */
 const withFixedMaking = (e: Estimate): Estimate => ({ ...e, items: e.items.map((i) => ({ ...normalizeMaking(i, e.pricing), amountOverride: null })) });
@@ -32,11 +33,12 @@ export function summarize(e: Estimate): EstimateSummary {
 
 /** Fills in the shop details for settings saved before they were known; never overwrites edits. */
 function upgradeSettings(saved: Partial<ShopSettings>): ShopSettings {
-  const merged = { ...DEFAULT_SETTINGS, ...saved, shopCode: '', defaultLabourMode: 'fixed' as const }; // the second header line was removed for good
-  if (!saved.address || saved.address === 'Elnabaad') merged.address = DEFAULT_SETTINGS.address;
-  if (!saved.phone) merged.phone = DEFAULT_SETTINGS.phone;
-  if (!saved.ownerName) merged.ownerName = DEFAULT_SETTINGS.ownerName;
-  if (!saved.ownerFamily) merged.ownerFamily = DEFAULT_SETTINGS.ownerFamily;
+  const base = shopDefaults();
+  const merged = { ...base, ...saved, shopCode: '', defaultLabourMode: 'fixed' as const }; // the second header line was removed for good
+  if (!saved.address || saved.address === 'Elnabaad') merged.address = base.address;
+  if (!saved.phone) merged.phone = base.phone;
+  if (!saved.ownerName) merged.ownerName = base.ownerName;
+  if (!saved.ownerFamily && base.ownerFamily) merged.ownerFamily = base.ownerFamily;
   return merged;
 }
 

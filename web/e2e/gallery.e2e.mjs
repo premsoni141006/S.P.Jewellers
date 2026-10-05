@@ -97,7 +97,7 @@ await page.click('[data-testid=gallery-back]');
 await page.waitForSelector('[data-testid=app-lock]');
 await page.fill('[data-testid=lock-pass]', 'wrong'); await page.click('[data-testid=lock-submit]');
 check('a wrong password keeps it locked', await page.locator('[data-testid=lock-error]').isVisible());
-await page.fill('[data-testid=lock-pass]', '443262'); await page.click('[data-testid=lock-submit]');
+await page.fill('[data-testid=lock-pass]', '3262'); await page.click('[data-testid=lock-submit]');
 await page.waitForSelector('[data-testid=app-lock]', { state: 'detached' });
 check('the right password unlocks the app (Home)', await page.locator('[data-testid=home-page]').isVisible());
 // ---- press and hold to pick photos, delete them for good (password asked)
@@ -116,7 +116,7 @@ await page.click('[data-testid=gallery-delete]');
 check('Delete asks for the password and warns it is for good', (await page.locator('[data-testid=delete-window]').innerText()).includes('2 photos forever'));
 await page.fill('[data-testid=delete-pass]', 'wrong'); await page.click('[data-testid=delete-confirm]');
 check('a wrong password deletes nothing', (await page.locator('[data-testid=delete-error]').count()) === 1 && (await ls(page, 'spj.stock.v1')).filter((e) => e.photoId).length === 3);
-await page.fill('[data-testid=delete-pass]', '443262'); await page.click('[data-testid=delete-confirm]');
+await page.fill('[data-testid=delete-pass]', '3262'); await page.click('[data-testid=delete-confirm]');
 await page.waitForSelector('[data-testid=delete-window]', { state: 'detached' });
 await page.waitForTimeout(400);
 const stockNow = await ls(page, 'spj.stock.v1');

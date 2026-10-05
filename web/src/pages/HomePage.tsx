@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { calcEstimate, fmtDateTime, fmtEstimateNo, fmtRupees, searchEstimates, searchProducts, type Estimate } from '@shared';
 import { Icon } from '../components/Icon';
+import { ShopLogo } from '../components/ShopLogo';
 import { Ornament } from '../components/AppBar';
 import { summarize, type AppStore } from '../lib/store';
 
@@ -41,8 +42,8 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
           <button className="bar-btn" onClick={onSettings} aria-label="Settings" data-testid="open-settings"><Icon name="settings" size={22} /></button>
         </div>
         <div className="home-brand">
-          <img className="home-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="" width="96" height="96" />
-          <div className="wordmark" data-testid="home-brand">{settings.shopName || 'S.P. JEWELLERS'}</div>
+          <ShopLogo size={96} logoData={settings.logoData} name={settings.shopName} />
+          <div className="wordmark" data-testid="home-brand">{settings.shopName}</div>
           <Ornament />
         </div>
 

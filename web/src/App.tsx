@@ -15,6 +15,7 @@ import { PreviewScreen } from './pages/PreviewScreen';
 import { LoginScreen } from './pages/LoginScreen';
 import { RangePage } from './pages/RangePage';
 import { useCloudSync } from './lib/cloud';
+import { activeShop } from './lib/shop';
 import { GalleryPage } from './pages/GalleryPage';
 import { AppLock } from './components/AppLock';
 import { StockEntryPage } from './pages/StockEntryPage';
@@ -47,7 +48,12 @@ function AppMain() {
     ownerName: settings.ownerName?.trim() ?? '',
     ownerPhone: settings.phone.trim(),
     address: settings.address.trim(),
-    logo: settings.printLogo !== false,
+    // A shop with two owners prints both.
+    owners: (settings.ownerName2 || settings.phone2)
+      ? [{ name: settings.ownerName?.trim() ?? '', phone: settings.phone.trim() }, { name: settings.ownerName2?.trim() ?? '', phone: settings.phone2?.trim() ?? '' }]
+      : undefined,
+    // The uploaded logo (printed in black and white); S.P. Jewellers falls back to its own logo, other shops to none.
+    logo: settings.printLogo === false ? false : (settings.logoData || activeShop() === 'SPJ'),
   };
 
   const [tab, setTab] = useState<Tab>('home');

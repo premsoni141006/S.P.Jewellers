@@ -22,7 +22,9 @@ export interface PrintHeader {
   /** Older single-line form "Name · M. number"; only used when ownerName / ownerPhone are not given. */
   ownerLine?: string;
   /** Print the black-and-white shop logo above the shop name (A4 only). Default off for callers that omit it. */
-  logo?: boolean;
+  logo?: boolean | string;
+  /** More than one owner: each is printed as "Name  M.: number" at the right of the address line. */
+  owners?: Array<{ name: string; phone: string }>;
 }
 
 /** The printed columns — in order, and nothing else (wastage was removed; the charge is "Making"). */
@@ -96,6 +98,7 @@ body {
 .brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; position: relative; top: 4.2mm; } /* shop name and logo sit down onto the empty line above the address (visual only: nothing else moves) */
 .brand-logo { justify-self: start; position: relative; top: 2mm; left: 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
 .logo { display: block; height: 16mm; width: auto; }
+.logo.custom { max-width: 24mm; object-fit: contain; filter: grayscale(1) contrast(1.35); } /* an uploaded logo prints in black and white */
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
 .address-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 3mm; margin: 0 0 3mm; }
 .address { text-align: center; font-size: 9.5pt; }
@@ -132,11 +135,23 @@ function ownerOf(h: PrintHeader): { name: string; phone: string } {
   return m ? { name: m[1].trim(), phone: m[2].trim() } : { name: (h.ownerLine ?? '').trim(), phone: '' };
 }
 
+/** Everyone to print at the right of the address: the owners list, or the single owner. */
+function ownersOf(h: PrintHeader): Array<{ name: string; phone: string }> {
+  const list = (h.owners ?? []).map((o) => ({ name: o.name.trim(), phone: o.phone.trim() })).filter((o) => o.name || o.phone);
+  return list.length ? list : [ownerOf(h)];
+}
+
 /** The top of the bill: ESTIMATE, owner name + mobile (right), logo (left), shop name (middle), address. */
 function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string {
-  const o = ownerOf(h);
-  const logo = withLogo && h.logo ? `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(16 * LOGO_ASPECT * 10) / 10}mm" height="16mm" alt="">` : '';
-  const right = `${o.name ? `<b>${escapeHtml(o.name)}</b>` : ''}${o.phone ? `<span>M.: ${escapeHtml(o.phone)}</span>` : ''}`;
+  const owners = ownersOf(h);
+  const logo = withLogo && h.logo
+    ? (typeof h.logo === 'string'
+      ? `<img class="logo custom" src="${h.logo}" height="16mm" alt="">`
+      : `<img class="logo" src="${LOGO_BW_DATA_URI}" width="${Math.round(16 * LOGO_ASPECT * 10) / 10}mm" height="16mm" alt="">`)
+    : '';
+  const right = owners.length > 1
+    ? owners.map((o) => `<span>${o.name ? `<b>${escapeHtml(o.name)}</b>` : ''}${o.phone ? ` M.: ${escapeHtml(o.phone)}` : ''}</span>`).join('')
+    : `${owners[0].name ? `<b>${escapeHtml(owners[0].name)}</b>` : ''}${owners[0].phone ? `<span>M.: ${escapeHtml(owners[0].phone)}</span>` : ''}`;
   const address = (h.address ?? '').trim();
   return `<div class="top"><span class="estimate-title">${escapeHtml(title)}</span></div>
 <div class="brand"><span class="brand-logo">${logo}</span><div class="shop">${escapeHtml(h.shopName)}</div><span></span></div>
@@ -145,9 +160,8 @@ function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string
 
 /** Compact top of the narrow receipt: same facts as the A4 bill, stacked. */
 function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
-  const o = ownerOf(h);
   const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
-  const owner = [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ');
+  const owner = ownersOf(h).map((o) => [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ')).filter(Boolean).join(' · ');
   return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
 <div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
 }

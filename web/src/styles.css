@@ -1081,3 +1081,8 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .hist-pay { margin-top: 2px; }
 
 .karat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+
+.home-logo.mono { display: inline-flex; align-items: center; justify-content: center; border-radius: 18px; background: linear-gradient(135deg, #f1d58a, #b8861a); color: #3a0a10; font-family: Georgia, 'Times New Roman', serif; font-weight: 700; letter-spacing: 1px; }
+
+.logo-row { display: flex; align-items: center; gap: 14px; }
+.logo-actions { display: flex; gap: 8px; flex-wrap: wrap; }

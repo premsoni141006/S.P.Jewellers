@@ -28,6 +28,25 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   roundGrandTotal: true,
 };
 
+export type ShopId = 'SPJ' | 'KJ';
+export const SHOP_IDS: ShopId[] = ['SPJ', 'KJ'];
+
+/** What each shop starts with. SPJ keeps the settings above; Kashi Jewellers has its own name, address and two owners, and no logo until one is uploaded. */
+export const SHOP_SETTINGS: Record<ShopId, ShopSettings> = {
+  SPJ: DEFAULT_SETTINGS,
+  KJ: {
+    ...DEFAULT_SETTINGS,
+    shopName: 'KASHI JEWELLERS',
+    address: 'Main Bazar, Bhadra',
+    ownerName: 'Jaideep Soni',
+    ownerFamily: '',
+    phone: '9782785300',
+    ownerName2: 'Yogesh Soni',
+    phone2: '9929288743',
+    printLogo: false,
+  },
+};
+
 /** Demo product list. Fully editable in Settings → Products. */
 export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'p-gold-ring', name: 'Gold Ring – Classic', metal: 'gold', tunch: 92, wastage: 0, labourRate: 0, labourMode: 'fixed' },

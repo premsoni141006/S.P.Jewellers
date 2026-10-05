@@ -7,6 +7,7 @@ import { fixBillNumbers, maxBillNumber, mergeBills, mergeById, type CashEntry, t
 import { KEYS, load, save } from './storage';
 import { deletePhoto, getPhoto, putPhoto } from './photos';
 import { loadPicks, type Pick } from './picks';
+import { activeShop } from './shop';
 
 export interface CloudConfig { url: string; key: string }
 
@@ -23,7 +24,7 @@ export const saveCloudConfig = (c: CloudConfig | null): void => { save(KEYS.clou
 
 // ---------------------------------------------------------------- status (for the Settings card)
 export interface CloudStatus { state: 'off' | 'idle' | 'syncing' | 'error'; last: string; error: string }
-let status: CloudStatus = { state: loadCloudConfig() ? 'idle' : 'off', last: load<string>('spj.cloud.last', ''), error: '' };
+let status: CloudStatus = { state: 'off', last: '', error: '' };
 const listeners = new Set<() => void>();
 const setStatus = (s: Partial<CloudStatus>) => { status = { ...status, ...s }; listeners.forEach((l) => l()); };
 export const useCloudStatus = (): CloudStatus => useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l); }, () => status);
@@ -42,7 +43,7 @@ export function markEdited(name: DocName): void {
 class Stale extends Error {}
 
 async function call(cfg: CloudConfig, path: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(`${cfg.url.replace(/\/+$/, '')}/v1${path}`, { ...init, headers: { Authorization: `Bearer ${cfg.key}`, ...(init.headers ?? {}) } });
+  const res = await fetch(`${cfg.url.replace(/\/+$/, '')}/v1${path}`, { ...init, headers: { Authorization: `Bearer ${cfg.key}`, ...(activeShop() === 'KJ' ? { 'X-Shop': 'kj' } : {}), ...(init.headers ?? {}) } });
   if (res.status === 401) throw new Error('The cloud key is not correct.');
   return res;
 }
@@ -193,7 +194,7 @@ export async function syncAll(cfg: CloudConfig): Promise<boolean> {
     changed = (await wholeDoc(cfg, 'settings', KEYS.settings)) || changed;
     changed = (await syncPhotos(cfg)) || changed;
     const now = new Date().toISOString();
-    save('spj.cloud.last', now);
+    save(KEYS.cloudLast, now);
     setStatus({ state: 'idle', last: now, error: '' });
   } catch (e) {
     setStatus({ state: 'error', error: e instanceof Error ? e.message : 'Could not reach the cloud.' });
@@ -221,7 +222,8 @@ export function useCloudSync(reload: () => void): void {
   const cfgKey = useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l); }, () => JSON.stringify(loadCloudConfig()));
   useEffect(() => {
     const cfg = loadCloudConfig();
-    if (!cfg) { setStatus({ state: 'off' }); return; }
+    if (!cfg) { setStatus({ state: 'off', last: '' }); return; }
+    setStatus({ state: 'idle', last: load<string>(KEYS.cloudLast, '') });
     let timer: number | undefined;
     const run = () => { void syncAll(cfg).then((changed) => { if (changed) reload(); }); };
     const soon = () => { window.clearTimeout(timer); timer = window.setTimeout(run, 2500); };

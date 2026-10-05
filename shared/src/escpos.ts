@@ -142,7 +142,10 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
 
   const ownerName = (header.ownerName ?? '').trim();
   const ownerPhone = (header.ownerPhone ?? '').trim();
-  const owner = ownerName || ownerPhone ? [ownerName, ownerPhone ? `M.: ${ownerPhone}` : ''].filter(Boolean).join(' - ') : (header.ownerLine ?? '').trim();
+  const list = (header.owners ?? []).filter((o) => o.name.trim() || o.phone.trim());
+  const owner = list.length > 1
+    ? list.map((o) => [o.name.trim(), o.phone.trim() ? `M.: ${o.phone.trim()}` : ''].filter(Boolean).join(' - ')).join(' / ')
+    : ownerName || ownerPhone ? [ownerName, ownerPhone ? `M.: ${ownerPhone}` : ''].filter(Boolean).join(' - ') : (header.ownerLine ?? '').trim();
   const p = new EscPos().init().align('center').bold(true).line('ESTIMATE').size(2, 2).line(header.shopName).size(1, 1).bold(false);
   if ((header.address ?? '').trim()) p.line((header.address as string).trim());
   if (owner) p.line(owner);

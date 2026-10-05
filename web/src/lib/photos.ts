@@ -2,13 +2,14 @@
 // text storage), each shrunk to a small JPEG so many photos stay well within the phone's limits.
 
 import { useEffect, useState } from 'react';
+import { shopPrefix } from './shop';
 
-const DB = 'spj-photos';
+const dbName = (): string => `${shopPrefix()}-photos`;
 const STORE = 'photos';
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
+    const req = indexedDB.open(dbName(), 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

@@ -5,7 +5,9 @@ import type { ShopSettings } from '@shared';
 import { Icon } from '../components/Icon';
 import { NumField } from '../components/NumField';
 import type { AppStore } from '../lib/store';
-import { changePassword } from '../lib/auth';
+import { changePassword, setUnlocked } from '../lib/auth';
+import { ShopLogo } from '../components/ShopLogo';
+import { logoFromFile } from '../lib/logoImage';
 import { DEFAULT_CLOUD_URL, loadCloudConfig, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
 import { fmtDateTime } from '@shared';
 
@@ -99,6 +101,47 @@ function CloudGate({ onSynced }: { onSynced: () => void }) {
   );
 }
 
+/** The shop logo: upload one from the phone's gallery or camera; it shows in the app and prints (in black and white) on the bill. */
+function LogoCard({ s, set }: { s: ShopSettings; set: (p: Partial<ShopSettings>) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    setError('');
+    try {
+      set({ logoData: await logoFromFile(file), printLogo: true });
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : 'Could not use that picture. Try another one.');
+    }
+  };
+  return (
+    <section className="card stack" data-testid="logo-card">
+      <div className="section-title">Shop logo</div>
+      <div className="logo-row">
+        <ShopLogo size={64} logoData={s.logoData} name={s.shopName} />
+        <div className="logo-actions">
+          <button className="btn btn-outline btn-sm" onClick={() => input.current?.click()} data-testid="logo-upload">{s.logoData ? 'Change logo' : 'Upload logo'}</button>
+          {s.logoData && <button className="btn btn-plain btn-sm" onClick={() => set({ logoData: undefined })} data-testid="logo-remove">Remove</button>}
+        </div>
+        <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { void choose(e.target.files?.[0]); e.target.value = ''; }} data-testid="logo-file" />
+      </div>
+      {error && <p className="err small" role="alert" data-testid="logo-error">{error}</p>}
+      <Toggle label="Print logo on the estimate (black & white)" checked={s.printLogo !== false} onChange={(v) => set({ printLogo: v })} />
+    </section>
+  );
+}
+
+/** Which shop is signed in, and a way to sign out (to open the other shop). */
+function AccountCard({ shopName }: { shopName: string }) {
+  return (
+    <section className="card stack" data-testid="account-card">
+      <div className="section-title">Account</div>
+      <p className="small">Signed in: <b data-testid="account-shop">{shopName}</b></p>
+      <button className="btn btn-outline" onClick={() => { setUnlocked(false); window.location.reload(); }} data-testid="sign-out">Sign out / switch shop</button>
+    </section>
+  );
+}
+
 function PasswordCard() {
   const [cur, setCur] = useState('');
   const [next, setNext] = useState('');
@@ -157,9 +200,7 @@ export function SettingsPage({ store, onPrinter }: Props) {
         <Icon name="next" size={18} />
       </button>
 
-      <section className="card stack">
-        <Toggle label="Print logo on the estimate (black & white)" checked={s.printLogo !== false} onChange={(v) => set({ printLogo: v })} />
-      </section>
+      <LogoCard s={s} set={set} />
 
       <section className="card stack">
         <div className="section-title">Shop</div>
@@ -168,6 +209,8 @@ export function SettingsPage({ store, onPrinter }: Props) {
         <Text label="Owner name" value={s.ownerName ?? ''} onChange={(v) => set({ ownerName: v })} />
         <Text label="Family line" value={s.ownerFamily ?? ''} onChange={(v) => set({ ownerFamily: v })} />
         <Text label="Phone" value={s.phone} onChange={(v) => set({ phone: v })} />
+        <Text label="Second owner name (optional)" value={s.ownerName2 ?? ''} onChange={(v) => set({ ownerName2: v })} testId="owner2-name" />
+        <Text label="Second owner phone (optional)" value={s.phone2 ?? ''} onChange={(v) => set({ phone2: v })} testId="owner2-phone" />
         <Text label="GST number (optional)" value={s.gstNumber} onChange={(v) => set({ gstNumber: v })} />
       </section>
 
@@ -180,6 +223,8 @@ export function SettingsPage({ store, onPrinter }: Props) {
       <CloudGate onSynced={store.reload} />
 
       <PasswordCard />
+
+      <AccountCard shopName={s.shopName} />
     </div>
   );
 }

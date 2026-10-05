@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { checkLogin, savedUser, setUnlocked } from '../lib/auth';
+import { ShopLogo } from '../components/ShopLogo';
+import { shopOfUser } from '../lib/shop';
 
 export function LoginScreen({ onDone }: { onDone: () => void }) {
   const [user, setUser] = useState(savedUser); // the user name is remembered on this device
@@ -17,8 +19,8 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
   return (
     <div className="login" data-testid="login-screen">
       <form className="login-card" onSubmit={submit}>
-        <img className="home-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="" width="84" height="84" />
-        <h1>S.P. JEWELLERS</h1>
+        <ShopLogo size={84} shop={shopOfUser(user) ?? 'SPJ'} name={shopOfUser(user) === 'KJ' ? 'Kashi Jewellers' : 'S.P. Jewellers'} />
+        <h1>{shopOfUser(user) === 'KJ' ? 'KASHI JEWELLERS' : 'S.P. JEWELLERS'}</h1>
         <label className="field">
           <span className="field-label">User name</span>
           <span className="field-box"><input value={user} onChange={(e) => { setUser(e.target.value); setError(''); }} autoComplete="username" autoCapitalize="characters" data-testid="login-user" /></span>

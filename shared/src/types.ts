@@ -110,6 +110,11 @@ export interface ShopSettings {
   /** Family line as the shop shows it, e.g. "Sh. Om Parkash S/o. Sh. Gopal Ram Soni". Not printed. */
   ownerFamily?: string;
   phone: string;
+  /** A second owner (shops with two owners print both). */
+  ownerName2?: string;
+  phone2?: string;
+  /** The shop's own logo (an image as a data URI), uploaded in Settings. Used on screen and, in black and white, on the bill. */
+  logoData?: string;
   gstNumber: string;
   /** @deprecated Replaced by karatTable. */
   goldKarat?: '22' | '24';

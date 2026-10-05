@@ -284,7 +284,7 @@ await page.screenshot({ path: SHOTS + 'web-settings.png', fullPage: true });
 {
   const t = await page.locator('[data-testid=settings-page]').innerText();
   const titles = await page.locator('[data-testid=settings-page] .section-title').allTextContents();
-  check('Settings no longer has the Rates and pricing or Products cards (they are on Home)', titles.join(',') === 'Shop,GST,Password' && !t.includes('Default gold rate') && (await page.locator('[data-testid=product]').count()) === 0, titles.join(','));
+  check('Settings no longer has the Rates and pricing or Products cards (they are on Home)', titles.join(',') === 'Shop logo,Shop,GST,Password,Account' && !t.includes('Default gold rate') && (await page.locator('[data-testid=product]').count()) === 0, titles.join(','));
   check('Settings keeps Printer settings, Shop, and the GST switch', t.includes('Printer settings') && t.includes('Shop') && t.includes('Charge GST'));
 }
 
