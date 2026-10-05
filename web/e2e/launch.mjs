@@ -4,7 +4,7 @@ export async function launchUnlocked(chromium) {
   const newContext = browser.newContext.bind(browser);
   browser.newContext = async (opts) => {
     const ctx = await newContext(opts);
-    await ctx.addInitScript(() => { try { sessionStorage.setItem('spj.unlocked', '1'); } catch {} });
+    await ctx.addInitScript(() => { try { localStorage.setItem('spj.signedin.v1', JSON.stringify('SPJ')); } catch {} });
     return ctx;
   };
   browser.newPage = async (opts) => (await browser.newContext(opts)).newPage();

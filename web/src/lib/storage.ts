@@ -17,6 +17,8 @@ export const KEYS = {
   picksCustomer: 'spj.picks.customer.v1',
   picksRemoved: 'spj.picks.removed.v1',
   cloud: 'spj.cloud.v1',
+  user: 'spj.user.v1',
+  signedIn: 'spj.signedin.v1',
   cloudStamps: 'spj.cloud.stamps.v1',
   cloudPhotos: 'spj.cloud.photos.v1',
   cloudPhotoDeletes: 'spj.cloud.photodeletes.v1',

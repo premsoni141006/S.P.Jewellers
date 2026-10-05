@@ -5,7 +5,6 @@ import { KEYS, load, save } from './storage';
 
 export const LOGIN_USER = 'SPJ';
 const DEFAULT_PASS = '443262';
-const SESSION_KEY = 'spj.unlocked';
 
 const currentPass = (): string => load<{ pass?: string }>(KEYS.auth, {}).pass || DEFAULT_PASS;
 
@@ -21,9 +20,14 @@ export function changePassword(current: string, next: string, again: string): st
   return save(KEYS.auth, { pass: next }) ? '' : 'Could not save the password on this device.';
 }
 
+/** The user name that signed in last on this device; shown again on the sign-in screen. */
+export const savedUser = (): string => load<string>(KEYS.user, '');
+
+/** Signed in stays signed in on this device (until the browser data is cleared). Coming back from the Gallery still asks for the password (AppLock). */
 export function isUnlocked(): boolean {
-  try { return window.sessionStorage.getItem(SESSION_KEY) === '1'; } catch { return false; }
+  return load<string>(KEYS.signedIn, '') !== '' && load<string>(KEYS.signedIn, '').toUpperCase() === LOGIN_USER;
 }
-export function setUnlocked(on: boolean): void {
-  try { if (on) window.sessionStorage.setItem(SESSION_KEY, '1'); else window.sessionStorage.removeItem(SESSION_KEY); } catch { /* the sign-in just asks again */ }
+export function setUnlocked(on: boolean, user: string = LOGIN_USER): void {
+  save(KEYS.signedIn, on ? user.trim().toUpperCase() : '');
+  if (on) save(KEYS.user, user.trim().toUpperCase());
 }

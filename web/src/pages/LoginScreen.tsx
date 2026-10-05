@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { checkLogin, setUnlocked } from '../lib/auth';
+import { checkLogin, savedUser, setUnlocked } from '../lib/auth';
 
 export function LoginScreen({ onDone }: { onDone: () => void }) {
-  const [user, setUser] = useState('');
+  const [user, setUser] = useState(savedUser); // the user name is remembered on this device
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (checkLogin(user, pass)) {
-      setUnlocked(true);
+      setUnlocked(true, user);
       onDone();
     } else setError('User name or password is not correct.');
   };
@@ -25,7 +25,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
         </label>
         <label className="field">
           <span className="field-label">Password</span>
-          <span className="field-box"><input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(''); }} autoComplete="current-password" data-testid="login-pass" /></span>
+          <span className="field-box"><input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(''); }} autoComplete="current-password" autoFocus={!!user} data-testid="login-pass" /></span>
         </label>
         {error && <p className="err small" role="alert" data-testid="login-error">{error}</p>}
         <button className="btn btn-primary btn-block" type="submit" data-testid="login-submit">Sign in</button>
