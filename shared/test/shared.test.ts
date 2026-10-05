@@ -677,3 +677,14 @@ describe('bill closing lines', () => {
     expect(html).not.toContain('thanks-contact');
   });
 });
+
+describe('tagline under the shop name', () => {
+  it('prints between the shop name and the address', () => {
+    const html = renderEstimateHtml(sampleEstimate(DEFAULT_SETTINGS), { shopName: 'S.P. JEWELLERS', shopCode: '', address: 'Main Bazar, Ellenabad', tagline: 'Manufacturer of Gold & Silver Ornaments' });
+    const a = html.indexOf('S.P. JEWELLERS'), t = html.indexOf('Manufacturer of Gold &amp; Silver Ornaments'), d = html.indexOf('Main Bazar, Ellenabad');
+    expect(a).toBeGreaterThan(-1);
+    expect(t).toBeGreaterThan(a);
+    expect(d).toBeGreaterThan(t);
+    expect(renderEstimateHtml(sampleEstimate(DEFAULT_SETTINGS), { shopName: 'X', shopCode: '', address: 'Y' })).not.toContain('class="tagline"');
+  });
+});

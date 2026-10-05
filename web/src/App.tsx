@@ -48,6 +48,7 @@ function AppMain() {
     ownerName: settings.ownerName?.trim() ?? '',
     ownerPhone: settings.phone.trim(),
     address: settings.address.trim(),
+    tagline: settings.tagline?.trim() ?? '',
     // A shop with two owners prints both.
     owners: (settings.ownerName2 || settings.phone2)
       ? [{ name: settings.ownerName?.trim() ?? '', phone: settings.phone.trim() }, { name: settings.ownerName2?.trim() ?? '', phone: settings.phone2?.trim() ?? '' }]

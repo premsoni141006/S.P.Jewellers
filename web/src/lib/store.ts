@@ -36,6 +36,7 @@ function upgradeSettings(saved: Partial<ShopSettings>): ShopSettings {
   const base = shopDefaults();
   const merged = { ...base, ...saved, shopCode: '', defaultLabourMode: 'fixed' as const }; // the second header line was removed for good
   if (!saved.address || saved.address === 'Elnabaad') merged.address = base.address;
+  if (saved.tagline === undefined) merged.tagline = base.tagline; // an owner who cleared it on purpose keeps it empty
   if (!saved.phone) merged.phone = base.phone;
   if (!saved.ownerName) merged.ownerName = base.ownerName;
   if (!saved.ownerFamily && base.ownerFamily) merged.ownerFamily = base.ownerFamily;

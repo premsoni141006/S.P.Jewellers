@@ -19,6 +19,8 @@ export interface PrintHeader {
   ownerPhone?: string;
   /** Shop address: printed under the shop name. */
   address?: string;
+  /** A line under the shop name, above the address (what the shop makes / sells). */
+  tagline?: string;
   /** Older single-line form "Name · M. number"; only used when ownerName / ownerPhone are not given. */
   ownerLine?: string;
   /** Print the black-and-white shop logo above the shop name (A4 only). Default off for callers that omit it. */
@@ -95,12 +97,15 @@ body {
 .estimate-title { font-size: 11pt; font-weight: 700; text-decoration: underline; letter-spacing: 0.5pt; text-align: center; }
 .top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
 /* Brand row: logo at the far left, shop name in the middle */
-.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; position: relative; top: 4.2mm; } /* shop name and logo sit down onto the empty line above the address (visual only: nothing else moves) */
+/* the shop name sits 4.2 mm lower, which is real space now (the tagline and the address follow it) */
+.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; margin-top: 4.2mm; }
 .brand-logo { justify-self: start; position: relative; top: 2mm; left: 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
 .logo { display: block; height: 16mm; width: auto; }
 .logo.custom { max-width: 24mm; object-fit: contain; filter: grayscale(1) contrast(1.35); } /* an uploaded logo prints in black and white */
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
 .address-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 3mm; margin: 0 0 3mm; }
+.address-col { text-align: center; }
+.tagline { font-size: 10.5pt; font-weight: 700; letter-spacing: 0.3pt; }
 .address { text-align: center; font-size: 9.5pt; }
 .code { text-align: center; font-size: 9.5pt; margin: 0 0 2mm; }
 /* First row of the table: customer + mobile (left, 7 columns); bill number + date (right, starting at Silver/Gold) */
@@ -152,16 +157,17 @@ function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string
     ? owners.map((o) => `<span>${o.name ? `<b>${escapeHtml(o.name)}</b>` : ''}${o.phone ? ` M.: ${escapeHtml(o.phone)}` : ''}</span>`).join('')
     : `${owners[0].name ? `<b>${escapeHtml(owners[0].name)}</b>` : ''}${owners[0].phone ? `<span>M.: ${escapeHtml(owners[0].phone)}</span>` : ''}`;
   const address = (h.address ?? '').trim();
+  const tagline = (h.tagline ?? '').trim();
   return `<div class="top"><span class="estimate-title">${escapeHtml(title)}</span></div>
 <div class="brand"><span class="brand-logo">${logo}</span><div class="shop">${escapeHtml(h.shopName)}</div><span></span></div>
-<div class="address-row"><span></span><div class="address">${escapeHtml(address)}</div><span class="top-right">${right}</span></div>${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}`;
+<div class="address-row"><span></span><div class="address-col">${tagline ? `<div class="tagline">${escapeHtml(tagline)}</div>` : ''}<div class="address">${escapeHtml(address)}</div></div><span class="top-right">${right}</span></div>${h.shopCode.trim() ? `<div class="code">${escapeHtml(h.shopCode)}</div>` : ''}`;
 }
 
 /** Compact top of the narrow receipt: same facts as the A4 bill, stacked. */
 function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
   const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
   const owner = ownersOf(h).map((o) => [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ')).filter(Boolean).join(' · ');
-  return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
+  return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.tagline ?? '').trim() ? `<div class="code"><b>${escapeHtml((h.tagline as string).trim())}</b></div>` : ''}${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
 <div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
 }
 

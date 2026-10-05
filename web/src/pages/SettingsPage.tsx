@@ -205,6 +205,7 @@ export function SettingsPage({ store, onPrinter }: Props) {
       <section className="card stack">
         <div className="section-title">Shop</div>
         <Text label="Shop name (printed on the estimate)" value={s.shopName} onChange={(v) => set({ shopName: v })} testId="shop-name" />
+        <Text label="Line under the shop name" value={s.tagline ?? ''} onChange={(v) => set({ tagline: v })} testId="tagline" />
         <Text label="Address" value={s.address} onChange={(v) => set({ address: v })} />
         <Text label="Owner name" value={s.ownerName ?? ''} onChange={(v) => set({ ownerName: v })} />
         <Text label="Family line" value={s.ownerFamily ?? ''} onChange={(v) => set({ ownerFamily: v })} />

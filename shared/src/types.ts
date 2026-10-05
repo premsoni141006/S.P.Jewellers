@@ -103,6 +103,8 @@ export interface ShopSettings {
   /** Second line of the printed header. */
   shopCode: string;
   address: string;
+  /** Line printed between the shop name and the address, e.g. "Manufacturer of Gold & Silver Ornaments". */
+  tagline?: string;
   /** Owner's name — kept for the shop's records and the app header; not printed on the estimate. */
   ownerName?: string;
   /** Print the black-and-white logo above the shop name on the A4 estimate. Missing = on. */

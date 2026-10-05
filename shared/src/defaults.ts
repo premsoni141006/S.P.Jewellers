@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   // Second printed line under the shop name. Empty: the bill shows the shop name only.
   shopCode: '',
   address: 'Main Bazar, Near Gandhi Chowk, Ellenabad-125102',
+  tagline: 'Manufacturer of Gold & Silver Ornaments',
   ownerName: 'Sandeep Soni',
   printLogo: true,
   ownerFamily: 'Sh. Om Parkash S/o. Sh. Gopal Ram Soni',
