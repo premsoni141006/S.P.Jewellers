@@ -70,6 +70,7 @@ function AppMain() {
     prevTab.current = tab;
   }, [tab]);
   useCloudSync(store.reload);
+  useEffect(() => { document.title = settings.shopName || 'Estimate'; }, [settings.shopName]);
   const [stockPrompt, setStockPrompt] = useState<Estimate | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean; saved?: boolean } | null>(null);

@@ -1086,3 +1086,6 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 
 .logo-row { display: flex; align-items: center; gap: 14px; }
 .logo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.login-mark { height: 84px; display: flex; align-items: center; justify-content: center; }
+.login-letters { font: 700 44px/1 Georgia, 'Times New Roman', serif; letter-spacing: 6px; background: linear-gradient(135deg, #f6dc9b, #d9a93a 55%, #9a6a12); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 2px 10px rgba(217, 169, 58, 0.25); max-width: 100%; overflow: hidden; white-space: nowrap; }
