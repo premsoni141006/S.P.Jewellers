@@ -1070,3 +1070,5 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .gx-btn.danger { border: 0; background: #c62828; color: #fff; }
 .gx-err { margin: 0; color: #c62828; font-size: 13.5px; font-weight: 600; }
 .gx-open { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+.thin-card { display: block; width: 100%; height: 30px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.6); color: var(--muted, #8a7f72); font: 500 12px/28px inherit; text-align: left; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }

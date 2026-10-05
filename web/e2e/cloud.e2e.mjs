@@ -31,13 +31,25 @@ const open = async () => {
   return page;
 };
 const connect = async (page, url = CLOUD, key = KEY) => {
-  if (!(await page.locator('[data-testid=cloud-card]').count())) await page.click('[data-testid=open-settings]');
+  if (!(await page.locator('[data-testid=cloud-thin], [data-testid=cloud-card]').count())) await page.click('[data-testid=open-settings]');
+  if (!(await page.locator('[data-testid=cloud-card]').count())) {
+    for (let i = 0; i < 5; i++) await page.click('[data-testid=cloud-thin]');
+    await page.fill('[data-testid=cloud-gate-pass]', '200614');
+    await page.click('[data-testid=cloud-gate-ok]');
+  }
   await page.waitForSelector('[data-testid=cloud-card]');
   await page.fill('[data-testid=cloud-url]', url);
   await page.fill('[data-testid=cloud-key]', key);
   await page.click('[data-testid=cloud-connect]');
   await page.waitForFunction(() => /In sync|Could not|not correct|answered/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''), null, { timeout: 20000 }).catch(() => {});
   return (await page.textContent('[data-testid=cloud-status]')).trim();
+};
+const reveal = async (pg) => {
+  if (await pg.locator('[data-testid=cloud-card]').count()) return;
+  if (!(await pg.locator('[data-testid=cloud-thin]').count())) await pg.click('[data-testid=open-settings]');
+  for (let i = 0; i < 5; i++) await pg.click('[data-testid=cloud-thin]');
+  await pg.fill('[data-testid=cloud-gate-pass]', '200614'); await pg.click('[data-testid=cloud-gate-ok]');
+  await pg.waitForSelector('[data-testid=cloud-card]');
 };
 const ls = (page, key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || 'null'), key);
 const mkBill = (id, number, createdAt) => ({ id, number, createdAt, updatedAt: createdAt, customerName: id, customerPhone: '', customerLocality: '', pricing: { goldRate: 72000, goldRateUnit: 'per_10g', silverRate: 90000, silverRateUnit: 'per_10g', fineFormula: 'tunch_plus_wastage', gstEnabled: false, gstPercent: 3, roundGrandTotal: true }, items: [], otherCharges: [], printStatus: 'not_printed', printedAt: null, lastPrintError: null });
@@ -55,6 +67,17 @@ await A.evaluate(async (bill) => {
   localStorage.setItem('spj.cash.v1', JSON.stringify([{ id: 'cA1', date: '2026-10-01', type: 'in', amount: 1000, note: 'A', createdAt: '2026-10-01T10:00:00Z' }]));
 }, mkBill('billA', 1, '2026-10-01T10:00:00Z'));
 await A.reload(); await A.waitForSelector('[data-testid=home-page]');
+await A.click('[data-testid=open-settings]');
+check('the Cloud backup card is hidden; only a thin spj-img card shows', (await A.locator('[data-testid=cloud-card]').count()) === 0 && (await A.locator('[data-testid=cloud-thin]').innerText()) === 'spj-img');
+for (let i = 0; i < 4; i++) await A.click('[data-testid=cloud-thin]');
+check('four taps do nothing', (await A.locator('[data-testid=cloud-gate]').count()) === 0);
+await A.click('[data-testid=cloud-thin]');
+check('the fifth tap in a row opens the password window', await A.locator('[data-testid=cloud-gate]').isVisible());
+await A.fill('[data-testid=cloud-gate-pass]', '000000'); await A.click('[data-testid=cloud-gate-ok]');
+check('a wrong password keeps the card hidden', (await A.locator('[data-testid=cloud-gate-error]').count()) === 1 && (await A.locator('[data-testid=cloud-card]').count()) === 0);
+await A.fill('[data-testid=cloud-gate-pass]', '200614'); await A.click('[data-testid=cloud-gate-ok]');
+await A.waitForSelector('[data-testid=cloud-card]');
+check('the right password shows the Cloud backup card', await A.locator('[data-testid=cloud-card]').isVisible());
 check('wrong key is refused with a clear message', (await connect(A, CLOUD, 'wrong-key')).includes('not correct'));
 check('device A connects and syncs', (await connect(A)).startsWith('In sync'));
 
@@ -75,10 +98,10 @@ await B.evaluate((bill) => {
   const h = JSON.parse(localStorage.getItem('spj.history.v1')); h.unshift(bill); localStorage.setItem('spj.history.v1', JSON.stringify(h));
 }, mkBill('billB2', 2, '2026-10-02T09:30:00Z')); // the same bill number 2, made on another device
 await A.click('[data-testid=bar-back]').catch(() => {}); await A.click('[data-testid=open-settings]').catch(() => {});
-await A.click('[data-testid=cloud-connect]'); await A.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
+await reveal(A); await A.click('[data-testid=cloud-connect]'); await A.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
 await B.click('[data-testid=bar-back]').catch(() => {}); await B.click('[data-testid=open-settings]');
-await B.click('[data-testid=cloud-connect]'); await B.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
-await A.click('[data-testid=cloud-connect]'); await A.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
+await reveal(B); await B.click('[data-testid=cloud-connect]'); await B.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
+await reveal(A); await A.click('[data-testid=cloud-connect]'); await A.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
 const cashA = await ls(A, 'spj.cash.v1'), cashB = await ls(B, 'spj.cash.v1');
 check('both devices now have all three cash entries', cashA.length === 3 && cashB.length === 3, `${cashA.length}/${cashB.length}`);
 const hA = await ls(A, 'spj.history.v1'), hB = await ls(B, 'spj.history.v1');
@@ -92,11 +115,11 @@ await A.click('[data-testid=bar-back]').catch(() => {});
 await A.click('[data-testid=open-settings]').catch(() => {});
 await A.fill('[data-testid=shop-name]', 'S.P. JEWELLERS TEST');
 await A.waitForTimeout(3200); // the app syncs by itself a moment after a change
-await B.click('[data-testid=cloud-connect]'); await B.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
+await reveal(B); await B.click('[data-testid=cloud-connect]'); await B.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
 check('a settings change on A reaches B', (await ls(B, 'spj.settings.v1'))?.shopName === 'S.P. JEWELLERS TEST');
 
 // ---- turn off: data stays on the device
-await B.click('[data-testid=cloud-off]');
+await reveal(B); await B.click('[data-testid=cloud-off]');
 check('turning the cloud off keeps the data on the device', (await ls(B, 'spj.history.v1')).length === 3 && (await B.textContent('[data-testid=cloud-status]')).includes('Off'));
 
 await browser.close();

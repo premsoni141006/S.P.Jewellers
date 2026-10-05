@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useBackLayer } from '../lib/backStack';
+import { useLeave } from '../components/useLeave';
 import type { ShopSettings } from '@shared';
 import { Icon } from '../components/Icon';
 import { NumField } from '../components/NumField';
@@ -52,6 +54,48 @@ function CloudCard({ onSynced }: { onSynced: () => void }) {
         {cfg && <button className="btn btn-plain" onClick={() => { saveCloudConfig(null); setMsg(''); }} data-testid="cloud-off">Turn off</button>}
       </div>
     </section>
+  );
+}
+
+const CLOUD_GATE_PASSWORD = '200614';
+
+/** Asks for the password that opens the Cloud backup card. */
+function GateWindow({ onOpen, onClose }: { onOpen: () => void; onClose: () => void }) {
+  const { leaving, leave } = useLeave();
+  useBackLayer(true, () => leave(onClose));
+  const [pass, setPass] = useState('');
+  const [error, setError] = useState('');
+  return (
+    <div className={`modal-backdrop${leaving ? ' leaving' : ''}`} onClick={() => leave(onClose)} role="presentation">
+      <form className="rates-card" role="dialog" aria-modal="true" aria-label="Password" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (pass === CLOUD_GATE_PASSWORD) leave(onOpen); else setError('Password is not correct.'); }} data-testid="cloud-gate">
+        <div className="rates-head"><h2>Password</h2><button type="button" className="bar-btn close-x" onClick={() => leave(onClose)} aria-label="Close">✕</button></div>
+        <label className="field">
+          <span className="field-label">Enter the password</span>
+          <span className="field-box"><input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(''); }} autoComplete="off" autoFocus data-testid="cloud-gate-pass" /></span>
+        </label>
+        {error && <p className="err small" role="alert" data-testid="cloud-gate-error">{error}</p>}
+        <button className="btn btn-primary btn-block" type="submit" data-testid="cloud-gate-ok">Open</button>
+      </form>
+    </div>
+  );
+}
+
+/** The Cloud backup card stays hidden behind a thin "spj-img" card: tap it 5 times in a row, then enter the password. */
+function CloudGate({ onSynced }: { onSynced: () => void }) {
+  const [shown, setShown] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const taps = useRef({ n: 0, t: 0 });
+  if (shown) return <CloudCard onSynced={onSynced} />;
+  const tap = () => {
+    const now = Date.now();
+    taps.current = { n: now - taps.current.t < 2000 ? taps.current.n + 1 : 1, t: now };
+    if (taps.current.n >= 5) { taps.current = { n: 0, t: 0 }; setAsking(true); }
+  };
+  return (
+    <>
+      <button type="button" className="thin-card" onClick={tap} data-testid="cloud-thin">spj-img</button>
+      {asking && <GateWindow onClose={() => setAsking(false)} onOpen={() => { setAsking(false); setShown(true); }} />}
+    </>
   );
 }
 
@@ -133,7 +177,7 @@ export function SettingsPage({ store, onPrinter }: Props) {
         {s.gstEnabled && <NumField label="GST %" value={s.gstPercent} onChange={(n) => set({ gstPercent: n })} suffix="%" />}
       </section>
 
-      <CloudCard onSynced={store.reload} />
+      <CloudGate onSynced={store.reload} />
 
       <PasswordCard />
     </div>
