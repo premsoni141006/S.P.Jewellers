@@ -1,0 +1,10 @@
+name = "spj-cloud"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# The R2 bucket that holds everything. Create it once:  npx wrangler r2 bucket create spj-data
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "spj-data"
+
+# The secret key the apps must send is NOT written here. Set it once:  npx wrangler secret put SYNC_TOKEN

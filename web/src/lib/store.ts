@@ -5,6 +5,7 @@ import {
 } from '@shared';
 import { KEYS, load, save } from './storage';
 import { DEFAULT_PRINTER, type PrinterConfig } from './printing';
+import { markEdited } from './cloud';
 
 /** Older saved estimates: Gold making becomes a %, Silver making a rupee total (same rupees as before); manual amounts (no longer editable) are cleared. */
 const withFixedMaking = (e: Estimate): Estimate => ({ ...e, items: e.items.map((i) => ({ ...normalizeMaking(i, e.pricing), amountOverride: null })) });
@@ -75,10 +76,12 @@ export function useAppStore() {
   const setSettings = useCallback((s: ShopSettings) => {
     setSettingsState(s);
     setStorageOk(save(KEYS.settings, s));
+    markEdited('settings');
   }, []);
   const setProducts = useCallback((p: Product[]) => {
     setProductsState(p);
     setStorageOk(save(KEYS.products, p));
+    markEdited('products');
   }, []);
   const setPrinter = useCallback((p: PrinterConfig) => {
     setPrinterState(p);
@@ -139,12 +142,21 @@ export function useAppStore() {
     writeCash(cur.some((x) => x.id === e.id) ? cur.map((x) => (x.id === e.id ? e : x)) : [e, ...cur]);
   }, []);
 
+  /** Re-reads everything the cloud sync may have changed on this device. */
+  const reload = useCallback(() => {
+    setSettingsState(upgradeSettings(load<Partial<ShopSettings>>(KEYS.settings, {})));
+    setProductsState(load<Product[]>(KEYS.products, SAMPLE_PRODUCTS).map((p) => ({ ...p, labourMode: 'fixed' as const })));
+    setHistory(load<Estimate[]>(KEYS.history, []).map(withFixedMaking));
+    setStock(load<StockEntry[]>(KEYS.stock, []));
+    setCash(load<CashEntry[]>(KEYS.cash, []));
+  }, []);
+
   const savedCopy = history.find((h) => h.id === est.id);
   const dirty = savedCopy ? strip(savedCopy) !== strip(est) : hasContent(est);
 
   return {
     settings, setSettings, products, setProducts, history, printer, setPrinter,
-    est, setEst, saveEstimate, dirty, storageOk, drafts, stashDraft, removeDraft, stock, saveStock, cash, saveCash,
+    est, setEst, saveEstimate, dirty, storageOk, drafts, stashDraft, removeDraft, stock, saveStock, cash, saveCash, reload,
   };
 }
 

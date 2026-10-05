@@ -8,3 +8,4 @@ export { LOGO_BW_DATA_URI } from './logo';
 export * from './stock';
 export * from './search';
 export * from './pdf';
+export * from './sync';

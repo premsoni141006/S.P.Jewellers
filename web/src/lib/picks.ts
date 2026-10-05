@@ -28,8 +28,12 @@ export function addPick(list: Pick[], customer: string, entryId: string): Pick[]
 
 /** Takes a piece back out of the picks made since `since` (the heart tapped a second time). Returns the new list. */
 export function removeSessionPick(list: Pick[], entryId: string, since: string): Pick[] {
-  const next = list.filter((p) => !(p.entryId === entryId && p.at >= since));
-  if (next.length !== list.length) save(KEYS.picks, next);
+  const gone = list.filter((p) => p.entryId === entryId && p.at >= since).map((p) => p.id);
+  if (gone.length === 0) return list;
+  // Remember the removal, so a cloud copy of the pick does not bring it back.
+  save(KEYS.picksRemoved, [...new Set([...load<string[]>(KEYS.picksRemoved, []), ...gone])]);
+  const next = list.filter((p) => !gone.includes(p.id));
+  save(KEYS.picks, next);
   return next;
 }
 

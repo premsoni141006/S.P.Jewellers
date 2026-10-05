@@ -15,6 +15,10 @@ export const KEYS = {
   picks: 'spj.picks.v1',
   picksSession: 'spj.picks.session.v1',
   picksCustomer: 'spj.picks.customer.v1',
+  picksRemoved: 'spj.picks.removed.v1',
+  cloud: 'spj.cloud.v1',
+  cloudStamps: 'spj.cloud.stamps.v1',
+  cloudPhotos: 'spj.cloud.photos.v1',
 } as const;
 
 export function load<T>(key: string, fallback: T): T {
@@ -31,6 +35,7 @@ export function load<T>(key: string, fallback: T): T {
 export function save(key: string, value: unknown): boolean {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent('spj:saved', { detail: key })); // lets the cloud sync notice changes
     return true;
   } catch {
     return false;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, PRINT_COLUMNS, buildEstimateEscPosText, buildTestPrintEscPos, calcEstimate, calcItem,
   newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
-  searchStock, searchCash, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
+  searchStock, searchCash, mergeById, fixBillNumbers, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
 } from '../src';
 
 const pricing = { ...pricingFromSettings(DEFAULT_SETTINGS), silverRate: 100000, silverRateUnit: 'per_kg' as const, goldRate: 100000, goldRateUnit: 'per_10g' as const, roundGrandTotal: false };
@@ -594,5 +594,35 @@ describe('stock matches for a sold item', () => {
     expect(out.type).toBe('out');
     expect(stockMatchesForSale([a, b, out], sold).map((e) => e.id)).toEqual(['bb']);
     expect(stockMatchesForSale([a, b, out, saleOutEntry(b, 'p', '2026-10-05', 'Sold')], sold)).toEqual([]);
+  });
+});
+
+describe('cloud sync merge', () => {
+  const rec = (id: string, at: string, v = '') => ({ id, at, v });
+  it('joins two lists by id, later stamp wins, nothing is lost', () => {
+    const local = [rec('a', '2026-10-01', 'local'), rec('b', '2026-10-03', 'local-b')];
+    const remote = [rec('a', '2026-10-02', 'remote'), rec('b', '2026-10-01', 'remote-b'), rec('c', '2026-10-01', 'remote-c')];
+    const m = mergeById(local, remote, (x) => x.at);
+    expect(m.map((x) => x.id).sort()).toEqual(['a', 'b', 'c']);
+    expect(m.find((x) => x.id === 'a')?.v).toBe('remote');
+    expect(m.find((x) => x.id === 'b')?.v).toBe('local-b');
+  });
+  it('a tie keeps the local record; merging twice changes nothing', () => {
+    const l = [rec('a', '2026-10-01', 'L')];
+    const r = [rec('a', '2026-10-01', 'R')];
+    const once = mergeById(l, r, (x) => x.at);
+    expect(once[0].v).toBe('L');
+    expect(mergeById(once, r, (x) => x.at)).toEqual(once);
+  });
+  it('two bills with the same number: the older keeps it, the other gets the next free number', () => {
+    const base = sampleEstimate(DEFAULT_SETTINGS);
+    const a = { ...base, id: 'a', number: 5, createdAt: '2026-10-01T10:00:00Z', updatedAt: '2026-10-01T10:00:00Z' };
+    const b = { ...base, id: 'b', number: 5, createdAt: '2026-10-02T10:00:00Z', updatedAt: '2026-10-02T10:00:00Z' };
+    const c = { ...base, id: 'c', number: 6, createdAt: '2026-10-02T11:00:00Z', updatedAt: '2026-10-02T11:00:00Z' };
+    const fixed = fixBillNumbers([a, b, c], '2026-10-05T00:00:00Z');
+    expect(fixed.find((e) => e.id === 'a')?.number).toBe(5);
+    expect(fixed.find((e) => e.id === 'b')?.number).toBe(7);
+    expect(fixed.find((e) => e.id === 'c')?.number).toBe(6);
+    expect(fixBillNumbers(fixed)).toEqual(fixed);
   });
 });

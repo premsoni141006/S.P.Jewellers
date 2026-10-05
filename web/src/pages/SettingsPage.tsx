@@ -4,10 +4,55 @@ import { Icon } from '../components/Icon';
 import { NumField } from '../components/NumField';
 import type { AppStore } from '../lib/store';
 import { changePassword } from '../lib/auth';
+import { loadCloudConfig, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
+import { fmtDateTime } from '@shared';
 
 interface Props {
   store: AppStore;
   onPrinter: () => void;
+}
+
+/** Cloud backup: the shop's Cloudflare Worker (R2). Everything stays on the phone too; this adds a copy in the cloud and shares it between devices. */
+function CloudCard({ onSynced }: { onSynced: () => void }) {
+  const cfg = loadCloudConfig();
+  const st = useCloudStatus();
+  const [url, setUrl] = useState(cfg?.url ?? '');
+  const [key, setKey] = useState(cfg?.key ?? '');
+  const [msg, setMsg] = useState('');
+  const connect = async () => {
+    const c = { url: url.trim().replace(/\/+$/, ''), key: key.trim() };
+    if (!c.url || !c.key) { setMsg('Enter the cloud address and the key.'); return; }
+    setMsg('Checking…');
+    const problem = await pingCloud(c);
+    if (problem) { setMsg(problem); return; }
+    saveCloudConfig(c);
+    setMsg('Connected. Syncing…');
+    if (await syncAll(c)) onSynced();
+    setMsg('');
+  };
+  const field = (label: string, value: string, set: (v: string) => void, testId: string, type = 'text') => (
+    <label className="field">
+      <span className="field-label">{label}</span>
+      <span className="field-box"><input type={type} value={value} onChange={(e) => { set(e.target.value); setMsg(''); }} autoComplete="off" autoCapitalize="off" data-testid={testId} /></span>
+    </label>
+  );
+  return (
+    <section className="card stack" data-testid="cloud-card">
+      <div className="section-title">Cloud backup</div>
+      {field('Cloud address', url, setUrl, 'cloud-url')}
+      {field('Cloud key', key, setKey, 'cloud-key', 'password')}
+      <p className="small" role="status" data-testid="cloud-status">
+        {msg || (st.state === 'off' ? 'Off. Data is only on this device.'
+          : st.state === 'syncing' ? 'Syncing…'
+          : st.state === 'error' ? `Could not sync: ${st.error}`
+          : st.last ? `In sync · last ${fmtDateTime(st.last)}` : 'Connected.')}
+      </p>
+      <div className="grid-2">
+        <button className="btn btn-primary" onClick={() => void connect()} data-testid="cloud-connect">{cfg ? 'Save & sync' : 'Connect'}</button>
+        {cfg && <button className="btn btn-plain" onClick={() => { saveCloudConfig(null); setMsg(''); }} data-testid="cloud-off">Turn off</button>}
+      </div>
+    </section>
+  );
 }
 
 function PasswordCard() {
@@ -87,6 +132,8 @@ export function SettingsPage({ store, onPrinter }: Props) {
         <Toggle label="Charge GST" checked={s.gstEnabled} onChange={(v) => set({ gstEnabled: v })} />
         {s.gstEnabled && <NumField label="GST %" value={s.gstPercent} onChange={(n) => set({ gstPercent: n })} suffix="%" />}
       </section>
+
+      <CloudCard onSynced={store.reload} />
 
       <PasswordCard />
     </div>

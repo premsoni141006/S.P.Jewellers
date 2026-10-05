@@ -14,6 +14,7 @@ import { StockPage } from './pages/StockPage';
 import { PreviewScreen } from './pages/PreviewScreen';
 import { LoginScreen } from './pages/LoginScreen';
 import { RangePage } from './pages/RangePage';
+import { useCloudSync } from './lib/cloud';
 import { GalleryPage } from './pages/GalleryPage';
 import { AppLock } from './components/AppLock';
 import { StockEntryPage } from './pages/StockEntryPage';
@@ -62,6 +63,7 @@ function AppMain() {
     if (prevTab.current === 'gallery' && tab !== 'gallery') setLocked(true);
     prevTab.current = tab;
   }, [tab]);
+  useCloudSync(store.reload);
   const [stockPrompt, setStockPrompt] = useState<Estimate | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ est: Estimate; fromEditor: boolean; saved?: boolean } | null>(null);

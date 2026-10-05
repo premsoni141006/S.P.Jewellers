@@ -1,0 +1,16 @@
+{
+  "name": "spj-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker + R2 bucket that keeps S.P. Jewellers data (bills, stock, cash, photos) in the cloud",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261001.1",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.0.0"
+  }
+}
