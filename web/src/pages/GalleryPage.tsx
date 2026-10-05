@@ -3,6 +3,7 @@ import { type StockEntry } from '@shared';
 import { Icon } from '../components/Icon';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
+import { KEYS, load, save } from '../lib/storage';
 import { addPick, customersOf, loadPicks, picksOf, type Pick } from '../lib/picks';
 import type { AppStore } from '../lib/store';
 
@@ -141,7 +142,10 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
   const [note, setNote] = useState('');
-  const likedIds = useMemo(() => new Set(picks.map((p) => p.entryId)), [picks]);
+  // Hearts show the picks of the customer being served now. The refresh button starts a new customer:
+  // the hearts clear, while every customer's list stays in Fav.
+  const [sessionStart, setSessionStart] = useState<string>(() => load<string>(KEYS.picksSession, ''));
+  const likedIds = useMemo(() => new Set(picks.filter((p) => p.at >= sessionStart).map((p) => p.entryId)), [picks, sessionStart]);
   const customers = useMemo(() => customersOf(picks), [picks]);
 
   const { categories, all } = useMemo(() => {
@@ -188,7 +192,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
         <div className="gx-title"><span>Gallery</span><small>{inCustomerList ? `${customers.length} customer${customers.length === 1 ? '' : 's'}` : tab === 'fav' ? favName : inAlbumList ? `${albums.length} album${albums.length === 1 ? '' : 's'}` : album ? albums.find((a) => a.key === album)?.item ?? '' : `${shown.length} piece${shown.length === 1 ? '' : 's'}`}</small></div>
         <div className="gx-actions">
           <button className={`gx-round${searchOpen ? ' on' : ''}`} onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setQ(''); }} aria-label="Search" data-testid="gallery-search-btn"><Icon name="search" size={20} /></button>
-          <button className="gx-round gx-cart" onClick={() => { setTab('fav'); setAlbum(null); setFavCustomer(null); setHideBars(false); }} aria-label="Customer picks" data-testid="gallery-cart"><Icon name="cart" size={20} />{picks.length > 0 && <span className="gx-badge" data-testid="gallery-badge">{picks.length}</span>}</button>
+          <button className="gx-round" onClick={() => { const now = new Date().toISOString(); setSessionStart(now); save(KEYS.picksSession, now); setNote('Ready for a new customer'); window.setTimeout(() => setNote(''), 2200); }} aria-label="New customer: clear the hearts" data-testid="gallery-refresh"><Icon name="refresh" size={20} /></button>
         </div>
       </header>
       <div className="gx-switch" role="group" aria-label="Metal" data-testid="gallery-switch">
