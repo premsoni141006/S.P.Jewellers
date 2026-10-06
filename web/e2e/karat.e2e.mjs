@@ -45,7 +45,7 @@ const frame = page.frameLocator('[data-testid=preview-frame]');
 await frame.locator('body').waitFor();
 await page.waitForTimeout(400);
 const text = await frame.locator('body').innerText();
-check('the bill prints 24K for that gold item', /24K/.test(text) && !/\b100\b\s*\n?\s*1\b/.test('') , text.slice(0, 300));
+check('the bill has no Tunch column (the karat only sets the purity used for the amount)', !/Tunch/.test(text), text.slice(0, 300));
 await page.getByLabel('Close preview').click();
 
 // Silver stays on Tunch

@@ -24,7 +24,7 @@ const viewBill = async () => {
 };
 let v = await viewBill();
 check('the bill carries the shop name, address and both owners with their numbers', ['KASHI JEWELLERS', 'Main Bazar, Bhadra', 'Jaideep Soni', '9782785300', 'Yogesh Soni', '9929288743'].every((t) => v.text.includes(t)), v.text.slice(0, 300));
-check('the bill prints the karat (22K) for gold', v.text.includes('22K'));
+check('the bill has no Tunch column', !v.text.includes('Tunch'));
 check('no S.P. Jewellers logo on the Kashi Jewellers bill', (await v.frame.locator('img.logo').count()) === 0);
 await page.getByLabel('Close preview').click();
 

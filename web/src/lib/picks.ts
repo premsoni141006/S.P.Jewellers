@@ -47,6 +47,16 @@ export function removePicksOf(list: Pick[], entryIds: string[]): Pick[] {
   return next;
 }
 
+/** Deletes a customer's order(s): every pick of theirs, or only the given pieces. The removals are remembered for the cloud. */
+export function removeCustomerPicks(list: Pick[], customerKey: string, entryIds?: string[]): Pick[] {
+  const gone = list.filter((p) => norm(p.customer) === customerKey && (!entryIds || entryIds.includes(p.entryId))).map((p) => p.id);
+  if (gone.length === 0) return list;
+  save(KEYS.picksRemoved, [...new Set([...load<string[]>(KEYS.picksRemoved, []), ...gone])]);
+  const next = list.filter((p) => !gone.includes(p.id));
+  save(KEYS.picks, next);
+  return next;
+}
+
 export interface CustomerPicks { key: string; name: string; count: number; last: string }
 
 /** Customers who have picked something, most recent first. */

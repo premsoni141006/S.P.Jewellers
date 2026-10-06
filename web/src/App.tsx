@@ -334,10 +334,10 @@ function AppMain() {
             if (preview.saved) { setEst(blankEstimate(settings)); setPreview(null); setTab('history'); } else setPreview(null);
           }}
           onNotice={setToast}
-          onAddPayment={(amount) => {
+          onAddPayment={(amount, extra) => {
             const target = preview.fromEditor ? est : preview.est;
             if (validatePayment(target, amount)) return;
-            const stored = saveEstimate(withPayment(target, amount, newId(), new Date().toISOString()));
+            const stored = saveEstimate(withPayment(target, amount, newId(), new Date().toISOString(), extra));
             if (preview.fromEditor || target.id === est.id) setEst(stored);
             setPreview({ ...preview, est: stored });
             setToast(`${fmtRupees(amount)} added. Left ${fmtRupees(balanceLeft(stored))}.`);

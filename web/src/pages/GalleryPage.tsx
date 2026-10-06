@@ -7,7 +7,7 @@ import { GALLERY_BARS, restoreBarColors, setBarColors } from '../lib/barColors';
 import { KEYS, load, save } from '../lib/storage';
 import { checkPassword } from '../lib/auth';
 import { forgetPhotos } from '../lib/cloud';
-import { addPick, customersOf, removePicksOf, removeSessionPick, loadPicks, picksOf, type Pick } from '../lib/picks';
+import { addPick, customersOf, removeCustomerPicks, removePicksOf, removeSessionPick, loadPicks, picksOf, type Pick } from '../lib/picks';
 import type { AppStore } from '../lib/store';
 
 const wt = (w: number): string => `${Math.round(w * 1000) / 1000} g`;
@@ -63,16 +63,46 @@ function Card({ entry, index, liked, selecting, selected, onOpen, onLike, onHold
   );
 }
 
+/** A customer in Fav (one order). Press and hold to start picking orders to delete. */
+function CustRow({ name, count, selecting, selected, onOpen, onHold }: { name: string; count: number; selecting: boolean; selected: boolean; onOpen: () => void; onHold: () => void }) {
+  const timer = useRef<number | undefined>(undefined);
+  const fired = useRef(false);
+  const origin = useRef({ x: 0, y: 0 });
+  const stop = () => window.clearTimeout(timer.current);
+  return (
+    <button
+      type="button"
+      className={`gx-cust${selected ? ' sel' : ''}`}
+      onPointerDown={(e) => {
+        fired.current = false;
+        origin.current = { x: e.clientX, y: e.clientY };
+        if (!selecting) timer.current = window.setTimeout(() => { fired.current = true; onHold(); }, 550);
+      }}
+      onPointerMove={(e) => { if (Math.hypot(e.clientX - origin.current.x, e.clientY - origin.current.y) > 10) stop(); }}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      onPointerLeave={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => { if (fired.current) { fired.current = false; return; } onOpen(); }}
+      data-testid="gallery-customer"
+    >
+      {selecting ? <span className={`gx-avatar tick${selected ? ' on' : ''}`}>{selected ? '✓' : ''}</span> : <span className="gx-avatar">{name.charAt(0).toUpperCase()}</span>}
+      <span className="gx-cust-name">{name}</span>
+      <span className="gx-count static">{count}</span>
+    </button>
+  );
+}
+
 /** Asks for the app password before photos are deleted for good. */
-function DeleteWindow({ count, onConfirm, onClose }: { count: number; onConfirm: () => void; onClose: () => void }) {
+function DeleteWindow({ title, note, onConfirm, onClose }: { title: string; note: string; onConfirm: () => void; onClose: () => void }) {
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
   useBackLayer(true, onClose);
   return (
     <div className="gx-modal" role="dialog" aria-modal="true" aria-label="Delete photos" onClick={onClose} data-testid="delete-window">
       <form className="gx-modal-card" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (checkPassword(pass)) onConfirm(); else setError('Password is not correct.'); }}>
-        <h2>Delete {count} photo{count === 1 ? '' : 's'} forever?</h2>
-        <p className="gx-modal-sub">This cannot be undone. They are removed from this device and from the cloud. The stock entries stay, without a picture.</p>
+        <h2>{title}</h2>
+        <p className="gx-modal-sub">{note}</p>
         <label className="gx-field">
           <span>Password</span>
           <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(''); }} autoComplete="current-password" autoFocus data-testid="delete-pass" />
@@ -271,8 +301,11 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
   // Picking photos to delete: press and hold one photo, tick more, then Delete (asks for the password).
   const [selected, setSelected] = useState<Set<string> | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // In Fav: press and hold a customer to pick orders to delete; press and hold a photo inside an order to remove just that pick.
+  const [selCust, setSelCust] = useState<Set<string> | null>(null);
   const selecting = selected !== null;
-  useBackLayer(selecting && !deleting, () => setSelected(null));
+  const onPicks = tab === 'fav' && !!favCustomer; // the photo grid is a customer's order, not the stock photos
+  useBackLayer((selecting || selCust !== null) && !deleting, () => { setSelected(null); setSelCust(null); });
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
   const [note, setNote] = useState('');
@@ -288,7 +321,29 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
     if (next.has(id)) next.delete(id); else next.add(id);
     return next.size === 0 ? null : next;
   });
+  const toggleCust = (key: string) => setSelCust((cur) => {
+    const next = new Set(cur ?? []);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next.size === 0 ? null : next;
+  });
   const deleteSelected = async () => {
+    if (selCust) {
+      let next = picks;
+      for (const key of selCust) next = removeCustomerPicks(next, key);
+      setPicks(next);
+      flash(`${selCust.size} order${selCust.size === 1 ? '' : 's'} deleted`);
+      setDeleting(false);
+      setSelCust(null);
+      return;
+    }
+    if (onPicks && favCustomer) {
+      const ids = [...(selected ?? [])];
+      setPicks(removeCustomerPicks(picks, favCustomer, ids));
+      flash(`${ids.length} pick${ids.length === 1 ? '' : 's'} removed`);
+      setDeleting(false);
+      setSelected(null);
+      return;
+    }
     const ids = [...(selected ?? [])];
     const gone = store.stock.filter((e) => ids.includes(e.id));
     const now = new Date().toISOString();
@@ -358,12 +413,12 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
     <div className={`gx${hideBars ? ' hide-bars' : ''}`} data-theme={active} data-testid="gallery-page">
       <main className="gx-body" onScroll={onScroll} data-testid="gallery-body">
       <div className="gx-head" data-testid="gallery-head">
-      {selecting ? (
+      {selecting || selCust ? (
         <header className="gx-top" data-testid="gallery-select-bar">
-          <button className="gx-round" onClick={() => setSelected(null)} aria-label="Cancel selection" data-testid="gallery-select-cancel"><Icon name="close" size={20} /></button>
-          <div className="gx-title"><span data-testid="gallery-selected-count">{selected?.size ?? 0} selected</span><small>Tap photos to add or remove</small></div>
+          <button className="gx-round" onClick={() => { setSelected(null); setSelCust(null); }} aria-label="Cancel selection" data-testid="gallery-select-cancel"><Icon name="close" size={20} /></button>
+          <div className="gx-title"><span data-testid="gallery-selected-count">{(selCust ?? selected)?.size ?? 0} selected</span><small>{selCust ? 'Tap orders to add or remove' : 'Tap photos to add or remove'}</small></div>
           <div className="gx-actions">
-            <button className="gx-round gx-danger" onClick={() => setDeleting(true)} disabled={!selected?.size} aria-label="Delete selected photos" data-testid="gallery-delete"><Icon name="trash" size={20} /></button>
+            <button className="gx-round gx-danger" onClick={() => setDeleting(true)} disabled={!(selCust ?? selected)?.size} aria-label="Delete selected" data-testid="gallery-delete"><Icon name="trash" size={20} /></button>
           </div>
         </header>
       ) : (
@@ -404,11 +459,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
           customers.length === 0 ? <Empty text="No customer has picked anything yet" hint="Tap + on a photo when a customer likes it." /> : (
             <div className="gx-customers" data-testid="gallery-customers">
               {customers.map((c) => (
-                <button key={c.key} className="gx-cust" onClick={() => setFavCustomer(c.key)} data-testid="gallery-customer">
-                  <span className="gx-avatar">{c.name.charAt(0).toUpperCase()}</span>
-                  <span className="gx-cust-name">{c.name}</span>
-                  <span className="gx-count static">{c.count}</span>
-                </button>
+                <CustRow key={c.key} name={c.name} count={c.count} selecting={selCust !== null} selected={!!selCust?.has(c.key)} onOpen={() => (selCust ? toggleCust(c.key) : setFavCustomer(c.key))} onHold={() => setSelCust(new Set([c.key]))} />
               ))}
             </div>
           )
@@ -425,7 +476,7 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
             {album && <button className="gx-crumb" onClick={() => setAlbum(null)} data-testid="gallery-albums-back"><Icon name="back" size={16} /> Albums</button>}
             {tab === 'fav' && favCustomer && <button className="gx-crumb" onClick={() => setFavCustomer(null)} data-testid="gallery-customers-back"><Icon name="back" size={16} /> Customers</button>}
             <div className="gx-grid" key={`${tab}-${album}-${active}`}>
-              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} liked={likedIds.has(e.id)} selecting={selecting} selected={!!selected?.has(e.id)} onOpen={() => (selecting ? toggle(e.id) : setOpenIdx(i))} onLike={tab === 'fav' ? undefined : () => onHeart(e)} onHold={tab === 'fav' ? undefined : () => setSelected(new Set([e.id]))} />)}
+              {shown.map((e, i) => <Card key={e.id} entry={e} index={i} liked={likedIds.has(e.id)} selecting={selecting} selected={!!selected?.has(e.id)} onOpen={() => (selecting ? toggle(e.id) : setOpenIdx(i))} onLike={tab === 'fav' ? undefined : () => onHeart(e)} onHold={tab === 'fav' && !favCustomer ? undefined : () => setSelected(new Set([e.id]))} />)}
             </div>
           </>
         )}
@@ -438,7 +489,14 @@ export function GalleryPage({ store, onBack }: { store: AppStore; onBack: () => 
         ))}
       </nav>
       {openIdx !== null && shown[openIdx] && <Detail list={shown} index={openIdx} liked={(id) => likedIds.has(id)} onIndex={setOpenIdx} onLike={tab === 'fav' ? undefined : onHeart} onClose={() => setOpenIdx(null)} />}
-      {deleting && <DeleteWindow count={selected?.size ?? 0} onConfirm={() => void deleteSelected()} onClose={() => setDeleting(false)} />}
+      {deleting && (
+        <DeleteWindow
+          title={selCust ? `Delete ${selCust.size} order${selCust.size === 1 ? '' : 's'} forever?` : onPicks ? `Remove ${selected?.size ?? 0} pick${(selected?.size ?? 0) === 1 ? '' : 's'} from this order?` : `Delete ${selected?.size ?? 0} photo${(selected?.size ?? 0) === 1 ? '' : 's'} forever?`}
+          note={selCust ? 'This cannot be undone. The customer and everything they chose are removed from this list. The photos stay in the Gallery.' : onPicks ? 'This cannot be undone. The photos stay in the Gallery; only this customer\'s choice is removed.' : 'This cannot be undone. They are removed from this device and from the cloud. The stock entries stay, without a picture.'}
+          onConfirm={() => void deleteSelected()}
+          onClose={() => setDeleting(false)}
+        />
+      )}
       {likeFor && (
         <LikeWindow
           entry={likeFor}

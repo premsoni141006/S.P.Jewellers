@@ -145,7 +145,7 @@ await page.click('[data-testid=preview]');
 const frame = page.frameLocator('[data-testid=preview-frame]');
 await frame.locator('th').first().waitFor();
 const ths = await frame.locator('th').allTextContents();
-check('preview has exactly the 9 columns (no Wstg; Making; one Silver/Gold column)', JSON.stringify(ths) === JSON.stringify(['Description', 'G. Wt.', 'Less Wt.', 'Net Wt.', 'Tunch', 'Pcs', 'Making', 'Silver/Gold', 'Amount']), ths.join('|'));
+check('preview has exactly the 8 columns (no Wstg, no Tunch; Making; one Silver/Gold column)', JSON.stringify(ths) === JSON.stringify(['Description', 'G. Wt.', 'Less Wt.', 'Net Wt.', 'Pcs', 'Making', 'Silver/Gold', 'Amount']), ths.join('|'));
 check('preview header', (await frame.locator('.shop').textContent()) === 'S.P. JEWELLERS' && (await frame.locator('.code').count()) === 0 && !(await frame.locator('body').textContent()).includes('ELNABAAD'));
 const descs = (await frame.locator('td.d').allTextContents()).filter((t) => t.trim());
 check('preview item rows', descs.length === 10, String(descs.length));
@@ -275,7 +275,7 @@ await go(page, 'history');
 await page.locator('[data-testid=reprint]').first().click();
 await page.waitForFunction(() => /print dialog/i.test(document.querySelector('[data-testid=toast]')?.textContent || ''));
 const printed = await page.evaluate(() => window.__printedHtml || '');
-check('reprint sends A4 document to print dialog', !printed.includes('ELNABAAD') && printed.includes('S.P. JEWELLERS') && printed.includes('ESTIMATE') && printed.includes('Sandeep Soni') && printed.includes('M.: 94166 25950') && printed.includes('Main Bazar, Near Gandhi Chowk, Ellenabad-125102') && printed.includes('Customer: <b>Ramesh Kumar</b>') && printed.includes('Bill No.: <b>E-0001</b>') && printed.includes('Silver/Gold'));
+check('reprint sends A4 document to print dialog', !printed.includes('ELNABAAD') && printed.includes('S.P. JEWELLERS') && printed.includes('ESTIMATE') && printed.includes('Sandeep Soni') && printed.includes('M.: 94166 25950') && printed.includes('Main Bazar, Near Gandhi Chowk, Ellenabad-125102') && printed.includes('<span class="k">Customer:</span><b>Ramesh Kumar</b>') && printed.includes('<span class="k">Bill No.:</span><b>E-0001</b>') && printed.includes('Silver/Gold'));
 check('history shows printed', (await page.locator('[data-testid=history-row]').first().textContent()).includes('Printed'));
 
 // settings

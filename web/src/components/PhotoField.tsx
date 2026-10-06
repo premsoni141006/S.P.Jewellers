@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { shrinkImage, usePhotoUrl } from '../lib/photos';
+import { usePhotoUrl } from '../lib/photos';
+import { CropWindow } from './CropWindow';
 import { Icon } from './Icon';
 
 /**
@@ -12,14 +13,12 @@ export function PhotoField({ photoId, pending, onChange }: { photoId?: string; p
   const [error, setError] = useState('');
   const url = usePhotoUrl(photoId, pending);
 
-  const choose = async (file: File | undefined) => {
+  // A picture that was just chosen opens the crop window first; "Use photo" there is what gets kept.
+  const [cropping, setCropping] = useState<File | null>(null);
+  const choose = (file: File | undefined) => {
     if (!file) return;
     setError('');
-    try {
-      onChange(await shrinkImage(file));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not use that picture.');
-    }
+    setCropping(file);
   };
 
   return (
@@ -35,8 +34,9 @@ export function PhotoField({ photoId, pending, onChange }: { photoId?: string; p
           {url && <button type="button" className="btn btn-plain btn-sm danger-text" onClick={() => onChange(null)} data-testid="photo-remove">Remove</button>}
         </div>
       </div>
-      <input ref={cam} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { void choose(e.target.files?.[0]); e.target.value = ''; }} data-testid="photo-input-camera" />
-      <input ref={gal} type="file" accept="image/*" hidden onChange={(e) => { void choose(e.target.files?.[0]); e.target.value = ''; }} data-testid="photo-input-gallery" />
+      <input ref={cam} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ''; }} data-testid="photo-input-camera" />
+      <input ref={gal} type="file" accept="image/*" hidden onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ''; }} data-testid="photo-input-gallery" />
+      {cropping && <CropWindow file={cropping} onCancel={() => setCropping(null)} onDone={(b) => { setCropping(null); onChange(b); }} />}
       {error && <p className="err small" role="alert">{error}</p>}
     </div>
   );

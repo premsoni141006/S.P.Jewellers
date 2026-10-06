@@ -69,6 +69,34 @@ await page.click('[data-testid=gallery-customers-back]');
 check('back to the customers list', (await page.locator('[data-testid=gallery-customer]').count()) === 2);
 await page.reload(); await page.waitForSelector('[data-testid=home-page]'); await page.click('[data-testid=open-gallery]'); await page.click('[data-testid=gallery-tab-fav]');
 check('picks are remembered after reopening', (await page.locator('[data-testid=gallery-customer]').count()) === 2);
+// ---- Fav: press and hold to delete an order (a customer's list) or a pick inside it
+const holdAt = async (loc) => { const b = await loc.boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down(); await page.waitForTimeout(750); await page.mouse.up(); };
+const sunita = page.locator('[data-testid=gallery-customer]').filter({ hasText: 'sunita' });
+await holdAt(sunita);
+check('press and hold on a customer starts picking orders (not opening it)', (await page.locator('[data-testid=gallery-selected-count]').innerText()) === '1 selected' && (await page.locator('[data-testid=gallery-customers-back]').count()) === 0);
+await page.locator('[data-testid=gallery-customer]').filter({ hasText: 'Ramesh' }).click();
+check('tapping another order adds it', (await page.locator('[data-testid=gallery-selected-count]').innerText()) === '2 selected');
+await page.click('[data-testid=gallery-select-cancel]');
+check('cancel keeps both orders', (await page.locator('[data-testid=gallery-customer]').count()) === 2);
+await holdAt(page.locator('[data-testid=gallery-customer]').filter({ hasText: 'sunita' }));
+await page.click('[data-testid=gallery-delete]');
+check('Delete asks the password and says it is for good', (await page.locator('[data-testid=delete-window]').innerText()).includes('1 order forever'));
+await page.fill('[data-testid=delete-pass]', 'wrong'); await page.click('[data-testid=delete-confirm]');
+check('a wrong password deletes nothing', (await page.locator('[data-testid=delete-error]').count()) === 1 && (await page.locator('[data-testid=gallery-customer]').count()) === 2);
+await page.fill('[data-testid=delete-pass]', '3262'); await page.click('[data-testid=delete-confirm]');
+await page.waitForSelector('[data-testid=delete-window]', { state: 'detached' });
+await page.waitForTimeout(300);
+check('the order is gone from Fav (the photos stay in the Gallery)', (await page.locator('[data-testid=gallery-customer]').count()) === 1 && !(await page.locator('[data-testid=gallery-customers]').innerText()).toLowerCase().includes('sunita') && (await ls(page, 'spj.stock.v1')).filter((e) => e.photoId).length === 3);
+await page.locator('[data-testid=gallery-customer]').first().click();
+check('inside an order the photos are its picks', (await n()) === 2);
+await holdAt(page.locator('[data-testid=gallery-photo]').first());
+await page.click('[data-testid=gallery-delete]');
+check('removing a pick asks the password too', (await page.locator('[data-testid=delete-window]').innerText()).includes('Remove 1 pick'));
+await page.fill('[data-testid=delete-pass]', '3262'); await page.click('[data-testid=delete-confirm]');
+await page.waitForSelector('[data-testid=delete-window]', { state: 'detached' });
+await page.waitForTimeout(300);
+check('the pick is removed from that order only', (await n()) === 1 && (await ls(page, 'spj.stock.v1')).filter((e) => e.photoId).length >= 3);
+await page.click('[data-testid=gallery-customers-back]');
 await page.click('[data-testid=gallery-tab-all]');
 // scrolling hides the bars, scrolling back up shows them
 await page.evaluate(() => { const b = document.querySelector('[data-testid=gallery-body]'); const f = document.createElement('div'); f.style.height = '2000px'; b.appendChild(f); });
@@ -84,6 +112,7 @@ check('tapping a photo opens it on its own page (big, with its item and weight)'
 // ---- zoom the photo
 const scaleOf = async () => page.evaluate(() => { const m = new DOMMatrix(getComputedStyle(document.querySelector('[data-testid=gallery-zoom-img]')).transform); return Math.round(m.a * 100) / 100; });
 const txOf = async () => page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('[data-testid=gallery-zoom-img]')).transform).e);
+await page.waitForSelector('[data-testid=gallery-zoom-img]');
 check('the photo opens fitted (1x) with + and - buttons', (await scaleOf()) === 1 && await page.locator('[data-testid=gallery-zoom-in]').isVisible() && await page.locator('[data-testid=gallery-zoom-out]').isDisabled());
 await page.click('[data-testid=gallery-zoom-in]'); await page.waitForTimeout(400);
 check('+ zooms in (1.5x) and a 1.5× reset button appears; previous / next step aside', (await scaleOf()) === 1.5 && (await page.locator('[data-testid=gallery-zoom-reset]').innerText()).includes('1.5') && (await page.locator('[data-testid=gallery-next]').count()) === 0);

@@ -39,7 +39,13 @@ async function addStock(type, { metal, item, weight, tunch, pcs = '', note = '',
   if (tunch !== undefined) await page.fill('[data-testid=stock-tunch]', String(tunch));
   if (pcs !== '') await page.fill('[data-testid=stock-pcs]', String(pcs));
   if (note) await page.fill('[data-testid=stock-note]', note);
-  if (photo) await page.setInputFiles('[data-testid=photo-input-camera]', { name: 'p.png', mimeType: 'image/png', buffer: PNG });
+  if (photo) {
+    await page.setInputFiles('[data-testid=photo-input-camera]', { name: 'p.png', mimeType: 'image/png', buffer: PNG });
+    await page.waitForSelector('[data-testid=crop-window]');
+    await page.waitForFunction(() => !document.querySelector('[data-testid=crop-done]')?.disabled, null, { timeout: 4000 });
+    await page.click('[data-testid=crop-done]'); // the crop window opens first; "Use photo" keeps it
+    await page.waitForSelector('[data-testid=crop-window]', { state: 'detached' });
+  }
   await page.click('[data-testid=stock-save]');
   await page.waitForSelector('[data-testid=stock-entry-page]', { state: 'detached' });
 }

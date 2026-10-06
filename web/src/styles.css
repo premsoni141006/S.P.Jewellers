@@ -1137,3 +1137,38 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .gx-zoomctl { position: absolute; top: 10px; right: 12px; z-index: 3; display: flex; flex-direction: column; gap: 8px; }
 .gx-zoomctl .gx-round:disabled { opacity: 0.3; }
 .gx-zoomlevel { font: 700 13px/1 inherit; }
+
+.pay-gold-value { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding: 8px 12px; border-radius: 10px; background: #f7f1e3; font-size: 14px; }
+.pay-gold-value b { font-size: 17px; font-variant-numeric: tabular-nums; }
+
+/* Crop window: opens right after a photo is taken or chosen */
+.crop-backdrop { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(20, 8, 10, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: layer-dim 0.24s var(--ease-out) both; }
+.crop-card { width: min(100%, 360px); max-height: 100%; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 16px 16px; border-radius: 20px; background: var(--card, #fff); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4); animation: card-rise 0.3s var(--ease-out) both; }
+.crop-card h2 { margin: 0; font: 700 20px/1.2 Georgia, serif; }
+.crop-card p { margin: -6px 0 0; text-align: center; }
+.crop-aspects { display: flex; gap: 6px; }
+.crop-aspects button { height: 34px; padding: 0 14px; border-radius: 17px; border: 1px solid var(--line-strong, #ccc); background: #fff; font: 600 13.5px/1 inherit; color: inherit; }
+.crop-aspects button.on { background: var(--maroon, #5e0a10); border-color: var(--maroon, #5e0a10); color: #fff; }
+.crop-frame { position: relative; overflow: hidden; border-radius: 12px; background: #1b1b1b; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6), 0 0 0 2px var(--maroon, #5e0a10); transition: height 0.2s ease; }
+.crop-frame img { position: absolute; max-width: none; -webkit-user-drag: none; pointer-events: none; }
+.crop-zoom { width: 100%; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted, #888); }
+.crop-zoom input { flex: 1; }
+.crop-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.gx-cust.sel { outline: 3px solid var(--acc-b); outline-offset: -3px; }
+.gx-avatar.tick { background: rgba(120, 120, 120, 0.25); color: var(--ink); border: 2px solid var(--glass-edge, #bbb); }
+.gx-avatar.tick.on { background: linear-gradient(135deg, var(--acc-a), var(--acc-b)); color: var(--acc-ink); border-color: transparent; }
+.gx-cust { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+.deposit-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.deposit-list { display: flex; flex-direction: column; }
+.deposit-x { border: 0; background: transparent; color: #b3261e; font-size: 14px; padding: 0 4px; }
+
+/* Payment card on the bill page: even spacing between the field, the buttons and the totals */
+[data-testid='deposit-card'] { display: flex; flex-direction: column; gap: 12px; }
+[data-testid='deposit-card'] .section-title { margin: 0; }
+[data-testid='deposit-card'] .deposit-actions { gap: 10px; margin: 2px 0 4px; }
+[data-testid='deposit-card'] .deposit-actions .btn { min-height: 46px; }
+[data-testid='deposit-card'] .kv { margin: 0; }
+[data-testid='deposit-card'] .deposit-list { gap: 4px; padding: 8px 12px; border-radius: 10px; background: #faf5ea; }
+[data-testid='deposit-card'] p { margin: 2px 0 0; line-height: 1.45; }

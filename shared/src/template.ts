@@ -4,8 +4,8 @@
 //
 // Layout follows the shop's sample: SP_Jewellers_Simple_Demo_Estimate_v2.pdf.
 
-import { calcEstimate, ratePerGram, usesTunch } from './calc';
-import { balanceLeft, paymentsOf } from './payments';
+import { calcEstimate, ratePerGram } from './calc';
+import { balanceLeft, paymentModeText, paymentsOf, submittedRate, submittedWeight } from './payments';
 import { fmtDate, fmtDateTime, fmtDayDateTime, fmtEstimateNo, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
 import { LOGO_ASPECT, LOGO_BW_DATA_URI } from './logo';
 import type { Estimate } from './types';
@@ -35,7 +35,6 @@ export const PRINT_COLUMNS = [
   'G. Wt.',
   'Less Wt.',
   'Net Wt.',
-  'Tunch',
   'Pcs',
   'Making',
   'Silver/Gold',
@@ -43,11 +42,6 @@ export const PRINT_COLUMNS = [
 ] as const;
 
 /** The bill always shows at least this many item rows (blank rows fill the rest); more items = more rows. */
-/** Tunch as printed; 22K gold has none (the rate is already for 22K), so it shows "22K". */
-function tunchText(it: { metal: string; tunch: number; karat?: number }, pricing: Estimate['pricing']): string {
-  if (it.metal === 'gold' && it.karat) return `${Math.round(it.karat * 10) / 10}K`; // gold shows its karat (24K, 22K...)
-  return usesTunch({ metal: it.metal as 'gold' | 'silver' }, pricing) ? fmtPercent(it.tunch) : '22K';
-}
 
 /** Making charge as printed: a % when the item's making is entered as a percentage (gold), rupees otherwise. */
 export function makingText(it: { labourMode: string; labourRate: number }, labour: number): string {
@@ -58,7 +52,7 @@ export const MIN_PRINT_ROWS = 5;
 
 // Column widths in millimetres (proportions of the sample); they add up to the 190 mm
 // between the 10 mm A4 margins.
-const COL_MM = [54, 15, 15, 15, 14, 11, 20, 22, 24];
+const COL_MM = [68, 15, 15, 15, 11, 20, 22, 24]; // Description, G, Less, Net, Pcs, Making, Silver/Gold, Amount // no Tunch column; separate Silver and Gold rate columns
 
 export const escapeHtml = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -98,17 +92,21 @@ body {
 .top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
 /* Brand row: logo at the far left, shop name in the middle */
 /* the shop name sits 4.2 mm lower, which is real space now (the tagline and the address follow it) */
-.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; margin-top: 4.2mm; }
+.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; margin-top: 4.2mm; position: relative; top: 2.5mm; } /* the name and logo sit a little lower, nearer the tagline (visual only) */
 .brand-logo { justify-self: start; position: relative; top: 2mm; left: 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
 .logo { display: block; height: 18.4mm; width: auto; } /* 15 % bigger than before (16 mm) */
 .logo.custom { max-width: 27.6mm; object-fit: contain; filter: grayscale(1) contrast(1.35); } /* an uploaded logo prints in black and white */
-.shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.3pt; }
+.shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.06em; font-family: Georgia, "Times New Roman", "Noto Serif", serif; } /* the same serif the app uses for the shop name */
 .address-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 3mm; margin: 0 0 3mm; }
 .address-col { text-align: center; }
-.tagline { font-size: 10.5pt; font-weight: 700; letter-spacing: 0.3pt; }
+.tagline { font-size: 10pt; font-weight: 400; }
 .address { text-align: center; font-size: 9.5pt; }
 .code { text-align: center; font-size: 9.5pt; margin: 0 0 2mm; }
 /* First row of the table: customer + mobile (left, 7 columns); bill number + date (right, starting at Silver/Gold) */
+/* the labels are right-aligned in a fixed column, so every colon lines up above the next */
+.mr { display: grid; grid-template-columns: 18mm 1fr; column-gap: 1.5mm; align-items: baseline; }
+.meta-r .mr { grid-template-columns: 16mm 1fr; }
+.mr .k { text-align: right; }
 tr.meta-row td { text-align: left; white-space: normal; height: auto; padding: 1.6mm 2mm; font-size: 9.5pt; line-height: 1.4; font-variant-numeric: normal; }
 table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 /* One box around the whole bill: header, table and thank-you. */
@@ -125,7 +123,10 @@ tr.sum td.lbl { text-align: left; }
 tr.sum td.mid { text-align: center; }
 tr.grand td { background: #f0f0f0; font-weight: 700; }
 .note { font-size: 8pt; margin-top: 2mm; }
-.thanks { margin-top: 5mm; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+.foot { margin-top: 5mm; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 4mm; page-break-inside: avoid; break-inside: avoid; }
+.foot-rates { text-align: left; font-size: 7.2pt; line-height: 1.5; padding-bottom: 3mm; } /* 20 % smaller than 9 pt, lifted a little off the bottom edge */
+.foot-rates div { white-space: nowrap; }
+.thanks { text-align: center; }
 .thanks-main { font-size: 12pt; font-weight: 700; }
 .thanks-sub { font-size: 9.5pt; margin-top: 1mm; }
 @media screen {
@@ -169,20 +170,25 @@ function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string
 function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
   const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
   const owner = ownersOf(h).map((o) => [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ')).filter(Boolean).join(' · ');
-  return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.tagline ?? '').trim() ? `<div class="code"><b>${escapeHtml((h.tagline as string).trim())}</b></div>` : ''}${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
+  return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.tagline ?? '').trim() ? `<div class="code">${escapeHtml((h.tagline as string).trim())}</div>` : ''}${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
 <div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
 }
 
-/** Closing lines under the table: a thank-you (no shop name, no estimate note). */
-function thanksHtml(_h: PrintHeader): string {
-  return `<div class="thanks"><div class="thanks-main">Thank you for visiting!</div>
-<div class="thanks-sub">It was a pleasure serving you. Please visit us again.</div></div>`;
+/** 10, 10.5, 0.05: a weight as written in a line of text (no trailing zeros). */
+const wtText = (w: number): string => `${Math.round(w * 1000) / 1000} g`;
+
+/** Under the table: the silver and gold prices (bottom left) and a thank-you (no shop name, no estimate note). */
+function footHtml(est: Estimate): string {
+  // Silver and gold price, two rows in the bottom-left corner; the thank-you stays in the middle.
+  return `<div class="foot"><div class="foot-rates"><div>Silver: ${escapeHtml(bhavText(est, 'silver'))}</div><div>Gold: ${escapeHtml(bhavText(est, 'gold'))}</div></div>
+<div class="thanks"><div class="thanks-main">Thank you for visiting!</div>
+<div class="thanks-sub">It was a pleasure serving you. Please visit us again.</div></div><span></span></div>`;
 }
 
 /** One big first row of the table: customer + mobile on the left, bill number + date in the last two columns. */
 function metaRowHtml(est: Estimate): string {
   const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
-  return `<tr class="meta-row"><td colspan="7" class="meta-l"><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></td><td colspan="2" class="meta-r"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div></td></tr>`;
+  return `<tr class="meta-row"><td colspan="6" class="meta-l"><div class="mr"><span class="k">Customer:</span><b>${escapeHtml(est.customerName.trim())}</b></div><div class="mr"><span class="k">Mobile:</span><b>${escapeHtml(est.customerPhone.trim())}</b></div></td><td colspan="2" class="meta-r"><div class="mr"><span class="k">Bill No.:</span><b>${escapeHtml(no)}</b></div><div class="mr"><span class="k">Date:</span><b>${escapeHtml(fmtDate(est.createdAt))}</b></div></td></tr>`;
 }
 
 export interface RenderOptions {
@@ -201,25 +207,25 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
 <td>${fmtWeight(it.grossWt)}</td>
 <td>${fmtWeight(it.lessWt)}</td>
 <td>${fmtWeight(c.netWt)}</td>
-<td>${tunchText(it, est.pricing)}</td>
 <td>${fmtPcs(it.pcs)}</td>
 <td>${makingText(it, c.labour)}</td>
 <td>${metalName(it.metal)}</td>
 <td class="r">${fmtRupeeCell(c.amount)}</td>
 </tr>`;
   });
-  for (let i = est.items.length; i < MIN_PRINT_ROWS; i++) rows.push(`<tr>${'<td></td>'.repeat(9)}</tr>`);
+  for (let i = est.items.length; i < MIN_PRINT_ROWS; i++) rows.push(`<tr>${'<td></td>'.repeat(8)}</tr>`);
 
   const sum = (label: string, mid: string, value: string, cls = '') =>
-    `<tr class="sum ${cls}"><td class="lbl" colspan="7">${label}</td><td class="mid">${mid}</td><td>${value}</td></tr>`;
+    `<tr class="sum ${cls}"><td class="lbl" colspan="6">${label}</td><td class="mid">${mid}</td><td>${value}</td></tr>`;
   const summary = [
-    ...metalsBought(est).map((m) => sum('', `${metalName(m)} Rate`, bhavText(est, m))),
     ...est.otherCharges.map((c) => sum(escapeHtml(c.label.toUpperCase()), '', fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [sum(`GST ${fmtPercent(p.gstPercent)}%`, '', fmtRupeeCell(t.gst))] : []),
+    // The gold / silver the customer submitted: valued at the rate typed for it and cut from the bill.
+    ...(['silver', 'gold'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => sum(`Submitted ${wtText(submittedWeight(est, m))} ${m} @ ${fmtRupeeCell(submittedRate(est, m))} / 10 g`, '', `−${fmtRupeeCell(t.submittedCredit[m])}`)),
     sum('TOTAL', '', fmtRupeeCell(t.grandTotal), 'grand'),
     // Money received so far (each with its day and date) and what is left.
     ...(paymentsOf(est).length
-      ? [...paymentsOf(est).map((pay) => sum(`Paid · ${escapeHtml(fmtDayDateTime(pay.at))}`, '', fmtRupeeCell(pay.amount))), sum('BALANCE', '', fmtRupeeCell(balanceLeft(est)), 'grand')]
+      ? [...paymentsOf(est).map((pay) => sum(`Paid · ${paymentModeText(pay) ? `${escapeHtml(paymentModeText(pay))} · ` : ''}${escapeHtml(fmtDayDateTime(pay.at))}`, '', fmtRupeeCell(pay.amount))), sum('BALANCE', '', fmtRupeeCell(balanceLeft(est)), 'grand')]
       : []),
   ].join('');
 
@@ -232,7 +238,7 @@ ${headerHtml(header)}
 <tbody>${rows.join('')}${summary}</tbody>
 </table>
 ${opts.note ? `<div class="note">${escapeHtml(opts.note)}</div>` : ''}
-${thanksHtml(header)}
+${footHtml(est)}
 </div></div></body></html>`;
 }
 
@@ -267,8 +273,8 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
     .map((it, i) => {
       const c = t.items[i];
       return `<table class="it">
-<tr><td colspan="5" class="d">${escapeHtml(it.description)}</td></tr>
-<tr>${cell('G. Wt.', fmtWeight(it.grossWt))}${cell('Less Wt.', fmtWeight(it.lessWt))}${cell('Net Wt.', fmtWeight(c.netWt))}${cell('Tunch', tunchText(it, est.pricing))}${cell('Pcs', fmtPcs(it.pcs))}</tr>
+<tr><td colspan="4" class="d">${escapeHtml(it.description)}</td></tr>
+<tr>${cell('G. Wt.', fmtWeight(it.grossWt))}${cell('Less Wt.', fmtWeight(it.lessWt))}${cell('Net Wt.', fmtWeight(c.netWt))}${cell('Pcs', fmtPcs(it.pcs))}</tr>
 <tr>${cell('Making', makingText(it, c.labour))}${cell('Silver/Gold', metalName(it.metal))}<td colspan="3"><div class="l">Amount</div><div class="v b">${fmtRupeeCell(c.amount)}</div></td></tr>
 </table>`;
     })
@@ -279,9 +285,10 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
     ...metalsBought(est).map((m) => line(`${metalName(m)} Rate`, bhavText(est, m))),
     ...est.otherCharges.map((c) => line(c.label.toUpperCase(), fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [line(`GST ${fmtPercent(p.gstPercent)}%`, fmtRupeeCell(t.gst))] : []),
+    ...(['silver', 'gold'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => line(`Submitted ${wtText(submittedWeight(est, m))} ${m}`, `−${fmtRupeeCell(t.submittedCredit[m])}`)),
     line('TOTAL', fmtRupeeCell(t.grandTotal), 'grand'),
     ...(paymentsOf(est).length
-      ? [...paymentsOf(est).map((pay) => line(`Paid ${fmtDayDateTime(pay.at)}`, fmtRupeeCell(pay.amount))), line('BALANCE', fmtRupeeCell(balanceLeft(est)), 'grand')]
+      ? [...paymentsOf(est).map((pay) => line(`Paid ${paymentModeText(pay) ? `${paymentModeText(pay)} ` : ''}${fmtDayDateTime(pay.at)}`, fmtRupeeCell(pay.amount))), line('BALANCE', fmtRupeeCell(balanceLeft(est)), 'grand')]
       : []),
   ].join('');
 
@@ -289,7 +296,7 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: #fff; color: #000; width: ${widthPx}px; }
 body { font-family: Arial, "Segoe UI", sans-serif; font-size: ${fs}px; line-height: 1.2; padding: 0 ${big ? 6 : 4}px; }
-.shop { text-align: center; font-size: ${Math.round(fs * 1.6)}px; font-weight: 700; }
+.shop { text-align: center; font-size: ${Math.round(fs * 1.6)}px; font-weight: 700; font-family: Georgia, "Times New Roman", "Noto Serif", serif; }
 .code { text-align: center; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }
 .thanks-r { text-align: center; font-weight: 700; margin: 8px 0 4px; font-size: ${fs}px; }
 .owner-line { text-align: center; font-weight: 700; font-size: ${Math.round(fs * 0.95)}px; margin: 2px 0 8px; }

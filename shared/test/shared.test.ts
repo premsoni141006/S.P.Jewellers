@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, PRINT_COLUMNS, buildEstimateEscPosText, buildTestPrintEscPos, calcEstimate, calcItem,
   newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
-  searchStock, searchCash, paidTotal, balanceLeft, validatePayment, withPayment, mergeBills, mergeById, fixBillNumbers, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
+  searchStock, searchCash, boughtPurity, submittedRate, netMetalWeight, submittedWeight, silverPaymentValue, goldPaymentValue, paidTotal, balanceLeft, validatePayment, withPayment, mergeBills, mergeById, fixBillNumbers, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
 } from '../src';
 
 const pricing = { ...pricingFromSettings(DEFAULT_SETTINGS), silverRate: 100000, silverRateUnit: 'per_kg' as const, goldRate: 100000, goldRateUnit: 'per_10g' as const, roundGrandTotal: false };
@@ -129,8 +129,10 @@ describe('print template', () => {
     expect(html).toMatch(/ESTIMATE</);
     expect(html).toMatch(/Bill No\./);
     expect(html).toMatch(/Date:/);
-    expect(html).toContain('>Silver Rate<');
-    expect(html).toContain('>Gold Rate<'); // the sample has both metals
+    expect(html).not.toContain('>Silver Rate<'); // the rates moved to the bottom-left corner
+    expect(html).not.toContain('>Gold Rate<');
+    expect(html).toContain('Silver: ₹2,310 / 10 g');
+    expect(html).toContain('Gold: ₹72,000 / 10 g');
     expect(html).not.toMatch(/BHAV/i);
     expect(html).toContain('TOTAL');
     // the sample has 6 items, above the 5-row minimum (plus the column header row)
@@ -153,12 +155,13 @@ describe('print template', () => {
     expect(rows(6)).toBe(6);
     expect(rows(12)).toBe(12);
   });
-  it('the bill has 9 columns: no Wstg, and the charge column is "Making"', () => {
-    expect([...PRINT_COLUMNS]).toEqual(['Description', 'G. Wt.', 'Less Wt.', 'Net Wt.', 'Tunch', 'Pcs', 'Making', 'Silver/Gold', 'Amount']);
+  it('the bill has 8 columns: no Wstg, no Tunch, one Silver/Gold column, and the charge column is "Making"', () => {
+    expect([...PRINT_COLUMNS]).toEqual(['Description', 'G. Wt.', 'Less Wt.', 'Net Wt.', 'Pcs', 'Making', 'Silver/Gold', 'Amount']);
     const html = renderEstimateHtml(sampleEstimate(DEFAULT_SETTINGS), header);
     expect(html).not.toContain('Wstg');
     expect(html).not.toContain('Labour');
-    expect((html.match(/<th>/g) ?? []).length).toBe(9);
+    expect((html.match(/<th>/g) ?? []).length).toBe(8);
+    expect(html).not.toContain('<th>Tunch</th>');
   });
   it('prints Pcs as a plain number (no pair marker), even for old data that carries a unit', () => {
     const est = sampleEstimate(DEFAULT_SETTINGS);
@@ -192,11 +195,11 @@ describe('print template', () => {
     expect(html).toContain('Main Bazar, Near Gandhi Chowk, Ellenabad-125102');
     expect(at('class="estimate-title"')).toBeLessThan(at('class="brand"'));
     // the first row INSIDE the table: customer + mobile (7 columns), bill number + date (last 2 columns)
-    expect(html).toContain('Customer: <b>Ramesh Kumar</b>');
-    expect(html).toContain('Mobile: <b>98765 43210</b>');
-    expect(html).toContain('Bill No.: <b>E-0007</b>');
-    expect(html).toContain('Date: <b>04 Oct 2026</b>');
-    expect(html).toContain('<tr class="meta-row"><td colspan="7" class="meta-l">');
+    expect(html).toContain('<span class="k">Customer:</span><b>Ramesh Kumar</b>');
+    expect(html).toContain('<span class="k">Mobile:</span><b>98765 43210</b>');
+    expect(html).toContain('<span class="k">Bill No.:</span><b>E-0007</b>');
+    expect(html).toContain('<span class="k">Date:</span><b>04 Oct 2026</b>');
+    expect(html).toContain('<tr class="meta-row"><td colspan="6" class="meta-l">');
     expect(html).toContain('<td colspan="2" class="meta-r">');
     expect(at('<table>')).toBeLessThan(at('class="meta-row"'));
     expect(at('class="meta-row"')).toBeLessThan(at('<th>Description</th>'));
@@ -204,7 +207,7 @@ describe('print template', () => {
     expect(at('class="meta-row"')).toBeGreaterThan(at('class="address"'));
     // 7 + 2 = the 9 printed columns, so the right cell starts exactly at the Silver/Gold column
     const row = html.slice(at('class="meta-row"'), at('<th>Description</th>'));
-    expect((row.match(/colspan="(\d)"/g) ?? []).join('')).toBe('colspan="7"colspan="2"');
+    expect((row.match(/colspan="(\d)"/g) ?? []).join('')).toBe('colspan="6"colspan="2"');
     // left-to-right order inside the brand row: logo, then name
     expect(html).toMatch(/grid-template-columns: 24mm 1fr 24mm/);
   });
@@ -212,9 +215,9 @@ describe('print template', () => {
     const est = sampleEstimate(DEFAULT_SETTINGS);
     est.customerName = est.customerPhone = '';
     const html = renderEstimateHtml(est, header);
-    expect(html).toContain('Customer: <b></b>');
-    expect(html).toContain('Mobile: <b></b>');
-    expect(html).toContain('Bill No.: <b>—</b>');
+    expect(html).toContain('<span class="k">Customer:</span><b></b>');
+    expect(html).toContain('<span class="k">Mobile:</span><b></b>');
+    expect(html).toContain('<span class="k">Bill No.:</span><b>—</b>');
   });
   it('receipt layouts carry the same facts', () => {
     const est = sampleEstimate(DEFAULT_SETTINGS);
@@ -225,29 +228,25 @@ describe('print template', () => {
     const text = Buffer.from(buildEstimateEscPosText(est, h, 80)).toString('latin1');
     for (const t of ['ESTIMATE', 'Sandeep Soni', 'Main Bazar', 'Bill No.: E-0003', 'Customer: Ramesh', 'Mobile: 98765']) expect(text).toContain(t);
   });
-  it('Silver/Gold column names the metal on each row; bhav rows only for metals bought', () => {
+  it('Silver/Gold column names the metal on each row; both prices sit in two rows at the bottom left', () => {
     const mk = (metals: Array<'gold' | 'silver'>) => {
       const est = sampleEstimate(DEFAULT_SETTINGS);
       est.items = metals.map((metal, i) => ({ ...est.items[0], id: `m${i}`, metal }));
       return renderEstimateHtml(est, header);
     };
-    const onlySilver = mk(['silver', 'silver']);
-    expect(onlySilver).toContain('>Silver Rate<');
-    expect(onlySilver).not.toContain('>Gold Rate<');
-    const onlyGold = mk(['gold']);
-    expect(onlyGold).toContain('>Gold Rate<');
-    expect(onlyGold).not.toContain('>Silver Rate<');
     const both = mk(['gold', 'silver', 'gold']);
-    expect(both.indexOf('>Silver Rate<')).toBeGreaterThan(-1);
-    expect(both.indexOf('>Gold Rate<')).toBeGreaterThan(both.indexOf('>Silver Rate<'));
-    expect(both).not.toMatch(/BHAV/i);
     // the metal is written in each item row, in the combined column
     expect((both.match(/<td>Gold<\/td>/g) ?? []).length).toBe(2);
     expect((both.match(/<td>Silver<\/td>/g) ?? []).length).toBe(1);
     expect(both).toContain('<th>Silver/Gold</th>');
-    // rate is shown per 10 g: default silver 231/g = 2,310 / 10 g, gold 7,200/g = 72,000 / 10 g
-    expect(both).toContain('₹2,310 / 10 g');
-    expect(both).toContain('₹72,000 / 10 g');
+    expect(both).not.toMatch(/BHAV/i);
+    // no rate rows inside the table any more; the footer has both prices, silver first, in two rows (even when only one metal was bought)
+    expect(both).not.toContain('>Silver Rate<');
+    for (const html of [both, mk(['gold']), mk(['silver', 'silver'])]) {
+      expect(html).toContain('<div class="foot-rates"><div>Silver: ₹2,310 / 10 g</div><div>Gold: ₹72,000 / 10 g</div></div>');
+    }
+    // it comes after the table (bottom of the bill)
+    expect(both.indexOf('class="foot-rates"')).toBeGreaterThan(both.indexOf('</table>'));
   });
   it('the bill ends with ONE total row: no SUBTOTAL, no GRAND TOTAL', () => {
     const est = sampleEstimate(DEFAULT_SETTINGS);
@@ -258,7 +257,7 @@ describe('print template', () => {
     expect(html).not.toContain('GRAND TOTAL');
     // the total is the last row and equals the calculated total
     const total = calcEstimate(est).grandTotal;
-    expect(html.indexOf('>TOTAL<')).toBeGreaterThan(html.indexOf('Rate<'));
+    expect(html.indexOf('>TOTAL<')).toBeGreaterThan(html.indexOf('<tbody>'));
     expect(html).toContain(`₹${new Intl.NumberFormat('en-IN').format(total)}`);
     // with GST on, its row stays (a tax line is never hidden) and is followed by the single TOTAL
     est.pricing.gstEnabled = true;
@@ -686,5 +685,110 @@ describe('tagline under the shop name', () => {
     expect(t).toBeGreaterThan(a);
     expect(d).toBeGreaterThan(t);
     expect(renderEstimateHtml(sampleEstimate(DEFAULT_SETTINGS), { shopName: 'X', shopCode: '', address: 'Y' })).not.toContain('class="tagline"');
+  });
+});
+
+describe('old gold given instead of money', () => {
+  it('its value = weight x purity x (1 - cut) x rate per gram', () => {
+    expect(goldPaymentValue({ weight: 10, purity: 92, rate: 72000, cutPct: 0 })).toBe(66240);
+    expect(goldPaymentValue({ weight: 10, purity: 100, rate: 72000, cutPct: 5 })).toBe(68400);
+    expect(goldPaymentValue({ weight: 0, purity: 92, rate: 72000, cutPct: 0 })).toBe(0);
+  });
+  it('is cut from the bill and printed with the gold details', () => {
+    const e = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'g1', number: 2 };
+    const value = goldPaymentValue({ weight: 5, purity: 92, rate: 72000, cutPct: 0 });
+    const paid = withPayment(e, value, 'pg', '2026-10-05T10:12:00', { mode: 'gold', gold: { weight: 5, karat: 22, purity: 92, rate: 72000, cutPct: 0 } });
+    expect(balanceLeft(paid)).toBe(balanceLeft(e) - value);
+    const html = renderEstimateHtml(paid, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(html).toContain('Paid · Submitted gold 5 g · Mon, 05 Oct, 2026');
+    const upi = withPayment(e, 100, 'pu', '2026-10-05T10:12:00', { mode: 'upi' });
+    expect(renderEstimateHtml(upi, { shopName: 'X', shopCode: '' })).toContain('Paid · UPI · ');
+  });
+});
+
+describe('net gold / silver weight on the bill', () => {
+  const base = () => {
+    const e = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'n1', number: 4 };
+    e.items = [
+      { ...e.items[0], id: 'g1', metal: 'gold' as const, grossWt: 12, lessWt: 0 },
+      { ...e.items[0], id: 'g2', metal: 'gold' as const, grossWt: 3, lessWt: 0 },
+      { ...e.items[0], id: 's1', metal: 'silver' as const, grossWt: 40, lessWt: 0 },
+    ];
+    return e;
+  };
+  it('net = gross weight on the bill - weight the customer submitted, per metal', () => {
+    let e = base();
+    expect(netMetalWeight(e, 'gold')).toBe(15);
+    e = { ...e, submitted: { gold: 5.5, silver: 10 } };
+    expect(submittedWeight(e, 'gold')).toBe(5.5);
+    expect(submittedWeight(e, 'silver')).toBe(10);
+    expect(netMetalWeight(e, 'gold')).toBe(9.5);
+    expect(netMetalWeight(e, 'silver')).toBe(30);
+  });
+  it('the printed bill has one simple "Submitted … g gold" row only for a metal the customer submitted (no Net Wt. rows)', () => {
+    const e = { ...base(), submitted: { gold: 5.5 } };
+    const html = renderEstimateHtml(e, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(html).toContain('Submitted 5.5 g gold @ ₹72,000 / 10 g');
+    expect(html).not.toContain('Net Gold Wt.');
+    expect(html).not.toContain('Net Silver Wt.');
+    expect(html).not.toContain('Submitted 0 g');
+    expect(renderEstimateHtml(base(), { shopName: 'S.P. JEWELLERS', shopCode: '' })).not.toContain('Submitted');
+    const htmlBoth = renderEstimateHtml({ ...base(), submitted: { gold: 5.5, silver: 10 } }, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(htmlBoth).toContain('Submitted 10 g silver @ ₹2,310 / 10 g');
+    expect(htmlBoth).toContain('Submitted 5.5 g gold @ ₹72,000 / 10 g');
+  });
+});
+
+describe('submitted gold / silver valued at its own rate and cut from the bill', () => {
+  const bill = () => {
+    const e = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'sub1', number: 7 };
+    e.pricing = { ...e.pricing, goldRate: 72000, goldRateUnit: 'per_10g', silverRate: 9000, silverRateUnit: 'per_10g' };
+    e.items = [
+      { ...e.items[0], id: 'g1', metal: 'gold' as const, grossWt: 10, lessWt: 0, tunch: 92, karat: 22, labourRate: 0, labourMode: 'fixed' as const },
+      { ...e.items[0], id: 's1', metal: 'silver' as const, grossWt: 100, lessWt: 0, tunch: 100, labourRate: 0, labourMode: 'fixed' as const },
+    ];
+    e.otherCharges = [];
+    e.pricing.gstEnabled = false;
+    return e;
+  };
+  it('without its own rate it is valued at the bill\'s 24K rate, at the purity of the metal bought', () => {
+    const e = bill();
+    const base = calcEstimate(e);
+    expect(base.grandTotal).toBe(66240 + 90000);
+    expect(boughtPurity(e.items, 'gold')).toBe(92);
+    expect(submittedRate({ ...e, submitted: { gold: 5 } }, 'gold')).toBe(72000);
+    const t = calcEstimate({ ...e, submitted: { gold: 5, silver: 20 } });
+    expect(t.submittedCredit.gold).toBe(33120); // 5 g x 92 % x 7,200
+    expect(t.submittedCredit.silver).toBe(18000); // 20 g x 100 % x 900
+    expect(t.grandTotal).toBe(base.grandTotal - 33120 - 18000);
+  });
+  it('a rate typed for the submission applies to that submission only', () => {
+    const e = bill();
+    const t = calcEstimate({ ...e, submitted: { gold: 5, goldRate: 75000 } });
+    expect(t.submittedCredit.gold).toBe(34500); // 5 g x 92 % x 7,500
+    expect(t.items[0].amount).toBe(66240); // the gold bought is still priced at the bill's own rate
+    expect(submittedRate({ ...e, submitted: { gold: 5, goldRate: 75000 } }, 'gold')).toBe(75000);
+  });
+  it('is checked: not negative and not more than the metal on the bill', () => {
+    const e = bill();
+    expect(validateEstimate({ ...e, submitted: { gold: 12 } }).some((i) => /more than the gold/.test(i.message))).toBe(true);
+    expect(validateEstimate({ ...e, submitted: { silver: -1 } }).some((i) => /cannot be negative/.test(i.message))).toBe(true);
+    expect(validateEstimate({ ...e, submitted: { gold: 10, silver: 100 } }).filter((i) => /Submitted/.test(i.message))).toEqual([]);
+  });
+  it('the printed bill has one Submitted row with the weight, the rate and the value; no karat printed', () => {
+    const e = { ...bill(), submitted: { gold: 5, goldRate: 75000 } };
+    const html = renderEstimateHtml(e, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(html).toContain('Submitted 5 g gold @ ₹75,000 / 10 g');
+    expect(html).toContain('−₹34,500');
+    expect(html).not.toContain('silver @');
+    expect(html).not.toContain('22K');
+  });
+  it('gold submitted later is a payment: its weight and a rate for that one, same purity as bought', () => {
+    const e = { ...bill(), submitted: undefined };
+    const value = goldPaymentValue({ weight: 5, purity: boughtPurity(e.items, 'gold'), rate: 75000, cutPct: 0 });
+    expect(value).toBe(34500);
+    const paid = withPayment(e, value, 'pl', '2026-10-06T10:00:00', { mode: 'gold', gold: { weight: 5, karat: 22, purity: 92, rate: 75000, cutPct: 0 } });
+    expect(balanceLeft(paid)).toBe(balanceLeft(e) - 34500);
+    expect(renderEstimateHtml(paid, { shopName: 'S.P. JEWELLERS', shopCode: '' })).toContain('Paid · Submitted gold 5 g · ');
   });
 });

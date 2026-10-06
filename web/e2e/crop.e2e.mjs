@@ -1,0 +1,42 @@
+import { chromium } from '../../desktop/node_modules/playwright/index.mjs';
+import { launchUnlocked } from './launch.mjs';
+const BASE = process.env.SPJ_WEB_URL || 'http://localhost:4173/';
+let pass = 0, fail = 0;
+const check = (n, ok, d = '') => { (ok ? pass++ : fail++); console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${ok ? '' : ' - ' + d}`); };
+const browser = await launchUnlocked(chromium);
+const page = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+await page.goto(BASE); await page.waitForSelector('[data-testid=home-page]');
+await page.click('[data-testid=tile-stock]'); await page.click('[data-testid=stock-add-in]'); await page.waitForSelector('[data-testid=stock-entry-page]');
+// a wide 600 x 300 picture: left half dark red, right half dark blue
+const png = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 600; c.height = 300; const g = c.getContext('2d'); g.fillStyle = '#a00000'; g.fillRect(0, 0, 300, 300); g.fillStyle = '#0000a0'; g.fillRect(300, 0, 300, 300); return c.toDataURL('image/png').split(',')[1]; });
+await page.setInputFiles('[data-testid=photo-input-gallery]', { name: 'wide.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+await page.waitForSelector('[data-testid=crop-window]');
+check('choosing a photo opens the crop window first (nothing is saved yet)', (await page.locator('[data-testid=photo-preview]').count()) === 0);
+await page.waitForFunction(() => !document.querySelector('[data-testid=crop-done]')?.disabled, null, { timeout: 4000 });
+const frame = async () => page.locator('[data-testid=crop-frame]').boundingBox();
+let f = await frame();
+await page.waitForTimeout(350);
+f = await frame();
+check('the default shape is 4:3', Math.abs(f.width / f.height - 4 / 3) < 0.02, JSON.stringify(f));
+await page.click('[data-testid=crop-aspect-sq]'); await page.waitForTimeout(300);
+f = await frame();
+check('Square makes the frame square', Math.abs(f.width / f.height - 1) < 0.02, JSON.stringify(f));
+// drag the picture to the right: the left (red) part moves into the frame... then keep the red part
+const box = await frame();
+await page.mouse.move(box.x + 150, box.y + 150); await page.mouse.down(); await page.mouse.move(box.x + 400, box.y + 150, { steps: 6 }); await page.mouse.up();
+await page.waitForTimeout(250);
+await page.click('[data-testid=crop-done]');
+await page.waitForSelector('[data-testid=crop-window]', { state: 'detached' });
+await page.waitForSelector('[data-testid=photo-preview]');
+const dims = await page.evaluate(async () => { const img = document.querySelector('[data-testid=photo-preview]'); await img.decode(); const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.drawImage(img, 0, 0); const d = g.getImageData(c.width / 2, c.height / 2, 1, 1).data; return { w: img.naturalWidth, h: img.naturalHeight, r: d[0], b: d[2] }; });
+check('Use photo keeps a square picture (the part inside the frame)', dims.w === dims.h && dims.w > 100, JSON.stringify(dims));
+check('dragging chose the red half (the centre of the saved picture is red, not blue)', dims.r > 100 && dims.b < 80, JSON.stringify(dims));
+// cancel keeps the previous photo
+await page.setInputFiles('[data-testid=photo-input-camera]', { name: 'x.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+await page.waitForSelector('[data-testid=crop-window]');
+await page.click('[data-testid=crop-cancel]');
+await page.waitForSelector('[data-testid=crop-window]', { state: 'detached' });
+check('Cancel closes the window and keeps the earlier photo', (await page.locator('[data-testid=photo-preview]').count()) === 1);
+await browser.close();
+console.log(`${pass}/${pass + fail} passed`);
+process.exit(fail ? 1 : 0);

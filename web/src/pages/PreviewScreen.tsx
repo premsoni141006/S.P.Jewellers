@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { balanceLeft, calcEstimate, fmtDayDateTime, fmtEstimateNo, fmtRupees, paidTotal, renderEstimateHtml, validatePayment, type Estimate, type PrintHeader } from '@shared';
-import { NumField } from '../components/NumField';
-import { useBackLayer } from '../lib/backStack';
+import { balanceLeft, fmtEstimateNo, fmtRupees, paidTotal, renderEstimateHtml, type Estimate, type PrintHeader } from '@shared';
+import { PaymentWindow, type PayExtra } from '../components/PaymentWindow';
 import { Icon } from '../components/Icon';
 import { billFileName, billPdf, saveBlob, shareBill } from '../lib/billExport';
 
@@ -15,31 +14,7 @@ const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
  * Shows the exact bill that is printed. It opens fitted to the screen and can be zoomed (buttons,
  * two-finger pinch, double-tap) and saved as an image or a PDF.
  */
-/** Asks how much the customer has just given; it is added with today's day and date and deducted from the bill. */
-function PaymentWindow({ est, onAdd, onClose }: { est: Estimate; onAdd: (amount: number) => void; onClose: () => void }) {
-  const [amount, setAmount] = useState(0);
-  const [error, setError] = useState('');
-  const now = new Date().toISOString();
-  useBackLayer(true, onClose);
-  return (
-    <div className="modal-backdrop" onClick={onClose} role="presentation" data-testid="pay-backdrop">
-      <div className="rates-card" role="dialog" aria-modal="true" aria-label="Add payment" onClick={(e) => e.stopPropagation()} data-testid="pay-window">
-        <div className="rates-head"><h2>Add payment</h2><button className="bar-btn close-x" onClick={onClose} aria-label="Close">✕</button></div>
-        <div className="pay-sum">
-          <span>Bill total <b>{fmtRupees(calcEstimate(est).grandTotal)}</b></span>
-          <span>Paid so far <b>{fmtRupees(paidTotal(est))}</b></span>
-          <span>Left <b data-testid="pay-window-left">{fmtRupees(balanceLeft(est))}</b></span>
-        </div>
-        <NumField label="Amount received now (₹)" value={amount} onChange={setAmount} step="int" testId="pay-amount" />
-        <p className="muted small" data-testid="pay-when">{fmtDayDateTime(now)}</p>
-        {error && <p className="err small" role="alert" data-testid="pay-error">{error}</p>}
-        <button className="btn btn-primary btn-block" onClick={() => { const p = validatePayment(est, amount); if (p) setError(p); else onAdd(amount); }} data-testid="pay-save">Add</button>
-      </div>
-    </div>
-  );
-}
-
-export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved, onAddPayment }: { est: Estimate; onAddPayment: (amount: number) => void; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void | Promise<void> }) {
+export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved, onAddPayment }: { est: Estimate; onAddPayment: (amount: number, extra: PayExtra) => void; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void | Promise<void> }) {
   const wrap = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const [fit, setFit] = useState(0.4); // scale that fits the bill to the screen width
@@ -179,7 +154,7 @@ export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatu
           {est.billStatus !== 'clear' && balanceLeft(est) > 0 && <button className="btn btn-outline btn-sm" onClick={() => setPaying(true)} data-testid="pay-add">+ Payment</button>}
         </div>
       )}
-      {paying && <PaymentWindow est={est} onClose={() => setPaying(false)} onAdd={(a) => { onAddPayment(a); setPaying(false); }} />}
+      {paying && <PaymentWindow est={est} onClose={() => setPaying(false)} onAdd={(a, extra) => { onAddPayment(a, extra); setPaying(false); }} />}
       {error && <p className="err small preview-error" role="alert" data-testid="download-error">{error}</p>}
 
       <div

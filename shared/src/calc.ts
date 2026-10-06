@@ -126,6 +126,8 @@ export interface EstimateTotals {
   labour: number;
   fineWt: number;
   itemsAmount: number;
+  /** Rupees cut from the bill for the gold / silver the customer submitted (at its own rate, same purity as the metal bought). */
+  submittedCredit: { gold: number; silver: number };
   otherCharges: number;
   subtotal: number;
   gst: number;
@@ -133,13 +135,31 @@ export interface EstimateTotals {
   grandTotal: number;
 }
 
-export function calcEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pricing'>): EstimateTotals {
+/** Average purity (%) of the items of one metal, weighted by net weight: later-submitted metal counts at this purity ("same karat as the bought gold"). */
+export function boughtPurity(items: EstimateItem[], metal: 'gold' | 'silver'): number {
+  const of = items.filter((i) => i.metal === metal);
+  const wt = of.reduce((s, i) => s + netWeight(i), 0);
+  if (wt <= 0) return of.length ? num(of[0].tunch) : 100;
+  return of.reduce((s, i) => s + netWeight(i) * num(i.tunch), 0) / wt;
+}
+
+export function calcEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pricing'> & { submitted?: Estimate['submitted'] }): EstimateTotals {
   const items = est.items.map((it) => calcItem(it, est.pricing));
   const sum = (f: (i: number) => number) => items.reduce((acc, _, i) => acc + f(i), 0);
 
   const itemsAmount = sum((i) => items[i].amount);
   const otherCharges = est.otherCharges.reduce((a, c) => a + Math.round(num(c.amount)), 0);
-  const subtotal = itemsAmount + otherCharges;
+  // The gold / silver the customer handed in is valued at the rate typed for it (default: the bill's rate) at the same
+  // purity as the metal bought, and cut from the bill.
+  const credit = (metal: 'gold' | 'silver'): number => {
+    const w = Math.max(0, num(est.submitted?.[metal]));
+    if (w <= 0) return 0;
+    const own = est.submitted?.[metal === 'gold' ? 'goldRate' : 'silverRate'];
+    const perGram = typeof own === 'number' && own > 0 ? own / 10 : metal === 'gold' ? ratePerGram(est.pricing.goldRate, est.pricing.goldRateUnit) : ratePerGram(est.pricing.silverRate, est.pricing.silverRateUnit);
+    return Math.round(w * (boughtPurity(est.items, metal) / 100) * perGram);
+  };
+  const submittedCredit = { gold: credit('gold'), silver: credit('silver') };
+  const subtotal = itemsAmount + otherCharges - submittedCredit.gold - submittedCredit.silver;
   const gst = est.pricing.gstEnabled ? Math.round((subtotal * num(est.pricing.gstPercent)) / 100) : 0;
   const grandTotal = subtotal + gst;
 
@@ -152,6 +172,7 @@ export function calcEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pri
     labour: round(sum((i) => items[i].labour), 2),
     fineWt: round(sum((i) => items[i].fineWt), WEIGHT_DECIMALS),
     itemsAmount,
+    submittedCredit,
     otherCharges,
     subtotal,
     gst,
@@ -166,7 +187,7 @@ export interface ValidationIssue {
 }
 
 /** Problems that must be fixed before an estimate is printed. */
-export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pricing'> & { advance?: number }): ValidationIssue[] {
+export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pricing'> & { advance?: number; payments?: Array<{ amount: number }>; submitted?: Estimate['submitted'] }): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (est.items.length === 0) issues.push({ itemId: null, message: 'Add at least one item.' });
   est.items.forEach((it, idx) => {
@@ -185,8 +206,15 @@ export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 
   est.otherCharges.forEach((c, idx) => {
     if (!c.label.trim()) issues.push({ itemId: null, message: `Other charge ${idx + 1}: enter a name.` });
   });
+  for (const m of ['gold', 'silver'] as const) {
+    const w = num(est.submitted?.[m]);
+    if (w < 0) issues.push({ itemId: null, message: `Submitted ${m} cannot be negative.` });
+    const bought = est.items.filter((i) => i.metal === m).reduce((s, i) => s + num(i.grossWt), 0);
+    if (w > bought + 1e-9) issues.push({ itemId: null, message: `Submitted ${m} (${w} g) is more than the ${m} on the bill (${round(bought, WEIGHT_DECIMALS)} g).` });
+  }
   if (num(est.advance) < 0) issues.push({ itemId: null, message: 'Amount deposited cannot be negative.' });
-  if (num(est.advance) > calcEstimate(est).grandTotal) issues.push({ itemId: null, message: 'Amount deposited is more than the bill total.' });
+  const paidSoFar = (est.payments ?? []).reduce((s, p) => s + Math.round(num(p.amount)), 0);
+  if (num(est.advance) + paidSoFar > calcEstimate(est).grandTotal) issues.push({ itemId: null, message: 'Amount deposited is more than the bill total.' });
   if (num(est.pricing.gstPercent) < 0) issues.push({ itemId: null, message: 'GST % cannot be negative.' });
   return issues;
 }

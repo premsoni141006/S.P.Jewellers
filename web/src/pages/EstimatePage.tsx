@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ProductPicker } from '../components/ProductPicker';
 import { ProductsModal } from '../components/ProductsModal';
-import { calcEstimate, cloneItem, defaultTunch, DEFAULT_KARAT, purityForKarat, usesTunch, fmtMoney, fmtPercent, fmtRupees, fmtWeight,
+import { submittedRate, paidTotal, calcEstimate, cloneItem, defaultTunch, DEFAULT_KARAT, purityForKarat, usesTunch, fmtMoney, fmtPercent, fmtRupees, fmtWeight,
   itemFromProduct, newItem, switchMakingMode, type EstimateItem,
 } from '@shared';
 import { Icon } from '../components/Icon';
@@ -164,9 +164,23 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
       <section className="card summary-card" data-testid="deposit-card">
         <div className="section-title">Payment</div>
         <NumField label="Amount deposited (₹)" value={est.advance ?? 0} onChange={(n) => update({ advance: n })} step="int" testId="deposit" />
+        {(['gold', 'silver'] as const).map((m) => (
+          <div className="grid-2" key={m}>
+            <NumField label={`Submitted ${m} (g)`} value={est.submitted?.[m] ?? 0} onChange={(n) => update({ submitted: { ...est.submitted, [m]: n } })} step="weight" suffix="g" testId={`submitted-${m}`} />
+            <NumField label={m === 'gold' ? 'Gold rate (24K, ₹ per 10 g)' : 'Silver rate (₹ per 10 g)'} value={submittedRate(est, m)} onChange={(n) => update({ submitted: { ...est.submitted, [m === 'gold' ? 'goldRate' : 'silverRate']: n } })} step="money" testId={`submitted-${m}-rate`} />
+          </div>
+        ))}
+        {(totals.submittedCredit.gold > 0 || totals.submittedCredit.silver > 0) && (
+          <div className="deposit-list" data-testid="deposit-list">
+            {(['gold', 'silver'] as const).filter((m) => totals.submittedCredit[m] > 0).map((m) => (
+              <div className="kv" key={m}><span>Less: submitted {m} {fmtWeight(est.submitted?.[m] ?? 0)} g</span><b data-testid={`credit-${m}`}>−{fmtRupees(totals.submittedCredit[m])}</b></div>
+            ))}
+          </div>
+        )}
+        <p className="muted small">The rate here is for the submitted metal only (it starts at the bill's 24K rate; change it if you agreed another price). It is valued at the same karat / tunch as the one bought and cut from the bill. Gold or silver submitted later is added from the final bill the same way.</p>
         <div className="kv"><span>Bill total</span><span data-testid="dep-total">{fmtRupees(totals.grandTotal)}</span></div>
-        <div className="kv"><span>Left to pay</span><b data-testid="dep-left">{fmtRupees(Math.max(0, totals.grandTotal - Math.round(est.advance ?? 0)))}</b></div>
-        <p className="muted small">The amount is saved with today's day and date when you save the bill. More can be added later from the bill.</p>
+        <div className="kv"><span>Left to pay</span><b data-testid="dep-left">{fmtRupees(Math.max(0, totals.grandTotal - Math.round(est.advance ?? 0) - paidTotal(est)))}</b></div>
+        <p className="muted small">The amount deposited is saved with today's day and date when you save the bill. More can be added later from the bill.</p>
       </section>
 
       <div className="totals-bar" data-testid="totals">

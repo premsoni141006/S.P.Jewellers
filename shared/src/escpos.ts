@@ -6,7 +6,7 @@ import { calcEstimate } from './calc';
 import { fmtMoney, fmtPcs, fmtPercent, fmtWeight } from './format';
 import { bhavText, makingText, metalName, metalsBought } from './template';
 import { fmtDate, fmtDayDateTime, fmtEstimateNo } from './format';
-import { balanceLeft, paymentsOf } from './payments';
+import { balanceLeft, paymentModeText, paymentsOf, submittedWeight } from './payments';
 import type { PrintHeader } from './template';
 import type { Estimate } from './types';
 
@@ -136,7 +136,7 @@ export function buildTestPrintEscPos(header: PrintHeader, when: Date = new Date(
 export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, paperMm: 58 | 80): Uint8Array {
   const t = calcEstimate(est);
   const W = charsForPaper(paperMm);
-  const a = paperMm === 80 ? [10, 11, 11, 10, 6] : [7, 7, 7, 6, 4]; // G.Wt Less Net Tunch Pcs
+  const a = paperMm === 80 ? [12, 12, 12, 8] : [8, 8, 8, 5]; // G.Wt Less Net Pcs
   const b = paperMm === 80 ? [12, 14, 22] : [8, 9, 14]; // Making Silver Amount
   const rule = '-'.repeat(W);
 
@@ -158,14 +158,14 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   p.line(rule);
 
   p.line('Description');
-  p.line(cols(['G.Wt.', 'Less', 'Net Wt.', 'Tunch', 'Pcs'], a));
+  p.line(cols(['G.Wt.', 'Less', 'Net Wt.', 'Pcs'], a));
   p.line(cols(['Making', 'Metal', 'Amount'], b));
   p.line(rule);
 
   est.items.forEach((it, i) => {
     const c = t.items[i];
     p.bold(true).line(it.description.slice(0, W)).bold(false);
-    p.line(cols([fmtWeight(it.grossWt), fmtWeight(it.lessWt), fmtWeight(c.netWt), (it.metal === 'gold' && it.karat) ? `${Math.round(it.karat * 10) / 10}K` : (it.metal === 'gold' && est.pricing.goldKarat === '22') ? '22K' : fmtPercent(it.tunch), fmtPcs(it.pcs)], a));
+    p.line(cols([fmtWeight(it.grossWt), fmtWeight(it.lessWt), fmtWeight(c.netWt), fmtPcs(it.pcs)], a));
     p.line(cols([it.labourMode === 'percent' ? makingText(it, c.labour) : fmtMoney(c.labour), metalName(it.metal), fmtMoney(c.amount)], b));
   });
   p.line(rule);
@@ -178,10 +178,11 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   }
   if (est.pricing.gstEnabled) kv(`GST ${fmtPercent(est.pricing.gstPercent)}%`, fmtMoney(t.gst));
   p.line(rule).bold(true);
+  (['silver', 'gold'] as const).filter((m) => t.submittedCredit[m] > 0).forEach((m) => kv(`Submitted ${Math.round(submittedWeight(est, m) * 1000) / 1000}g ${m}`.slice(0, W - 10), `-${fmtMoney(t.submittedCredit[m])}`));
   kv('TOTAL', `Rs. ${fmtMoney(t.grandTotal)}`);
   if (paymentsOf(est).length) {
     p.bold(false);
-    paymentsOf(est).forEach((pay) => kv(`Paid ${toAscii(fmtDayDateTime(pay.at))}`.slice(0, W - 8), fmtMoney(pay.amount)));
+    paymentsOf(est).forEach((pay) => kv(`Paid ${paymentModeText(pay) ? `${toAscii(paymentModeText(pay))} ` : ''}${toAscii(fmtDayDateTime(pay.at))}`.slice(0, W - 8), fmtMoney(pay.amount)));
     p.bold(true);
     kv('BALANCE', `Rs. ${fmtMoney(balanceLeft(est))}`);
   }

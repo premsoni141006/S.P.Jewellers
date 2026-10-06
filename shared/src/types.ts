@@ -71,6 +71,34 @@ export interface Payment {
   amount: number;
   /** When it was received (ISO); the day name and date shown on the bill come from this. */
   at: string;
+  /** How it was paid. Missing = cash (older payments and the amount deposited while making the bill). */
+  mode?: 'cash' | 'upi' | 'gold' | 'silver';
+  /** Old gold the customer gave instead of money: its value was cut from the bill (`amount` is that value). */
+  gold?: GoldPayment;
+  /** Old silver given instead of money (same idea, with a tunch % instead of a karat). */
+  silver?: SilverPayment;
+}
+
+export interface SilverPayment {
+  weight: number;
+  /** Purity % of the silver. */
+  tunch: number;
+  /** Silver rate used, in rupees per 10 g. */
+  rate: number;
+  cutPct: number;
+}
+
+export interface GoldPayment {
+  /** Weight of the old gold in grams. */
+  weight: number;
+  /** Its karat as the owner typed it (22, 24...). */
+  karat: number;
+  /** Purity % that karat has in the Rates table at that moment. */
+  purity: number;
+  /** Gold rate used, in rupees per 10 g. */
+  rate: number;
+  /** Percentage cut for melting / wastage (0 = none). */
+  cutPct: number;
 }
 
 export interface Estimate {
@@ -93,6 +121,8 @@ export interface Estimate {
   billStatus?: 'pending' | 'clear';
   /** Payments received so far (added from the final bill until it is marked Clear). */
   payments?: Payment[];
+  /** Gold / silver the customer handed in (grams), same karat / purity as the metal bought, valued at its own rate (`goldRate` / `silverRate`, rupees per 10 g; missing = the bill's 24K rate). Its value is cut from the bill. */
+  submitted?: { gold?: number; silver?: number; goldRate?: number; silverRate?: number };
   /** Amount deposited, typed while the bill is being made; becomes the first payment (with the day and time) when the bill is saved. */
   advance?: number;
 }
