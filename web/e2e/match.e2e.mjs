@@ -81,7 +81,7 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid=find-pi
 await page.locator('[data-testid=find-piece]').first().click();
 await page.waitForFunction(() => document.querySelector('[data-testid=stock-weight]')?.value === '6', null, { timeout: 3000 }).catch(() => {});
 { const v = [await page.inputValue('[data-testid=stock-weight]'), await page.getAttribute('[data-testid=stock-item]', 'data-value'), await page.inputValue('[data-testid=stock-tunch]')]; check('picking a piece fills its category, exact weight and tunch', v[0] === '6' && v[1] === 'Gold Ring – Classic' && v[2] === '92', JSON.stringify(v)); }
-check('tunch, pieces, date and note are all optional', (await page.locator('.field-label', { hasText: 'Tunch (optional)' }).count()) === 1 && (await page.locator('.field-label', { hasText: 'No. of pieces (optional)' }).count()) === 1 && (await page.locator('.field-label', { hasText: 'Date (optional' }).count()) === 1);
+check('tunch, pieces, date and note are all optional', (await page.locator('.field-label', { hasText: /^Tunch \(optional\)$/ }).count()) === 1 && (await page.locator('.field-label', { hasText: 'No. of pieces (optional)' }).count()) === 1 && (await page.locator('.field-label', { hasText: 'Date (optional' }).count()) === 1);
 await browser.close();
 console.log(`${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

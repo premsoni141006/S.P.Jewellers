@@ -1181,3 +1181,69 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .cust-sug { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; background: none; border: 0; border-bottom: 1px solid var(--line, #eee3d3); text-align: left; font: inherit; cursor: pointer; }
 .cust-sug:last-child { border-bottom: 0; }
 .cust-sug:active { background: #f6efe3; }
+
+/* ====================================================================================================
+   Gold interface for the whole bill app: same look as the Gallery (white-to-gold backdrop, white round
+   buttons, white cards with soft shadows, gold pills). Colours: --gold #c9a24b, ink #2a2112.
+   ==================================================================================================== */
+:root { --gold-ink: #6b5012; --gx-ink: #2a2112; --gx-card-shadow: 0 6px 18px rgba(122, 88, 12, 0.12); }
+html, body { background: #f7e9bd; color: var(--gx-ink); }
+.app { background: linear-gradient(180deg, #ffffff 0%, #fdf7e8 40%, #f5e5b3 100%); background-attachment: fixed; min-height: 100dvh; }
+/* top bar: no maroon; ink title in the serif, white round buttons */
+.appbar { background: transparent; color: var(--gx-ink); }
+.appbar-title { font-family: var(--serif); font-weight: 700; font-size: 21px; color: var(--gx-ink); letter-spacing: 0.5px; }
+.bar-btn { color: var(--gx-ink); background: #fff; border-radius: 50%; width: 42px; height: 42px; margin: 0 4px; box-shadow: 0 3px 10px rgba(122, 88, 12, 0.16); }
+.bar-btn:active { background: #f7ecd0; }
+.appbar .btn-primary, .appbar .btn { color: var(--gx-ink); }
+/* cards */
+.card, .recent, .tile, .big-card { background: #fff; border: 1px solid rgba(201, 162, 75, 0.28); border-radius: 20px; box-shadow: var(--gx-card-shadow); }
+.section-title, .recent-head h2, .recent-head { color: var(--gx-ink); font-family: var(--serif); }
+.page-title { font-family: var(--serif); }
+/* buttons: gold pills */
+.btn { border-radius: 999px; }
+.btn-primary { background: var(--gold); border-color: var(--gold); color: #2a1c02; font-weight: 700; box-shadow: 0 4px 14px rgba(201, 162, 75, 0.4); }
+.btn-primary:active { background: #b88f38; }
+.btn-outline { background: #fff; border-color: var(--gold); color: var(--gold-ink); }
+.btn-plain { background: #fff; border-color: rgba(201, 162, 75, 0.35); color: var(--gx-ink); }
+.btn-plain:active { background: #f7ecd0; }
+.link-btn { color: var(--gold-ink); }
+/* segmented switches: gold pill on white */
+.seg { border-radius: 999px; border: 1px solid rgba(201, 162, 75, 0.45); background: #fff; padding: 2px; }
+.seg button { background: transparent; color: var(--muted); border-radius: 999px; }
+.seg button.on { background: var(--gold); color: #2a1c02; box-shadow: 0 3px 10px rgba(201, 162, 75, 0.4); }
+/* fields */
+.field-box { background: #fffdf6; border-color: rgba(201, 162, 75, 0.45); border-radius: 14px; }
+.field-box:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 162, 75, 0.25); }
+/* bottom bar: floating white pill with a gold active tab */
+.tabbar { left: 50%; bottom: calc(var(--safe-b) + 10px); width: min(calc(100% - 24px), calc(var(--col) - 24px)); height: 58px; padding: 6px; border-radius: 29px; background: #fff; border: 1px solid rgba(201, 162, 75, 0.3); box-shadow: 0 8px 26px rgba(122, 88, 12, 0.2); }
+.tab { border-radius: 22px; color: var(--muted); }
+.tab.active { background: var(--gold); color: #2a1c02; }
+.fab { background: var(--gold); color: #2a1c02; border: 3px solid #fff; box-shadow: 0 6px 18px rgba(201, 162, 75, 0.55); margin-top: -34px; }
+.fab:active { background: #b88f38; }
+.totals-bar { bottom: calc(var(--tabbar) + var(--safe-b) + 14px); width: min(calc(100% - 24px), calc(var(--col) - 24px)); border: 1px solid rgba(201, 162, 75, 0.35); border-radius: 22px; box-shadow: 0 8px 26px rgba(122, 88, 12, 0.2); background: #fff; }
+.totals-bar { border-top: 1px solid rgba(201, 162, 75, 0.35); }
+/* home: the maroon block becomes the gold page */
+.home-head { background: transparent; color: var(--gx-ink); }
+.wordmark { color: var(--gx-ink); }
+.brand-sub { color: var(--muted); }
+.gem, .ornament { color: var(--gold); }
+.home-head .searchbar { background: #fff; border: 1.5px solid rgba(201, 162, 75, 0.55); color: var(--muted); box-shadow: var(--gx-card-shadow); }
+.home-head .searchbar input { color: var(--gx-ink); }
+.home-head .searchbar input::placeholder { color: var(--muted); }
+.home-head .searchbar:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201, 162, 75, 0.25); color: var(--gold-ink); }
+.home-head .search-clear { background: #f3ebdc; color: var(--gx-ink); }
+.home-head .tile { background: #fff; border: 1px solid rgba(201, 162, 75, 0.3); color: var(--gx-ink); box-shadow: var(--gx-card-shadow); }
+.home-head .tile:active { background: #f7ecd0; }
+.home-head .tile-icon { color: var(--gold); }
+.home-head .tile-text b { color: var(--gx-ink); }
+.home-head .tile-text .small { color: var(--muted); }
+.home-head .tile-chev { color: var(--muted); }
+.home-panel { background: transparent; }
+.recent-head svg { color: var(--gold); }
+.pill-muted { background: #f7ecd0; }
+.tab.active::after { display: none; }
+.wordmark { background: linear-gradient(180deg, #8a6414, #6b4a0a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.recent-ico { background: #f8efd6; color: var(--gold-ink); }
+.link-btn, .recent-head .link-btn { color: var(--gold-ink); }
+.home-brand .gem { color: var(--gold); }
+.hist-no, .recent-row b { color: var(--gx-ink); }
