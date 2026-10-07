@@ -2,6 +2,7 @@
 // edited or removed; until the bill is marked Clear the owner can only add more.
 
 import { calcEstimate, ratePerGram } from './calc';
+import { fmtRupeeCell } from './format';
 import type { Estimate, GoldPayment, Metal, Payment, SilverPayment } from './types';
 
 export const paymentsOf = (est: Pick<Estimate, 'payments'>): Payment[] => [...(est.payments ?? [])].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
@@ -69,8 +70,8 @@ export function netMetalWeight(est: Pick<Estimate, 'items' | 'submitted'>, metal
 
 /** How a payment reads on the bill: "Submitted gold 5.2 g", "UPI", "Cash", or nothing for older payments. */
 export function paymentModeText(p: Payment): string {
-  if (p.mode === 'gold' && p.gold) return `Submitted gold ${Math.round(p.gold.weight * 1000) / 1000} g`; // the karat is not printed (it is set in Settings / Rates)
-  if (p.mode === 'silver' && p.silver) return `Submitted silver ${Math.round(p.silver.weight * 1000) / 1000} g`;
+  if (p.mode === 'gold' && p.gold) return `Submitted gold ${Math.round(p.gold.weight * 1000) / 1000} g @ ${fmtRupeeCell(p.gold.rate)} / 10 g`; // the karat is not printed (it is set in Settings / Rates)
+  if (p.mode === 'silver' && p.silver) return `Submitted silver ${Math.round(p.silver.weight * 1000) / 1000} g @ ${fmtRupeeCell(p.silver.rate)} / 10 g`;
   if (p.mode === 'upi') return 'UPI';
   if (p.mode === 'cash') return 'Cash';
   return '';

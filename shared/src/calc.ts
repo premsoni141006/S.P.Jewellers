@@ -211,8 +211,6 @@ export function validateEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 
   for (const m of ['gold', 'silver'] as const) {
     const w = num(est.submitted?.[m]);
     if (w < 0) issues.push({ itemId: null, message: `Submitted ${m} cannot be negative.` });
-    const bought = est.items.filter((i) => i.metal === m).reduce((s, i) => s + num(i.grossWt), 0);
-    if (w > bought + 1e-9) issues.push({ itemId: null, message: `Submitted ${m} (${w} g) is more than the ${m} on the bill (${round(bought, WEIGHT_DECIMALS)} g).` });
   }
   if (num(est.advance) < 0) issues.push({ itemId: null, message: 'Amount deposited cannot be negative.' });
   const paidSoFar = (est.payments ?? []).reduce((s, p) => s + Math.round(num(p.amount)), 0);

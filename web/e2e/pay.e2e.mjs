@@ -100,10 +100,6 @@ check('a rate typed for the submitted gold (75,000) changes only that: −₹30,
 check('the gold bought on the bill is still priced at the bill\'s own rate (item amount ₹72,000)', (await c2.locator('[data-testid=amount]').innerText()).replace(/\s/g, '') === '₹72,000', await c2.locator('[data-testid=amount]').innerText());
 await page.fill('[data-testid=deposit]', '10000'); await page.waitForTimeout(300);
 check('cash deposited counts on the lower total: Left ₹32,000', (await flat('dep-left')) === '₹32,000', await flat('dep-left'));
-await page.fill('[data-testid=submitted-gold]', '12'); await page.waitForTimeout(250);
-await page.click('[data-testid=save]');
-check('submitting more gold than was bought is refused', (await page.locator('[data-testid=issues]').count()) === 1 && (await page.locator('[data-testid=issues]').innerText()).includes('more than the gold'));
-await page.getByRole('button', { name: 'OK' }).click();
 await page.fill('[data-testid=submitted-gold]', '4'); await page.waitForTimeout(300);
 await page.click('[data-testid=save]');
 await page.waitForSelector('[data-testid=pay-bar]');
@@ -126,7 +122,7 @@ await page.waitForFunction(() => document.querySelector('[data-testid=pay-left]'
 check('it is cut from the balance: Left ₹17,000', (await flat('pay-left')) === '₹17,000', await flat('pay-left'));
 await page.waitForTimeout(400);
 const laterText = await page.frameLocator('[data-testid=preview-frame]').locator('body').innerText();
-check('the bill lists "Submitted gold 2 g" as a payment with its date', /Paid ·\s*Submitted gold 2 g ·\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun),/.test(laterText), laterText.slice(-400));
+check('the bill lists "Submitted gold 2 g" as a payment with its date', /Paid ·\s*Submitted gold 2 g @ ₹[\d,]+ \/ 10 g ·\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun),/.test(laterText), laterText.slice(-400));
 await browser.close();
 console.log(`${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

@@ -700,7 +700,7 @@ describe('old gold given instead of money', () => {
     const paid = withPayment(e, value, 'pg', '2026-10-05T10:12:00', { mode: 'gold', gold: { weight: 5, karat: 22, purity: 92, rate: 72000, cutPct: 0 } });
     expect(balanceLeft(paid)).toBe(balanceLeft(e) - value);
     const html = renderEstimateHtml(paid, { shopName: 'S.P. JEWELLERS', shopCode: '' });
-    expect(html).toContain('Paid · Submitted gold 5 g · Mon, 05 Oct, 2026');
+    expect(html).toMatch(/Paid · Submitted gold 5 g @ ₹[\d,]+ \/ 10 g · Mon, 05 Oct, 2026/);
     const upi = withPayment(e, 100, 'pu', '2026-10-05T10:12:00', { mode: 'upi' });
     expect(renderEstimateHtml(upi, { shopName: 'X', shopCode: '' })).toContain('Paid · UPI · ');
   });
@@ -772,9 +772,9 @@ describe('submitted gold / silver valued at its own rate and cut from the bill',
   it('the submitted metal is valued at 100 % unless a percentage is typed', () => {
     expect(calcEstimate({ ...bill(), submitted: { gold: 5, goldRate: 75000 } }).submittedCredit.gold).toBe(37500);
   });
-  it('is checked: not negative and not more than the metal on the bill', () => {
+  it('is checked: not negative (metal not sold on the bill can still be cut)', () => {
     const e = bill();
-    expect(validateEstimate({ ...e, submitted: { gold: 12 } }).some((i) => /more than the gold/.test(i.message))).toBe(true);
+    expect(validateEstimate({ ...e, submitted: { gold: 12 } }).some((i) => /more than the gold/.test(i.message))).toBe(false);
     expect(validateEstimate({ ...e, submitted: { silver: -1 } }).some((i) => /cannot be negative/.test(i.message))).toBe(true);
     expect(validateEstimate({ ...e, submitted: { gold: 10, silver: 100 } }).filter((i) => /Submitted/.test(i.message))).toEqual([]);
   });
@@ -792,7 +792,7 @@ describe('submitted gold / silver valued at its own rate and cut from the bill',
     expect(value).toBe(34500);
     const paid = withPayment(e, value, 'pl', '2026-10-06T10:00:00', { mode: 'gold', gold: { weight: 5, karat: 22, purity: 92, rate: 75000, cutPct: 0 } });
     expect(balanceLeft(paid)).toBe(balanceLeft(e) - 34500);
-    expect(renderEstimateHtml(paid, { shopName: 'S.P. JEWELLERS', shopCode: '' })).toContain('Paid · Submitted gold 5 g · ');
+    expect(renderEstimateHtml(paid, { shopName: 'S.P. JEWELLERS', shopCode: '' })).toContain('Paid · Submitted gold 5 g @ ₹75,000 / 10 g · ');
   });
 });
 
