@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  SAMPLE_PRODUCTS, calcEstimate, newEstimate, newId, normalizeMaking, settleAdvance,
+  SAMPLE_PRODUCTS, assignOrderId, calcEstimate, newEstimate, newId, normalizeMaking, settleAdvance,
   type Estimate, type EstimateSummary, type Product, type ShopSettings, type StockEntry, type CashEntry,
 } from '@shared';
 import { KEYS, load, save } from './storage';
@@ -106,7 +106,7 @@ export function useAppStore() {
       save(KEYS.nextNo, number + 1);
     }
     const now = new Date().toISOString();
-    const stored: Estimate = { ...settleAdvance(e, newId(), now), number, updatedAt: now }; // an amount typed as deposited becomes the first payment
+    const stored: Estimate = { ...settleAdvance(e, newId(), now), number, orderId: assignOrderId(e, current), updatedAt: now }; // an amount typed as deposited becomes the first payment
     const idx = current.findIndex((x) => x.id === stored.id);
     const next = idx >= 0 ? current.map((x, i) => (i === idx ? stored : x)) : [stored, ...current];
     writeHistory(next);

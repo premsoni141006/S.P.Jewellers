@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { calcEstimate, fmtDateTime, fmtEstimateNo, fmtRupees, searchEstimates, searchProducts, type Estimate } from '@shared';
+import { calcEstimate, fmtDateTime, fmtOrderId, orderIdOf, fmtRupees, searchEstimates, searchProducts, type Estimate } from '@shared';
 import { Icon } from '../components/Icon';
 import { ShopLogo } from '../components/ShopLogo';
 import { Ornament } from '../components/AppBar';
@@ -93,7 +93,7 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
                   {e.billStatus === 'pending' && <span className="status-dot dot-draft" role="img" aria-label="Pending" />}
                   {e.billStatus === 'clear' && <span className="status-dot dot-done" role="img" aria-label="Clear" />}
                   <span className="result-top">
-                    <b>{fmtEstimateNo(e.number)}</b>
+                    <b>{fmtOrderId(orderIdOf(e))}</b>
                     <b className="result-amt">{fmtRupees(calcEstimate(e).grandTotal)}</b>
                   </span>
                   <span className="muted small">{fmtDateTime(e.createdAt)}{e.customerName.trim() ? ` · ${e.customerName.trim()}` : ''}{(e.customerLocality ?? '').trim() ? ` · ${(e.customerLocality ?? '').trim()}` : ''}</span>
@@ -119,7 +119,7 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
                     <li key={e.id}>
                       <button className="recent-row" onClick={() => onView(e)}>
                         <span className="recent-ico"><Icon name="estimate" size={22} /></span>
-                        <span className="recent-l"><b>{fmtEstimateNo(s.number)}</b><span className="muted small">{fmtDateTime(s.updatedAt)}</span></span>
+                        <span className="recent-l"><b>{fmtOrderId(orderIdOf(s))}</b><span className="muted small">{fmtDateTime(s.updatedAt)}</span></span>
                         <span className="recent-r"><b>{fmtRupees(s.grandTotal)}</b><span className={`small st-${tone}`}>{label}</span></span>
                         <span className="recent-go" aria-hidden="true"><Icon name="next" size={16} /></span>
                       </button>

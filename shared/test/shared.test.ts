@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, PRINT_COLUMNS, buildEstimateEscPosText, buildTestPrintEscPos, calcEstimate, calcItem,
-  newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
+  assignOrderId, orderIdOf, newEstimate, newItem, pricingFromSettings, renderEstimateHtml, renderReceiptHtml, sampleEstimate, toMonochrome,
   searchStock, searchCash, boughtPurity, submittedRate, netMetalWeight, submittedWeight, silverPaymentValue, goldPaymentValue, paidTotal, balanceLeft, validatePayment, withPayment, mergeBills, mergeById, fixBillNumbers, stockMatchesForSale, saleOutEntry, fineWeight, buildPdfFromJpegs, A4_PT, searchEstimates, matchesQuery, makingCharge, normalizeMaking, switchMakingMode, cashTotals, sortCash, validateCashEntry, round, stockByItem, stockTotals, sortStock, validateStockEntry, today, toFixedMaking, validateEstimate, type EstimateItem,
 } from '../src';
 
@@ -127,7 +127,7 @@ describe('print template', () => {
     expect(html).toContain('ELNABAAD (S0012)'); // still printed when a second line is given
     // the bill now carries ESTIMATE, the bill number and the date (the shop's own layout)
     expect(html).toMatch(/ESTIMATE</);
-    expect(html).toMatch(/Bill No\./);
+    expect(html).toMatch(/Order ID/);
     expect(html).toMatch(/Date:/);
     expect(html).not.toContain('>Silver Rate<'); // the rates moved to the bottom-left corner
     expect(html).not.toContain('>Gold Rate<');
@@ -197,7 +197,7 @@ describe('print template', () => {
     // the first row INSIDE the table: customer + mobile (7 columns), bill number + date (last 2 columns)
     expect(html).toContain('<span class="k">Customer:</span><b>Ramesh Kumar</b>');
     expect(html).toContain('<span class="k">Mobile:</span><b>98765 43210</b>');
-    expect(html).toContain('<span class="k">Bill No.:</span><b>E-0007</b>');
+    expect(html).toContain(`<span class="k">Order ID:</span><b>${orderIdOf({ number: 7 })}</b>`);
     expect(html).toContain('<span class="k">Date:</span><b>04 Oct 2026</b>');
     expect(html).toContain('<tr class="meta-row"><td colspan="6" class="meta-l">');
     expect(html).toContain('<td colspan="2" class="meta-r">');
@@ -217,16 +217,16 @@ describe('print template', () => {
     const html = renderEstimateHtml(est, header);
     expect(html).toContain('<span class="k">Customer:</span><b></b>');
     expect(html).toContain('<span class="k">Mobile:</span><b></b>');
-    expect(html).toContain('<span class="k">Bill No.:</span><b>—</b>');
+    expect(html).toContain('<span class="k">Order ID:</span><b>—</b>');
   });
   it('receipt layouts carry the same facts', () => {
     const est = sampleEstimate(DEFAULT_SETTINGS);
     est.number = 3; est.customerName = 'Ramesh'; est.customerPhone = '98765';
     const h = { ...header, ownerName: 'Sandeep Soni', ownerPhone: '94166 25950', address: 'Main Bazar' };
     const img = renderReceiptHtml(est, h, 576);
-    for (const t of ['ESTIMATE', 'Sandeep Soni', 'M.: 94166 25950', 'Main Bazar', 'Bill No.: <b>E-0003</b>', 'Customer: <b>Ramesh</b>', 'Mobile: <b>98765</b>']) expect(img).toContain(t);
+    for (const t of ['ESTIMATE', 'Sandeep Soni', 'M.: 94166 25950', 'Main Bazar', `Order ID: <b>${orderIdOf({ number: 3 })}</b>`, 'Customer: <b>Ramesh</b>', 'Mobile: <b>98765</b>']) expect(img).toContain(t);
     const text = Buffer.from(buildEstimateEscPosText(est, h, 80)).toString('latin1');
-    for (const t of ['ESTIMATE', 'Sandeep Soni', 'Main Bazar', 'Bill No.: E-0003', 'Customer: Ramesh', 'Mobile: 98765']) expect(text).toContain(t);
+    for (const t of ['ESTIMATE', 'Sandeep Soni', 'Main Bazar', `Order ID: ${orderIdOf({ number: 3 })}`, 'Customer: Ramesh', 'Mobile: 98765']) expect(text).toContain(t);
   });
   it('Silver/Gold column names the metal on each row; both prices sit in two rows at the bottom left', () => {
     const mk = (metals: Array<'gold' | 'silver'>) => {
@@ -757,17 +757,20 @@ describe('submitted gold / silver valued at its own rate and cut from the bill',
     expect(base.grandTotal).toBe(66240 + 90000);
     expect(boughtPurity(e.items, 'gold')).toBe(92);
     expect(submittedRate({ ...e, submitted: { gold: 5 } }, 'gold')).toBe(72000);
-    const t = calcEstimate({ ...e, submitted: { gold: 5, silver: 20 } });
+    const t = calcEstimate({ ...e, submitted: { gold: 5, silver: 20, goldPurity: 92 } });
     expect(t.submittedCredit.gold).toBe(33120); // 5 g x 92 % x 7,200
     expect(t.submittedCredit.silver).toBe(18000); // 20 g x 100 % x 900
     expect(t.grandTotal).toBe(base.grandTotal - 33120 - 18000);
   });
   it('a rate typed for the submission applies to that submission only', () => {
     const e = bill();
-    const t = calcEstimate({ ...e, submitted: { gold: 5, goldRate: 75000 } });
+    const t = calcEstimate({ ...e, submitted: { gold: 5, goldRate: 75000, goldPurity: 92 } });
     expect(t.submittedCredit.gold).toBe(34500); // 5 g x 92 % x 7,500
     expect(t.items[0].amount).toBe(66240); // the gold bought is still priced at the bill's own rate
     expect(submittedRate({ ...e, submitted: { gold: 5, goldRate: 75000 } }, 'gold')).toBe(75000);
+  });
+  it('the submitted metal is valued at 100 % unless a percentage is typed', () => {
+    expect(calcEstimate({ ...bill(), submitted: { gold: 5, goldRate: 75000 } }).submittedCredit.gold).toBe(37500);
   });
   it('is checked: not negative and not more than the metal on the bill', () => {
     const e = bill();
@@ -776,7 +779,7 @@ describe('submitted gold / silver valued at its own rate and cut from the bill',
     expect(validateEstimate({ ...e, submitted: { gold: 10, silver: 100 } }).filter((i) => /Submitted/.test(i.message))).toEqual([]);
   });
   it('the printed bill has one Submitted row with the weight, the rate and the value; no karat printed', () => {
-    const e = { ...bill(), submitted: { gold: 5, goldRate: 75000 } };
+    const e = { ...bill(), submitted: { gold: 5, goldRate: 75000, goldPurity: 92 } };
     const html = renderEstimateHtml(e, { shopName: 'S.P. JEWELLERS', shopCode: '' });
     expect(html).toContain('Submitted 5 g gold @ ₹75,000 / 10 g');
     expect(html).toContain('−₹34,500');
@@ -790,5 +793,18 @@ describe('submitted gold / silver valued at its own rate and cut from the bill',
     const paid = withPayment(e, value, 'pl', '2026-10-06T10:00:00', { mode: 'gold', gold: { weight: 5, karat: 22, purity: 92, rate: 75000, cutPct: 0 } });
     expect(balanceLeft(paid)).toBe(balanceLeft(e) - 34500);
     expect(renderEstimateHtml(paid, { shopName: 'S.P. JEWELLERS', shopCode: '' })).toContain('Paid · Submitted gold 5 g · ');
+  });
+});
+
+describe('order id', () => {
+  const bill = (id: string, number: number, name: string, phone: string, orderId?: number) =>
+    ({ ...newEstimate(DEFAULT_SETTINGS), id, number, customerName: name, customerPhone: phone, orderId });
+  it('the same phone number keeps one order id; anything else gets a random 4-digit one', () => {
+    const saved = [bill('a', 1, 'Ramesh Soni', '98765 43210', 4321), bill('b', 2, 'Sunita', '90000 11111', 1000)];
+    expect(assignOrderId(bill('c', 0, 'Someone', '9876543210'), saved)).toBe(4321);
+    expect(assignOrderId(bill('d', 0, 'Ramesh Soni', '91111 22222'), saved, () => 0.5)).toBe(5500);
+    expect(assignOrderId(bill('e', 0, '', ''), saved, () => 0)).toBe(1001); // 1000 is taken
+    const r = assignOrderId(bill('f', 0, 'New', '1'), saved);
+    expect(r).toBeGreaterThanOrEqual(1000); expect(r).toBeLessThanOrEqual(9999);
   });
 });

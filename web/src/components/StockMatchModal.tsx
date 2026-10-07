@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { fmtDate, fmtWeight, fmtEstimateNo, stockMatchesForSale, type Estimate, type StockEntry } from '@shared';
+import { fmtDate, fmtWeight, fmtOrderId, orderIdOf, stockMatchesForSale, type Estimate, type StockEntry } from '@shared';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
 import { useLeave } from './useLeave';
@@ -49,7 +49,7 @@ export function StockMatchModal({ est, stock, onRemove, onClose }: { est: Estima
           <h2>Update stock</h2>
           <button className="bar-btn close-x" onClick={() => leave(onClose)} aria-label="Close" data-testid="match-close">✕</button>
         </div>
-        <p className="muted small">{fmtEstimateNo(est.number)} is saved. These pieces are still in stock with the same category and weight as what was sold. Remove the ones that went out.</p>
+        <p className="muted small">{fmtOrderId(orderIdOf(est))} is saved. These pieces are still in stock with the same category and weight as what was sold. Remove the ones that went out.</p>
         {groups.map((g) => (
           <section key={g.key} className="match-group" data-testid="match-group">
             <div className="match-head">

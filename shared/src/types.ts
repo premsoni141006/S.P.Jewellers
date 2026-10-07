@@ -122,7 +122,9 @@ export interface Estimate {
   /** Payments received so far (added from the final bill until it is marked Clear). */
   payments?: Payment[];
   /** Gold / silver the customer handed in (grams), same karat / purity as the metal bought, valued at its own rate (`goldRate` / `silverRate`, rupees per 10 g; missing = the bill's 24K rate). Its value is cut from the bill. */
-  submitted?: { gold?: number; silver?: number; goldRate?: number; silverRate?: number };
+  /** Order ID shown on the bill: the same for every bill of one customer (same name and phone). Older bills use their bill number. */
+  orderId?: number;
+  submitted?: { gold?: number; silver?: number; goldRate?: number; silverRate?: number; goldKarat?: number; goldPurity?: number; silverPurity?: number };
   /** Amount deposited, typed while the bill is being made; becomes the first payment (with the day and time) when the bill is saved. */
   advance?: number;
 }

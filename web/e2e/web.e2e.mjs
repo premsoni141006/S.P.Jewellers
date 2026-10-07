@@ -173,7 +173,7 @@ check('reload keeps unsaved draft edit', (await page.locator('[data-testid=custo
 await page.click('[data-testid=save]');
 await page.waitForSelector('[data-testid=preview-screen]');
 check('Save opens the final bill preview automatically', await page.locator('[data-testid=preview-screen]').isVisible());
-check('save assigns E-0001', (await page.textContent('[data-testid=toast]')).includes('E-0001'));
+check('save gives a 4-digit Order ID', /Order \d{4} saved/.test(await page.textContent('[data-testid=toast]')));
 await page.getByLabel('Close preview').click();
 await page.waitForSelector('[data-testid=history-page]');
 
@@ -275,7 +275,7 @@ await go(page, 'history');
 await page.locator('[data-testid=reprint]').first().click();
 await page.waitForFunction(() => /print dialog/i.test(document.querySelector('[data-testid=toast]')?.textContent || ''));
 const printed = await page.evaluate(() => window.__printedHtml || '');
-check('reprint sends A4 document to print dialog', !printed.includes('ELNABAAD') && printed.includes('S.P. JEWELLERS') && printed.includes('ESTIMATE') && printed.includes('Sandeep Soni') && printed.includes('M.: 94166 25950') && printed.includes('Main Bazar, Near Gandhi Chowk, Ellenabad-125102') && printed.includes('<span class="k">Customer:</span><b>Ramesh Kumar</b>') && printed.includes('<span class="k">Bill No.:</span><b>E-0001</b>') && printed.includes('Silver/Gold'));
+check('reprint sends A4 document to print dialog', !printed.includes('ELNABAAD') && printed.includes('S.P. JEWELLERS') && printed.includes('ESTIMATE') && printed.includes('Sandeep Soni') && printed.includes('M.: 94166 25950') && printed.includes('Main Bazar, Near Gandhi Chowk, Ellenabad-125102') && printed.includes('<span class="k">Customer:</span><b>Ramesh Kumar</b>') && /Order ID:<\/span><b>\d{4}<\/b>/.test(printed) && printed.includes('Silver/Gold'));
 check('history shows printed', (await page.locator('[data-testid=history-row]').first().textContent()).includes('Printed'));
 
 // settings

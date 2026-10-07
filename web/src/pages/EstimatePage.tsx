@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { ProductPicker } from '../components/ProductPicker';
 import { ProductsModal } from '../components/ProductsModal';
 import { submittedRate, paidTotal, calcEstimate, cloneItem, defaultTunch, DEFAULT_KARAT, purityForKarat, usesTunch, fmtMoney, fmtPercent, fmtRupees, fmtWeight,
-  itemFromProduct, newItem, switchMakingMode, type EstimateItem,
+  itemFromProduct, newItem, switchMakingMode, type Estimate, type EstimateItem,
 } from '@shared';
 import { Icon } from '../components/Icon';
 import { NumField, ReadField } from '../components/NumField';
@@ -24,6 +24,28 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
   // "+" in the picker opens the Products pop-up right here; closing it brings the picker back.
   const [managingFor, setManagingFor] = useState<string | null>(null);
   const { est, setEst, settings, products } = store;
+  const [focus, setFocus] = useState<'name' | 'phone' | 'place' | null>(null);
+  // Past customers (one per phone number, newest first) that match what is being typed in the focused field.
+  const typed = focus === 'name' ? est.customerName : focus === 'phone' ? est.customerPhone : focus === 'place' ? est.customerLocality ?? '' : '';
+  const suggestions = (() => {
+    const q = typed.trim().toLowerCase();
+    if (!focus || !q) return [];
+    const qDigits = q.replace(/\D/g, '');
+    const seen = new Set<string>();
+    const out: Estimate[] = [];
+    for (const h of store.history) {
+      const key = h.customerPhone.replace(/\D/g, '') || h.customerName.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      const hit = focus === 'name' ? h.customerName.toLowerCase().includes(q)
+        : focus === 'phone' ? qDigits.length > 0 && h.customerPhone.replace(/\D/g, '').includes(qDigits)
+        : (h.customerLocality ?? '').toLowerCase().includes(q);
+      if (!hit) continue;
+      if (h.customerName === est.customerName && h.customerPhone === est.customerPhone && (h.customerLocality ?? '') === (est.customerLocality ?? '')) continue;
+      seen.add(key); out.push(h);
+      if (out.length >= 5) break;
+    }
+    return out;
+  })();
   const totals = calcEstimate(est);
 
   const update = (patch: Partial<typeof est>) => setEst({ ...est, ...patch, updatedAt: new Date().toISOString() });
@@ -52,18 +74,28 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
         <div className="stack">
           <label className="field">
             <span className="field-label">Customer name</span>
-            <span className="field-box"><input value={est.customerName} onChange={(e) => update({ customerName: e.target.value })} autoComplete="off" autoCapitalize="words" data-testid="customer-name" /></span>
+            <span className="field-box"><input value={est.customerName} onChange={(e) => update({ customerName: e.target.value })} autoComplete="off" autoCapitalize="words" onFocus={() => setFocus('name')} onBlur={() => setTimeout(() => setFocus((f) => (f === 'name' ? null : f)), 150)} data-testid="customer-name" /></span>
           </label>
           <div className="grid-2">
             <label className="field">
               <span className="field-label">Contact number</span>
-              <span className="field-box"><input value={est.customerPhone} onChange={(e) => update({ customerPhone: e.target.value.replace(/[^0-9+ ]/g, '') })} inputMode="tel" autoComplete="off" data-testid="customer-phone" /></span>
+              <span className="field-box"><input value={est.customerPhone} onChange={(e) => update({ customerPhone: e.target.value.replace(/[^0-9+ ]/g, '') })} inputMode="tel" autoComplete="off" onFocus={() => setFocus('phone')} onBlur={() => setTimeout(() => setFocus((f) => (f === 'phone' ? null : f)), 150)} data-testid="customer-phone" /></span>
             </label>
             <label className="field">
               <span className="field-label">Address</span>
-              <span className="field-box"><input value={est.customerLocality ?? ''} onChange={(e) => update({ customerLocality: e.target.value })} autoComplete="off" autoCapitalize="words" data-testid="customer-locality" /></span>
+              <span className="field-box"><input value={est.customerLocality ?? ''} onChange={(e) => update({ customerLocality: e.target.value })} autoComplete="off" autoCapitalize="words" onFocus={() => setFocus('place')} onBlur={() => setTimeout(() => setFocus((f) => (f === 'place' ? null : f)), 150)} data-testid="customer-locality" /></span>
             </label>
           </div>
+          {suggestions.length > 0 && (
+            <div className="cust-suggest" data-testid="customer-suggest">
+              {suggestions.map((h) => (
+                <button key={h.id} type="button" className="cust-sug" onMouseDown={(e) => e.preventDefault()} onClick={() => { update({ customerName: h.customerName, customerPhone: h.customerPhone, customerLocality: h.customerLocality ?? '' }); setFocus(null); }} data-testid="customer-suggestion">
+                  <b>{h.customerName || '—'}</b>
+                  <span className="muted small">{[h.customerPhone, h.customerLocality].filter(Boolean).join(' · ')}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -153,23 +185,20 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
 
       {est.items.length > 0 && (<>
 
-      <section className="card summary-card">
-        <div className="section-title">Totals</div>
-        <div className="kv"><span>No. of items</span><span data-testid="total-items">{totals.pcs}</span></div>
-        <div className="kv"><span>Total G. Wt.</span><span>{fmtWeight(totals.grossWt)} g</span></div>
-        <div className="kv"><span>Total Net Wt.</span><span>{fmtWeight(totals.netWt)} g</span></div>
-        <div className="kv"><span>Total Fine wt.</span><span>{fmtWeight(totals.fineWt)} g</span></div>
-      </section>
-
       <section className="card summary-card" data-testid="deposit-card">
         <div className="section-title">Payment</div>
         <NumField label="Amount deposited (₹)" value={est.advance ?? 0} onChange={(n) => update({ advance: n })} step="int" testId="deposit" />
-        {(['gold', 'silver'] as const).map((m) => (
-          <div className="grid-2" key={m}>
-            <NumField label={`Submitted ${m} (g)`} value={est.submitted?.[m] ?? 0} onChange={(n) => update({ submitted: { ...est.submitted, [m]: n } })} step="weight" suffix="g" testId={`submitted-${m}`} />
-            <NumField label={m === 'gold' ? 'Gold rate (24K, ₹ per 10 g)' : 'Silver rate (₹ per 10 g)'} value={submittedRate(est, m)} onChange={(n) => update({ submitted: { ...est.submitted, [m === 'gold' ? 'goldRate' : 'silverRate']: n } })} step="money" testId={`submitted-${m}-rate`} />
-          </div>
-        ))}
+        {(['gold', 'silver'] as const).map((m) => {
+          const setSub = (patch: Partial<NonNullable<Estimate['submitted']>>) => update({ submitted: { ...est.submitted, ...patch } });
+          const pk = m === 'gold' ? 'goldPurity' : 'silverPurity';
+          return (
+            <div className="sub-row" key={m}>
+              <NumField label={`${m === 'gold' ? 'Gold' : 'Silver'} (g)`} value={est.submitted?.[m] ?? 0} onChange={(n) => setSub({ [m]: n })} step="weight" suffix="g" testId={`submitted-${m}`} />
+              <NumField label={m === 'gold' ? 'Gold rate (₹ / 10 g)' : 'Silver rate (₹ / 10 g)'} value={submittedRate(est, m)} onChange={(n) => setSub({ [m === 'gold' ? 'goldRate' : 'silverRate']: n })} step="money" testId={`submitted-${m}-rate`} />
+              <NumField label="%" value={est.submitted?.[pk] ?? 100} onChange={(n) => setSub({ [pk]: n })} step="money" testId={`submitted-${m}-pct`} />
+            </div>
+          );
+        })}
         {(totals.submittedCredit.gold > 0 || totals.submittedCredit.silver > 0) && (
           <div className="deposit-list" data-testid="deposit-list">
             {(['gold', 'silver'] as const).filter((m) => totals.submittedCredit[m] > 0).map((m) => (
@@ -177,10 +206,20 @@ export function EstimatePage({ store, invalid, onSave, onPreview, confirm }: Pro
             ))}
           </div>
         )}
-        <p className="muted small">The rate here is for the submitted metal only (it starts at the bill's 24K rate; change it if you agreed another price). It is valued at the same karat / tunch as the one bought and cut from the bill. Gold or silver submitted later is added from the final bill the same way.</p>
         <div className="kv"><span>Bill total</span><span data-testid="dep-total">{fmtRupees(totals.grandTotal)}</span></div>
         <div className="kv"><span>Left to pay</span><b data-testid="dep-left">{fmtRupees(Math.max(0, totals.grandTotal - Math.round(est.advance ?? 0) - paidTotal(est)))}</b></div>
         <p className="muted small">The amount deposited is saved with today's day and date when you save the bill. More can be added later from the bill.</p>
+      </section>
+
+      <section className="card summary-card">
+        <div className="section-title">Totals</div>
+        <div className="kv"><span>No. of items</span><span data-testid="total-items">{totals.pcs}</span></div>
+        <div className="kv"><span>Total G. Wt.</span><span>{fmtWeight(totals.grossWt)} g</span></div>
+        <div className="kv"><span>Total Net Wt.</span><span>{fmtWeight(totals.netWt)} g</span></div>
+        <div className="kv"><span>Total Fine wt.</span><span>{fmtWeight(totals.fineWt)} g</span></div>
+        {(['gold', 'silver'] as const).filter((m) => totals.submittedCredit[m] > 0).map((m) => (
+          <div className="kv" key={m}><span>Submitted {m} {fmtWeight(est.submitted?.[m] ?? 0)} g @ {fmtRupees(submittedRate(est, m))} / 10 g</span><span>−{fmtRupees(totals.submittedCredit[m])}</span></div>
+        ))}
       </section>
 
       <div className="totals-bar" data-testid="totals">

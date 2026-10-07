@@ -1172,3 +1172,12 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 [data-testid='deposit-card'] .kv { margin: 0; }
 [data-testid='deposit-card'] .deposit-list { gap: 4px; padding: 8px 12px; border-radius: 10px; background: #faf5ea; }
 [data-testid='deposit-card'] p { margin: 2px 0 0; line-height: 1.45; }
+
+/* submitted gold / silver: weight small, rate big, percentage */
+.sub-row { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 0.8fr); gap: 8px; }
+
+/* customer suggestions from history */
+.cust-suggest { display: flex; flex-direction: column; border: 1px solid var(--line, #e3d8c8); border-radius: 12px; overflow: hidden; background: #fff; }
+.cust-sug { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; background: none; border: 0; border-bottom: 1px solid var(--line, #eee3d3); text-align: left; font: inherit; cursor: pointer; }
+.cust-sug:last-child { border-bottom: 0; }
+.cust-sug:active { background: #f6efe3; }

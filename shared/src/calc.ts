@@ -156,7 +156,9 @@ export function calcEstimate(est: Pick<Estimate, 'items' | 'otherCharges' | 'pri
     if (w <= 0) return 0;
     const own = est.submitted?.[metal === 'gold' ? 'goldRate' : 'silverRate'];
     const perGram = typeof own === 'number' && own > 0 ? own / 10 : metal === 'gold' ? ratePerGram(est.pricing.goldRate, est.pricing.goldRateUnit) : ratePerGram(est.pricing.silverRate, est.pricing.silverRateUnit);
-    return Math.round(w * (boughtPurity(est.items, metal) / 100) * perGram);
+    const ownP = est.submitted?.[metal === 'gold' ? 'goldPurity' : 'silverPurity'];
+    const purity = typeof ownP === 'number' && ownP > 0 ? ownP : 100;
+    return Math.round(w * (purity / 100) * perGram);
   };
   const submittedCredit = { gold: credit('gold'), silver: credit('silver') };
   const subtotal = itemsAmount + otherCharges - submittedCredit.gold - submittedCredit.silver;

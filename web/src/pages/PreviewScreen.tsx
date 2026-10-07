@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { balanceLeft, fmtEstimateNo, fmtRupees, paidTotal, renderEstimateHtml, type Estimate, type PrintHeader } from '@shared';
+import { balanceLeft, fmtOrderId, orderIdOf, fmtRupees, paidTotal, renderEstimateHtml, type Estimate, type PrintHeader } from '@shared';
 import { PaymentWindow, type PayExtra } from '../components/PaymentWindow';
 import { Icon } from '../components/Icon';
 import { billFileName, billPdf, saveBlob, shareBill } from '../lib/billExport';
@@ -126,7 +126,7 @@ export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatu
         <button className="icon-btn" onClick={onClose} aria-label="Close preview"><Icon name="close" /></button>
         <div className="preview-title">
           <span>Final bill</span>
-          <span className="muted small">{fmtEstimateNo(est.number)} · A4</span>
+          <span className="muted small">{fmtOrderId(orderIdOf(est))} · A4</span>
         </div>
         <button className="btn btn-primary btn-sm" onClick={onPrint} data-testid="preview-print">Print</button>
       </header>

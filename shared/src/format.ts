@@ -60,4 +60,5 @@ export function fmtDate(iso: string): string {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+export const fmtOrderId = (n: number): string => (n > 0 ? String(n).padStart(4, '0') : '—');
 export const fmtEstimateNo = (n: number): string => (n > 0 ? `E-${String(n).padStart(4, '0')}` : 'Unsaved');

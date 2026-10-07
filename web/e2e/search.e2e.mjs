@@ -87,6 +87,25 @@ check('Back closes the bill and returns to the search results', (await page.loca
 await page.click('[data-testid=home-search-clear]'); await wait(250);
 check('clear button empties the search and brings Recent orders back', (await bar.inputValue()) === '' && (await page.locator('[data-testid=recent-card]').count()) === 1 && (await page.locator('[data-testid=search-results]').count()) === 0);
 
+// new estimate: typing a name / number / address suggests customers from History
+await page.click('[data-testid=fab-new]');
+await page.waitForSelector('[data-testid=estimate-page]');
+const sug = page.locator('[data-testid=customer-suggestion]');
+await page.click('[data-testid=customer-name]');
+check('no suggestions before typing', (await sug.count()) === 0);
+await page.fill('[data-testid=customer-name]', 'ra');
+check('typing "ra" in Name suggests Ramesh Kumar only', (await sug.count()) === 1 && (await sug.first().innerText()).includes('Ramesh Kumar'));
+await page.fill('[data-testid=customer-name]', '');
+await page.click('[data-testid=customer-phone]');
+await page.fill('[data-testid=customer-phone]', '94161');
+check('typing a number suggests Sunita Devi', (await sug.count()) === 1 && (await sug.first().innerText()).includes('Sunita Devi'));
+await page.fill('[data-testid=customer-phone]', '');
+await page.click('[data-testid=customer-locality]');
+await page.fill('[data-testid=customer-locality]', 'gandhi');
+check('typing an address suggests Ramesh Kumar', (await sug.count()) === 1 && (await sug.first().innerText()).includes('Ramesh Kumar'));
+await sug.first().click();
+check('tapping a suggestion fills name, number and address', (await page.inputValue('[data-testid=customer-name]')) === 'Ramesh Kumar' && (await page.inputValue('[data-testid=customer-phone]')) === '9876543210' && (await page.inputValue('[data-testid=customer-locality]')) === 'Gandhi Chowk' && (await sug.count()) === 0);
+
 await browser.close();
 console.log(`\n${total - failed}/${total} passed`);
 process.exit(failed ? 1 : 0);

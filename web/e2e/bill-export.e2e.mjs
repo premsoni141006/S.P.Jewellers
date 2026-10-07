@@ -36,7 +36,7 @@ async function openBill(label) {
 async function closeBill() { await page.getByLabel('Close preview').click(); await page.waitForSelector('[data-testid=preview-screen]', { state: 'detached' }); await page.click('[data-testid=tab-home]'); await page.waitForSelector('[data-testid=home-page]'); }
 
 // ------------------------------------------------------------ zoom
-await openBill('E-0001');
+await openBill('8919');
 check('preview opens fitted to the screen; has zoom buttons and Save / Share buttons', (await page.locator('[data-testid=zoom-in]').isVisible()) && (await page.locator('[data-testid=share-bill]').isVisible()) && (await page.locator('[data-testid=download-pdf]').isVisible()));
 const fit = await level();
 check('Fit is disabled while already fitted', await page.locator('[data-testid=zoom-fit]').isDisabled());
@@ -84,7 +84,7 @@ check('it is a valid one-page A4 PDF', pdf.startsWith('%PDF-1.4') && pdf.include
 await closeBill();
 
 // ------------------------------------------------------------ a long bill: several A4 pages, cut between rows
-await openBill('E-0002');
+await openBill('7838');
 const [longDl] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=download-pdf]')]);
 await longDl.saveAs(SHOTS + 'bill-E-0002.pdf');
 const longPdf = fs.readFileSync(SHOTS + 'bill-E-0002.pdf').toString('latin1');

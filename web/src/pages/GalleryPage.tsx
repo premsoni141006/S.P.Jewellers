@@ -5,7 +5,7 @@ import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
 import { GALLERY_BARS, restoreBarColors, setBarColors } from '../lib/barColors';
 import { KEYS, load, save } from '../lib/storage';
-import { checkPassword } from '../lib/auth';
+import { checkPassword, passwordError } from '../lib/auth';
 import { forgetPhotos } from '../lib/cloud';
 import { addPick, customersOf, removeCustomerPicks, removePicksOf, removeSessionPick, loadPicks, picksOf, type Pick } from '../lib/picks';
 import type { AppStore } from '../lib/store';
@@ -100,7 +100,7 @@ function DeleteWindow({ title, note, onConfirm, onClose }: { title: string; note
   useBackLayer(true, onClose);
   return (
     <div className="gx-modal" role="dialog" aria-modal="true" aria-label="Delete photos" onClick={onClose} data-testid="delete-window">
-      <form className="gx-modal-card" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (checkPassword(pass)) onConfirm(); else setError('Password is not correct.'); }}>
+      <form className="gx-modal-card" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (checkPassword(pass)) onConfirm(); else setError(passwordError()); }}>
         <h2>{title}</h2>
         <p className="gx-modal-sub">{note}</p>
         <label className="gx-field">

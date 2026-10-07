@@ -5,7 +5,7 @@ import type { ShopSettings } from '@shared';
 import { Icon } from '../components/Icon';
 import { NumField } from '../components/NumField';
 import type { AppStore } from '../lib/store';
-import { changePassword, setUnlocked } from '../lib/auth';
+import { changePassword, checkCloudGate, passwordError, setUnlocked } from '../lib/auth';
 import { ShopLogo } from '../components/ShopLogo';
 import { logoFromFile } from '../lib/logoImage';
 import { DEFAULT_CLOUD_URL, loadCloudConfig, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
@@ -59,7 +59,6 @@ function CloudCard({ onSynced }: { onSynced: () => void }) {
   );
 }
 
-const CLOUD_GATE_PASSWORD = '200614';
 
 /** Asks for the password that opens the Cloud backup card. */
 function GateWindow({ onOpen, onClose }: { onOpen: () => void; onClose: () => void }) {
@@ -69,7 +68,7 @@ function GateWindow({ onOpen, onClose }: { onOpen: () => void; onClose: () => vo
   const [error, setError] = useState('');
   return (
     <div className={`modal-backdrop${leaving ? ' leaving' : ''}`} onClick={() => leave(onClose)} role="presentation">
-      <form className="rates-card" role="dialog" aria-modal="true" aria-label="Password" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (pass === CLOUD_GATE_PASSWORD) leave(onOpen); else setError('Password is not correct.'); }} data-testid="cloud-gate">
+      <form className="rates-card" role="dialog" aria-modal="true" aria-label="Password" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (checkCloudGate(pass)) leave(onOpen); else setError(passwordError()); }} data-testid="cloud-gate">
         <div className="rates-head"><h2>Password</h2><button type="button" className="bar-btn close-x" onClick={() => leave(onClose)} aria-label="Close">✕</button></div>
         <label className="field">
           <span className="field-label">Enter the password</span>

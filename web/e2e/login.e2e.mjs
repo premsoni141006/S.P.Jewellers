@@ -73,6 +73,29 @@ check('signing out returns to the sign-in screen', true);
 await kp.fill('[data-testid=login-user]', 'SPJ'); await kp.fill('[data-testid=login-pass]', '3262'); await kp.click('[data-testid=login-submit]');
 await kp.waitForSelector('[data-testid=home-page]');
 check('then SPJ opens S.P. JEWELLERS with its own data', (await kp.textContent('[data-testid=home-brand]')).includes('S.P. JEWELLERS') && (await kp.evaluate(() => localStorage.getItem('spj.cash.v1'))) === null);
+
+// five free wrong passwords, then a wait that grows by 10 s per wrong one
+const lctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const lp = await lctx.newPage();
+await lp.goto(URL);
+await lp.fill('[data-testid=login-user]', 'SPJ');
+let lastErr = '';
+for (let i = 1; i <= 5; i++) {
+  await lp.fill('[data-testid=login-pass]', 'wrong' + i); await lp.click('[data-testid=login-submit]');
+  lastErr = await lp.textContent('[data-testid=login-error]');
+}
+check('5 wrong passwords: still the normal message, no wait', !/Try again/.test(lastErr), lastErr);
+await lp.fill('[data-testid=login-pass]', 'wrong6'); await lp.click('[data-testid=login-submit]');
+lastErr = await lp.textContent('[data-testid=login-error]');
+check('6th wrong password: locked for 10 seconds', /Try again in (9|10) seconds/.test(lastErr), lastErr);
+await lp.fill('[data-testid=login-pass]', '3262'); await lp.click('[data-testid=login-submit]');
+check('even the right password is refused while locked', await lp.locator('[data-testid=login-screen]').isVisible() && /Try again/.test(await lp.textContent('[data-testid=login-error]')));
+await lp.reload();
+await lp.fill('[data-testid=login-user]', 'SPJ'); await lp.fill('[data-testid=login-pass]', '3262'); await lp.click('[data-testid=login-submit]');
+check('a reload does not clear the lock', await lp.locator('[data-testid=login-screen]').isVisible());
+await lp.waitForTimeout(10500);
+await lp.fill('[data-testid=login-pass]', '3262'); await lp.click('[data-testid=login-submit]');
+check('after the wait the right password signs in', await lp.locator('[data-testid=home-page]').isVisible());
 await browser.close();
 console.log(`${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

@@ -36,6 +36,7 @@ export function searchText(e: Estimate): string {
   const total = calcEstimate(e).grandTotal;
   const parts: string[] = [];
   if (e.number > 0) parts.push(`e-${pad(e.number, 4)}`, pad(e.number, 4), String(e.number));
+  if (e.number > 0) parts.push(pad(e.orderId ?? e.number, 4), 'order id');
   if (e.billStatus) parts.push(e.billStatus); // 'pending' | 'clear'; unmarked bills have neither
   parts.push(e.customerName, e.customerPhone, e.customerPhone.replace(/\D/g, ''), e.customerLocality ?? '');
   for (const it of e.items) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { DEFAULT_KARAT_TABLE, balanceLeft, settleAdvance, fmtEstimateNo, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
+import { DEFAULT_KARAT_TABLE, balanceLeft, settleAdvance, fmtEstimateNo, fmtOrderId, orderIdOf, fmtRupees, fmtWeight, newId, validatePayment, withPayment, type StockEntry, saleOutEntry, stockMatchesForSale, today, validateEstimate, type Estimate, type ValidationIssue } from '@shared';
 import { AppBar } from './components/AppBar';
 import { Icon } from './components/Icon';
 import { Sheet, type SheetAction } from './components/Sheet';
@@ -130,7 +130,7 @@ function AppMain() {
     setInvalid(new Set());
     const stored = saveEstimate(est);
     setEst(stored);
-    setToast(`Bill ${fmtEstimateNo(stored.number)} saved to history.`);
+    setToast(`Order ${fmtOrderId(orderIdOf(stored))} saved to history.`);
     return stored;
   };
 
@@ -350,7 +350,7 @@ function AppMain() {
             const stored = saveEstimate(est);
             setEst(stored);
             setPreview({ est: stored, fromEditor: true, saved: true });
-            setToast(`Bill ${fmtEstimateNo(stored.number)} saved to history.`);
+            setToast(`Order ${fmtOrderId(orderIdOf(stored))} saved to history.`);
             return stored;
           }}
           onStatus={async (status) => {
@@ -370,7 +370,7 @@ function AppMain() {
             if (fromEditor || target.id === est.id) setEst(blankEstimate(settings));
             setPreview(null);
             if (fromEditor) setTab('history');
-            setToast(status === 'clear' ? `Bill ${fmtEstimateNo(stored.number)} marked Clear.` : `Bill ${fmtEstimateNo(stored.number)} marked Pending.`);
+            setToast(status === 'clear' ? `Order ${fmtOrderId(orderIdOf(stored))} marked Clear.` : `Order ${fmtOrderId(orderIdOf(stored))} marked Pending.`);
           }}
           onPrint={() => {
             const target = preview.fromEditor ? est : preview.est;

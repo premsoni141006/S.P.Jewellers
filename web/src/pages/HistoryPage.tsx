@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { balanceLeft, fmtDateTime, fmtEstimateNo, fmtRupees, paidTotal, searchEstimates, type Estimate } from '@shared';
+import { balanceLeft, fmtDateTime, fmtOrderId, orderIdOf, fmtRupees, paidTotal, searchEstimates, type Estimate } from '@shared';
 import { SearchBar } from '../components/SearchBar';
 import { summarize, type AppStore } from '../lib/store';
 
@@ -43,7 +43,7 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
             <span className="status-dot dot-draft" role="img" aria-label="Draft" />
             <div className="hist-top">
               <div>
-                <div className="hist-no">Draft <span className="draft-tag">{d.est.number > 0 ? `editing ${fmtEstimateNo(d.est.number)}` : 'not saved'}</span></div>
+                <div className="hist-no">Draft <span className="draft-tag">{d.est.number > 0 ? `editing ${fmtOrderId(orderIdOf(d.est))}` : 'not saved'}</span></div>
                 <div className="muted small">{fmtDateTime(s.updatedAt)}</div>
               </div>
               <div className="hist-amt"><b>{fmtRupees(s.grandTotal)}</b></div>
@@ -69,7 +69,7 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
             {e.billStatus === 'clear' && <span className="status-dot dot-done" role="img" aria-label="Clear" data-testid="dot-done" />}
             <div className="hist-top" onClick={e.billStatus === 'clear' ? () => onView(e) : undefined} data-testid="hist-top">
               <div>
-                <div className="hist-no">{fmtEstimateNo(s.number)}</div>
+                <div className="hist-no">{fmtOrderId(orderIdOf(s))}</div>
                 <div className="muted small">{fmtDateTime(s.updatedAt)}</div>
               </div>
               <div className="hist-amt">

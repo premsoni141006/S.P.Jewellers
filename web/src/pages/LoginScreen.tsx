@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { checkLogin, savedUser, setUnlocked } from '../lib/auth';
+import { checkLogin, passwordError, savedUser, setUnlocked } from '../lib/auth';
 import { ShopLogo } from '../components/ShopLogo';
 import { keyFor, shopOfUser } from '../lib/shop';
 import { load } from '../lib/storage';
@@ -17,7 +17,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
     if (checkLogin(user, pass)) {
       setUnlocked(true, user);
       onDone();
-    } else setError('User name or password is not correct.');
+    } else setError(passwordError('User name or password is not correct.'));
   };
 
   return (

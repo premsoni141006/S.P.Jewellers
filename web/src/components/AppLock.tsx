@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { checkPassword } from '../lib/auth';
+import { checkPassword, passwordError } from '../lib/auth';
 import { useBackLayer } from '../lib/backStack';
 
 /** Blurred cover that asks for the app password again (shown after leaving the Gallery). */
@@ -10,7 +10,7 @@ export function AppLock({ onUnlock, onGallery }: { onUnlock: () => void; onGalle
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (checkPassword(pass)) onUnlock();
-    else setError('Password is not correct.');
+    else setError(passwordError());
   };
   return (
     <div className="app-lock" role="dialog" aria-modal="true" aria-label="App lock" data-testid="app-lock">

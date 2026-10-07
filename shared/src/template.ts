@@ -5,8 +5,9 @@
 // Layout follows the shop's sample: SP_Jewellers_Simple_Demo_Estimate_v2.pdf.
 
 import { calcEstimate, ratePerGram } from './calc';
+import { orderIdOf } from './orderId';
 import { balanceLeft, paymentModeText, paymentsOf, submittedRate, submittedWeight } from './payments';
-import { fmtDate, fmtDateTime, fmtDayDateTime, fmtEstimateNo, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
+import { fmtDate, fmtDateTime, fmtDayDateTime, fmtOrderId, fmtPcs, fmtPercent, fmtRupeeCell, fmtWeight } from './format';
 import { LOGO_ASPECT, LOGO_BW_DATA_URI } from './logo';
 import type { Estimate } from './types';
 
@@ -168,10 +169,10 @@ function headerHtml(h: PrintHeader, withLogo = true, title = 'ESTIMATE'): string
 
 /** Compact top of the narrow receipt: same facts as the A4 bill, stacked. */
 function receiptHeaderHtml(est: Estimate, h: PrintHeader): string {
-  const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
+  const no = fmtOrderId(orderIdOf(est));
   const owner = ownersOf(h).map((o) => [o.name, o.phone ? `M.: ${o.phone}` : ''].filter(Boolean).join(' · ')).filter(Boolean).join(' · ');
   return `<div class="estimate">ESTIMATE</div><div class="shop">${escapeHtml(h.shopName)}</div>${(h.tagline ?? '').trim() ? `<div class="code">${escapeHtml((h.tagline as string).trim())}</div>` : ''}${(h.address ?? '').trim() ? `<div class="code">${escapeHtml((h.address as string).trim())}</div>` : ''}${owner ? `<div class="owner-line">${escapeHtml(owner)}</div>` : ''}
-<div class="rmeta"><div>Bill No.: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
+<div class="rmeta"><div>Order ID: <b>${escapeHtml(no)}</b></div><div>Date: <b>${escapeHtml(fmtDate(est.createdAt))}</b></div><div>Customer: <b>${escapeHtml(est.customerName.trim())}</b></div><div>Mobile: <b>${escapeHtml(est.customerPhone.trim())}</b></div></div>`;
 }
 
 /** 10, 10.5, 0.05: a weight as written in a line of text (no trailing zeros). */
@@ -187,8 +188,8 @@ function footHtml(est: Estimate): string {
 
 /** One big first row of the table: customer + mobile on the left, bill number + date in the last two columns. */
 function metaRowHtml(est: Estimate): string {
-  const no = est.number > 0 ? fmtEstimateNo(est.number) : '—';
-  return `<tr class="meta-row"><td colspan="6" class="meta-l"><div class="mr"><span class="k">Customer:</span><b>${escapeHtml(est.customerName.trim())}</b></div><div class="mr"><span class="k">Mobile:</span><b>${escapeHtml(est.customerPhone.trim())}</b></div></td><td colspan="2" class="meta-r"><div class="mr"><span class="k">Bill No.:</span><b>${escapeHtml(no)}</b></div><div class="mr"><span class="k">Date:</span><b>${escapeHtml(fmtDate(est.createdAt))}</b></div></td></tr>`;
+  const no = fmtOrderId(orderIdOf(est));
+  return `<tr class="meta-row"><td colspan="6" class="meta-l"><div class="mr"><span class="k">Customer:</span><b>${escapeHtml(est.customerName.trim())}</b></div><div class="mr"><span class="k">Mobile:</span><b>${escapeHtml(est.customerPhone.trim())}</b></div></td><td colspan="2" class="meta-r"><div class="mr"><span class="k">Order ID:</span><b>${escapeHtml(no)}</b></div><div class="mr"><span class="k">Date:</span><b>${escapeHtml(fmtDate(est.createdAt))}</b></div></td></tr>`;
 }
 
 export interface RenderOptions {

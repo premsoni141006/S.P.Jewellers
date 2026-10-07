@@ -16,6 +16,8 @@ export interface StockEntry {
   item: string;
   /** Tunch (purity) percentage of this piece / lot. */
   tunch: number;
+  /** The old tunch of this piece / lot, written by the user when adding the stock (optional). */
+  oldTunch?: number;
   /** Id of the product photo kept on the phone (not stored in this record). */
   photoId?: string;
   /** Weight in grams (always positive; the type says the direction). */

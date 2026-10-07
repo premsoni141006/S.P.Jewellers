@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { balanceLeft, boughtPurity, calcEstimate, fmtDayDateTime, fmtRupees, goldPaymentValue, paidTotal, ratePerGram, validatePayment, type Estimate, type GoldPayment, type SilverPayment } from '@shared';
+import { balanceLeft, calcEstimate, fmtDayDateTime, fmtRupees, goldPaymentValue, paidTotal, ratePerGram, validatePayment, type Estimate, type GoldPayment, type SilverPayment } from '@shared';
 import { useBackLayer } from '../lib/backStack';
 import { NumField } from './NumField';
 
@@ -16,11 +16,12 @@ export function PaymentWindow({ est, onAdd, onClose }: { est: Estimate; onAdd: (
   const [wtG, setWtG] = useState(0);
   const [goldRate, setGoldRate] = useState(() => Math.round(ratePerGram(est.pricing.goldRate, est.pricing.goldRateUnit) * 10));
   const [silverRate, setSilverRate] = useState(() => Math.round(ratePerGram(est.pricing.silverRate, est.pricing.silverRateUnit) * 10));
+  const [pct, setPct] = useState(100);
   const [error, setError] = useState('');
   const now = new Date().toISOString();
   useBackLayer(true, onClose);
   const metalMode = mode === 'gold' || mode === 'silver';
-  const purity = metalMode ? boughtPurity(est.items, mode) : 100;
+  const purity = metalMode ? pct : 100;
   const rate = mode === 'gold' ? goldRate : silverRate;
   const metalValue = goldPaymentValue({ weight: wtG, purity, rate, cutPct: 0 });
   const value = metalMode ? metalValue : amount;
@@ -29,7 +30,7 @@ export function PaymentWindow({ est, onAdd, onClose }: { est: Estimate; onAdd: (
     if (metalMode && !(wtG > 0)) return setError(`Enter the weight of the submitted ${mode}.`);
     const p = validatePayment(est, value);
     if (p) return setError(metalMode && value > left ? `The ${mode} is worth ${fmtRupees(value)}, more than the ${fmtRupees(left)} left.` : p);
-    if (mode === 'gold') onAdd(value, { mode, gold: { weight: wtG, karat: est.items.find((i) => i.metal === 'gold')?.karat ?? 0, purity, rate, cutPct: 0 } });
+    if (mode === 'gold') onAdd(value, { mode, gold: { weight: wtG, karat: pct >= 95 ? 24 : 22, purity, rate, cutPct: 0 } });
     else if (mode === 'silver') onAdd(value, { mode, silver: { weight: wtG, tunch: purity, rate, cutPct: 0 } });
     else onAdd(value, { mode });
   };
@@ -57,7 +58,8 @@ export function PaymentWindow({ est, onAdd, onClose }: { est: Estimate; onAdd: (
                 ? <NumField label="Gold rate for this (24K, ₹ per 10 g)" value={goldRate} onChange={setGoldRate} step="money" testId="pay-gold-rate" />
                 : <NumField label="Silver rate for this (₹ per 10 g)" value={silverRate} onChange={setSilverRate} step="money" testId="pay-silver-rate" />}
             </div>
-            <p className="muted small">This rate is for this submission only; it starts at the bill's rate and does not change anything else.</p>
+            <NumField label="%" value={pct} onChange={setPct} step="money" suffix="%" testId="pay-pct" />
+            <p className="muted small">This rate is for this submission only; type it by hand; it never changes the selling rate.</p>
             <p className="pay-gold-value">Value cut from the bill <b data-testid="pay-gold-value">{fmtRupees(metalValue)}</b></p>
           </>
         )}
