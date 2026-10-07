@@ -59,7 +59,7 @@ export function grossWeightOf(est: Pick<Estimate, 'items'>, metal: Metal): numbe
 
 /** Metals to show a net-weight row for: only those the customer actually handed in (no row when nothing was submitted). */
 export function weightMetals(est: Pick<Estimate, 'items' | 'submitted'>): Metal[] {
-  return (['silver', 'gold'] as const).filter((m) => submittedWeight(est, m) > 0);
+  return (['gold', 'silver'] as const).filter((m) => submittedWeight(est, m) > 0);
 }
 
 /** Net weight of a metal = gross weight on the bill - weight submitted by the customer (never below 0). */

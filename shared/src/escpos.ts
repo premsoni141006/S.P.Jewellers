@@ -179,7 +179,7 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   }
   if (est.pricing.gstEnabled) kv(`GST ${fmtPercent(est.pricing.gstPercent)}%`, fmtMoney(t.gst));
   p.line(rule).bold(true);
-  (['silver', 'gold'] as const).filter((m) => t.submittedCredit[m] > 0).forEach((m) => kv(`Submitted ${Math.round(submittedWeight(est, m) * 1000) / 1000}g ${m}`.slice(0, W - 10), `-${fmtMoney(t.submittedCredit[m])}`));
+  (['gold', 'silver'] as const).filter((m) => t.submittedCredit[m] > 0).forEach((m) => kv(`Submitted ${Math.round(submittedWeight(est, m) * 1000) / 1000}g ${m}`.slice(0, W - 10), `-${fmtMoney(t.submittedCredit[m])}`));
   kv('TOTAL', `Rs. ${fmtMoney(t.grandTotal)}`);
   if (paymentsOf(est).length) {
     p.bold(false);

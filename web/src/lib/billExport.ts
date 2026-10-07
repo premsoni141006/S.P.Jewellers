@@ -39,6 +39,9 @@ async function renderBill(est: Estimate, header: PrintHeader, wantedScale = 2): 
 
     const contentH = Math.max(1, Math.ceil(sheet.getBoundingClientRect().height));
     const scale = Math.min(wantedScale, MAX_CANVAS_H / contentH);
+    // Safari does not draw pictures that sit inside the SVG, so the logo is hidden there (its space is kept) and drawn onto the canvas afterwards.
+    const pics = [...doc.images].map((im) => { const r = im.getBoundingClientRect(); return { src: im.currentSrc || im.src, x: r.left, y: r.top, w: r.width, h: r.height, custom: im.classList.contains('custom') }; });
+    doc.images && [...doc.images].forEach((im) => { im.style.visibility = 'hidden'; });
     const xhtml = new XMLSerializer().serializeToString(doc.documentElement);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SHEET_W * scale}" height="${contentH * scale}" viewBox="0 0 ${SHEET_W} ${contentH}"><foreignObject x="0" y="0" width="${SHEET_W}" height="${contentH}">${xhtml}</foreignObject></svg>`;
 
@@ -54,6 +57,30 @@ async function renderBill(est: Estimate, header: PrintHeader, wantedScale = 2): 
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (const p of pics) {
+      if (!(p.w > 0 && p.h > 0)) continue;
+      const pic = new Image();
+      pic.src = p.src;
+      try { await pic.decode(); } catch { continue; }
+      const k = Math.min(p.w / pic.naturalWidth, p.h / pic.naturalHeight); // object-fit: contain
+      const w = pic.naturalWidth * k * scale, h = pic.naturalHeight * k * scale;
+      const x = (p.x + p.w / 2) * scale - w / 2, y = (p.y + p.h / 2) * scale - h / 2;
+      if (!p.custom) { ctx.drawImage(pic, x, y, w, h); continue; }
+      // an uploaded logo prints in black and white (done by hand: Safari has no canvas filter)
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.max(1, Math.round(w)); tmp.height = Math.max(1, Math.round(h));
+      const t = tmp.getContext('2d');
+      if (!t) continue;
+      t.drawImage(pic, 0, 0, tmp.width, tmp.height);
+      const d = t.getImageData(0, 0, tmp.width, tmp.height);
+      for (let i = 0; i < d.data.length; i += 4) {
+        const g = 0.299 * d.data[i] + 0.587 * d.data[i + 1] + 0.114 * d.data[i + 2];
+        const v = Math.max(0, Math.min(255, (g - 128) * 1.35 + 128));
+        d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
+      }
+      t.putImageData(d, 0, 0);
+      ctx.drawImage(tmp, x, y, w, h);
+    }
 
     const rowBottoms = [...doc.querySelectorAll('.sheet tbody tr')].map((tr) => Math.round(tr.getBoundingClientRect().bottom * scale));
     return { canvas, scale, rowBottoms };

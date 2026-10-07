@@ -155,8 +155,8 @@ describe('print template', () => {
     expect(rows(6)).toBe(6);
     expect(rows(12)).toBe(12);
   });
-  it('the bill has 8 columns: no Wstg, no Tunch, one Silver/Gold column, and the charge column is "Making"', () => {
-    expect([...PRINT_COLUMNS]).toEqual(['Description', 'G. Wt.', 'Less Wt.', 'Net Wt.', 'Pcs', 'Making', 'Silver/Gold', 'Amount']);
+  it('the bill has 8 columns: no Wstg, no Tunch, one Gold/Silver column, and the charge column is "Making"', () => {
+    expect([...PRINT_COLUMNS]).toEqual(['Description', 'G. Wt.', 'Less Wt.', 'Net Wt.', 'Pcs', 'Making', 'Gold/Silver', 'Amount']);
     const html = renderEstimateHtml(sampleEstimate(DEFAULT_SETTINGS), header);
     expect(html).not.toContain('Wstg');
     expect(html).not.toContain('Labour');
@@ -205,7 +205,7 @@ describe('print template', () => {
     expect(at('class="meta-row"')).toBeLessThan(at('<th>Description</th>'));
     expect(at('class="meta-l"')).toBeLessThan(at('class="meta-r"'));
     expect(at('class="meta-row"')).toBeGreaterThan(at('class="address"'));
-    // 7 + 2 = the 9 printed columns, so the right cell starts exactly at the Silver/Gold column
+    // 7 + 2 = the 9 printed columns, so the right cell starts exactly at the Gold/Silver column
     const row = html.slice(at('class="meta-row"'), at('<th>Description</th>'));
     expect((row.match(/colspan="(\d)"/g) ?? []).join('')).toBe('colspan="6"colspan="2"');
     // left-to-right order inside the brand row: logo, then name
@@ -228,7 +228,7 @@ describe('print template', () => {
     const text = Buffer.from(buildEstimateEscPosText(est, h, 80)).toString('latin1');
     for (const t of ['ESTIMATE', 'Sandeep Soni', 'Main Bazar', `Order ID: ${orderIdOf({ number: 3 })}`, 'Customer: Ramesh', 'Mobile: 98765']) expect(text).toContain(t);
   });
-  it('Silver/Gold column names the metal on each row; both prices sit in two rows at the bottom left', () => {
+  it('Gold/Silver column names the metal on each row; both prices sit in two rows at the bottom left', () => {
     const mk = (metals: Array<'gold' | 'silver'>) => {
       const est = sampleEstimate(DEFAULT_SETTINGS);
       est.items = metals.map((metal, i) => ({ ...est.items[0], id: `m${i}`, metal }));
@@ -238,12 +238,12 @@ describe('print template', () => {
     // the metal is written in each item row, in the combined column
     expect((both.match(/<td>Gold<\/td>/g) ?? []).length).toBe(2);
     expect((both.match(/<td>Silver<\/td>/g) ?? []).length).toBe(1);
-    expect(both).toContain('<th>Silver/Gold</th>');
+    expect(both).toContain('<th>Gold/Silver</th>');
     expect(both).not.toMatch(/BHAV/i);
     // no rate rows inside the table any more; the footer has both prices, silver first, in two rows (even when only one metal was bought)
     expect(both).not.toContain('>Silver Rate<');
     for (const html of [both, mk(['gold']), mk(['silver', 'silver'])]) {
-      expect(html).toContain('<div class="foot-rates"><div>Silver: ₹2,310 / 10 g</div><div>Gold: ₹72,000 / 10 g</div></div>');
+      expect(html).toContain('<div class="foot-rates"><div>Gold: ₹72,000 / 10 g</div><div>Silver: ₹2,310 / 10 g</div></div>');
     }
     // it comes after the table (bottom of the bill)
     expect(both.indexOf('class="foot-rates"')).toBeGreaterThan(both.indexOf('</table>'));

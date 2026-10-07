@@ -38,7 +38,7 @@ export const PRINT_COLUMNS = [
   'Net Wt.',
   'Pcs',
   'Making',
-  'Silver/Gold',
+  'Gold/Silver',
   'Amount',
 ] as const;
 
@@ -67,7 +67,7 @@ export function bhavText(est: Estimate, metal: 'silver' | 'gold'): string {
 
 /** The metals actually bought on this estimate: silver first, then gold; only those that appear. */
 export function metalsBought(est: Pick<Estimate, 'items'>): Array<'silver' | 'gold'> {
-  return (['silver', 'gold'] as const).filter((m) => est.items.some((i) => i.metal === m));
+  return (['gold', 'silver'] as const).filter((m) => est.items.some((i) => i.metal === m));
 }
 
 export const metalName = (m: 'silver' | 'gold'): string => (m === 'gold' ? 'Gold' : 'Silver');
@@ -88,13 +88,13 @@ body {
 }
 .sheet { width: 190mm; }
 /* Top row: ESTIMATE in the middle, owner name and mobile at the right */
-.top { display: grid; grid-template-columns: 1fr; justify-items: center; align-items: start; margin-bottom: 1mm; position: relative; top: 4mm; } /* sits 4 mm lower, nearer the shop name; the rest of the page does not move */
+.top { display: grid; grid-template-columns: 1fr; justify-items: center; align-items: start; padding-top: 4mm; margin-bottom: -3mm; } /* sits 4 mm lower, nearer the shop name; the rest of the page does not move (margins, not position:relative, which Safari draws wrongly in the saved PDF / PNG) */
 .estimate-title { font-size: 11pt; font-weight: 700; text-decoration: underline; letter-spacing: 0.5pt; text-align: center; }
 .top-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 9.5pt; line-height: 1.25; }
 /* Brand row: logo at the far left, shop name in the middle */
 /* the shop name sits 4.2 mm lower, which is real space now (the tagline and the address follow it) */
-.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; margin-top: 4.2mm; position: relative; top: 2.5mm; } /* the name and logo sit a little lower, nearer the tagline (visual only) */
-.brand-logo { justify-self: start; position: relative; top: 2mm; left: 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
+.brand { display: grid; grid-template-columns: 24mm 1fr 24mm; align-items: center; margin-top: 4.2mm; padding-top: 2.5mm; margin-bottom: -2.5mm; } /* the name and logo sit a little lower, nearer the tagline (visual only) */
+.brand-logo { justify-self: start; margin: 2mm 0 -2mm 10mm; } /* the logo's visual centre lines up with the middle of the shop name */
 .logo { display: block; height: 18.4mm; width: auto; } /* 15 % bigger than before (16 mm) */
 .logo.custom { max-width: 27.6mm; object-fit: contain; filter: grayscale(1) contrast(1.35); } /* an uploaded logo prints in black and white */
 .shop { text-align: center; font-size: 23pt; font-weight: 700; letter-spacing: 0.06em; font-family: Georgia, "Times New Roman", "Noto Serif", serif; } /* the same serif the app uses for the shop name */
@@ -181,7 +181,7 @@ const wtText = (w: number): string => `${Math.round(w * 1000) / 1000} g`;
 /** Under the table: the silver and gold prices (bottom left) and a thank-you (no shop name, no estimate note). */
 function footHtml(est: Estimate): string {
   // Silver and gold price, two rows in the bottom-left corner; the thank-you stays in the middle.
-  return `<div class="foot"><div class="foot-rates"><div>Silver: ${escapeHtml(bhavText(est, 'silver'))}</div><div>Gold: ${escapeHtml(bhavText(est, 'gold'))}</div></div>
+  return `<div class="foot"><div class="foot-rates"><div>Gold: ${escapeHtml(bhavText(est, 'gold'))}</div><div>Silver: ${escapeHtml(bhavText(est, 'silver'))}</div></div>
 <div class="thanks"><div class="thanks-main">Thank you for visiting!</div>
 <div class="thanks-sub">It was a pleasure serving you. Please visit us again.</div></div><span></span></div>`;
 }
@@ -222,7 +222,7 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
     ...est.otherCharges.map((c) => sum(escapeHtml(c.label.toUpperCase()), '', fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [sum(`GST ${fmtPercent(p.gstPercent)}%`, '', fmtRupeeCell(t.gst))] : []),
     // The gold / silver the customer submitted: valued at the rate typed for it and cut from the bill.
-    ...(['silver', 'gold'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => sum(`Submitted ${wtText(submittedWeight(est, m))} ${m} @ ${fmtRupeeCell(submittedRate(est, m))} / 10 g`, '', `−${fmtRupeeCell(t.submittedCredit[m])}`)),
+    ...(['gold', 'silver'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => sum(`Submitted ${wtText(submittedWeight(est, m))} ${m} @ ${fmtRupeeCell(submittedRate(est, m))} / 10 g`, '', `−${fmtRupeeCell(t.submittedCredit[m])}`)),
     sum('TOTAL', '', fmtRupeeCell(t.grandTotal), 'grand'),
     // Money received so far (each with its day and date) and what is left.
     ...(paymentsOf(est).length
@@ -276,7 +276,7 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
       return `<table class="it">
 <tr><td colspan="4" class="d">${escapeHtml(it.description)}</td></tr>
 <tr>${cell('G. Wt.', fmtWeight(it.grossWt))}${cell('Less Wt.', fmtWeight(it.lessWt))}${cell('Net Wt.', fmtWeight(c.netWt))}${cell('Pcs', fmtPcs(it.pcs))}</tr>
-<tr>${cell('Making', makingText(it, c.labour))}${cell('Silver/Gold', metalName(it.metal))}<td colspan="3"><div class="l">Amount</div><div class="v b">${fmtRupeeCell(c.amount)}</div></td></tr>
+<tr>${cell('Making', makingText(it, c.labour))}${cell('Gold/Silver', metalName(it.metal))}<td colspan="3"><div class="l">Amount</div><div class="v b">${fmtRupeeCell(c.amount)}</div></td></tr>
 </table>`;
     })
     .join('');
@@ -286,7 +286,7 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
     ...metalsBought(est).map((m) => line(`${metalName(m)} Rate`, bhavText(est, m))),
     ...est.otherCharges.map((c) => line(c.label.toUpperCase(), fmtRupeeCell(c.amount))),
     ...(p.gstEnabled ? [line(`GST ${fmtPercent(p.gstPercent)}%`, fmtRupeeCell(t.gst))] : []),
-    ...(['silver', 'gold'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => line(`Submitted ${wtText(submittedWeight(est, m))} ${m}`, `−${fmtRupeeCell(t.submittedCredit[m])}`)),
+    ...(['gold', 'silver'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => line(`Submitted ${wtText(submittedWeight(est, m))} ${m}`, `−${fmtRupeeCell(t.submittedCredit[m])}`)),
     line('TOTAL', fmtRupeeCell(t.grandTotal), 'grand'),
     ...(paymentsOf(est).length
       ? [...paymentsOf(est).map((pay) => line(`Paid ${paymentModeText(pay) ? `${paymentModeText(pay)} ` : ''}${fmtDayDateTime(pay.at)}`, fmtRupeeCell(pay.amount))), line('BALANCE', fmtRupeeCell(balanceLeft(est)), 'grand')]
