@@ -6,6 +6,7 @@ const paths: Record<string, string> = {
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   close: 'M6 6l12 12M18 6L6 18',
   chevron: 'M6 9l6 6 6-6',
   home: 'M4 11l8-7 8 7v9h-5v-6H9v6H4z',

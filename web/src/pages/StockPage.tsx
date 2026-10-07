@@ -138,7 +138,7 @@ export function StockPage({ section, onRange, onEditStock, store, setToast }: { 
         <div className="stack" data-testid="section-cash">
           <div className="grid-2">
             <button className="btn btn-primary" onClick={() => setCashEdit({ entry: newCashEntry('in'), isNew: true })} data-testid="cash-add-in"><Icon name="plus" size={18} /> Cash IN</button>
-            <button className="btn btn-outline" onClick={() => setCashEdit({ entry: newCashEntry('out'), isNew: true })} data-testid="cash-add-out"><Icon name="plus" size={18} /> Cash OUT</button>
+            <button className="btn btn-outline" onClick={() => setCashEdit({ entry: newCashEntry('out'), isNew: true })} data-testid="cash-add-out"><Icon name="minus" size={18} /> Cash OUT</button>
           </div>
 
           <div className="stock-filters"><TypeSeg value={cashF} onChange={setCashF} /></div>
