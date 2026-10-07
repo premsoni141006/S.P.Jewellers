@@ -64,7 +64,7 @@ function EntryView({ entry: e, canRemove, onRemoveStock }: { entry: StockEntry; 
           ['Category', e.item || '—'],
           ['Weight', `${fmtWeight(e.weight)} g`],
           ['Tunch', e.tunch > 0 ? `${e.tunch}%` : '—'],
-          ['Old tunch', (e.oldTunch ?? 0) > 0 ? `${e.oldTunch}%` : '—'],
+          ['Add tunch', (e.oldTunch ?? 0) > 0 ? `${e.oldTunch}%` : '—'],
           ['No. of pieces', e.pcs > 0 ? String(e.pcs) : '—'],
           ['Date', fmtDate(`${e.date}T12:00:00`)],
           ['Note', e.note || '—'],
@@ -168,7 +168,7 @@ function NewEntryForm({ initial, entries, products, defaultLabour, defaultLabour
       <section className="card stack">
         <div className="grid-2">
           <NumField label="Tunch (optional)" value={e.tunch} onChange={(n) => setE({ ...e, tunch: n })} step="percent" suffix="%" testId="stock-tunch" />
-          <NumField label="Old tunch (optional)" value={e.oldTunch ?? 0} onChange={(n) => setE({ ...e, oldTunch: n })} step="percent" suffix="%" testId="stock-old-tunch" />
+          <NumField label="Add tunch (optional)" value={e.oldTunch ?? 0} onChange={(n) => setE({ ...e, oldTunch: n })} step="percent" suffix="%" testId="stock-old-tunch" />
         </div>
         <NumField label="No. of pieces (optional)" value={e.pcs} onChange={(n) => setE({ ...e, pcs: n })} step="int" testId="stock-pcs" />
         <label className="field">
