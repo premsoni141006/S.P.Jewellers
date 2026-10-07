@@ -41,11 +41,11 @@ export function StockPage({ section, onRange, onEditStock, store, setToast }: { 
 
   const gold = useMemo(() => stockTotals(stock, 'gold'), [stock]);
   const silver = useMemo(() => stockTotals(stock, 'silver'), [stock]);
-  // IN entries that have since gone out (an OUT of the same piece exists) are shown faded: the record stays.
+  // IN entries that have since gone out (an OUT of the same piece exists) are shown faded under All; the IN filter lists only what is still in stock.
   const inStock = useMemo(() => new Set(availableStock(stock).map((x) => x.id)), [stock]);
   const byItem = useMemo(() => stockByItem(stock), [stock]);
   const cashT = useMemo(() => cashTotals(cash), [cash]);
-  const stockList = useMemo(() => searchStock(sortStock(stock), qMetal).filter((e) => (typeF === 'all' || e.type === typeF) && (metalF === 'all' || e.metal === metalF)), [stock, qMetal, typeF, metalF]);
+  const stockList = useMemo(() => searchStock(sortStock(stock), qMetal).filter((e) => (typeF === 'all' || (e.type === typeF && (typeF !== 'in' || inStock.has(e.id)))) && (metalF === 'all' || e.metal === metalF)), [stock, qMetal, typeF, metalF, inStock]);
   const cashList = useMemo(() => searchCash(sortCash(cash), qCash).filter((e) => cashF === 'all' || e.type === cashF), [cash, qCash, cashF]);
 
   return (
