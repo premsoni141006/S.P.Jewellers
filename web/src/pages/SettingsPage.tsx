@@ -16,6 +16,17 @@ interface Props {
   onPrinter: () => void;
 }
 
+/** Forces the newest version of the site: forgets the saved copies of the app files, then reloads. Your data is not touched. */
+async function updateApp(): Promise<void> {
+  try {
+    const regs = await navigator.serviceWorker?.getRegistrations?.();
+    await Promise.all((regs ?? []).map((r) => r.unregister()));
+    const keys = await caches?.keys?.();
+    await Promise.all((keys ?? []).map((k) => caches.delete(k)));
+  } catch { /* reload anyway */ }
+  window.location.replace(`${window.location.pathname}?v=${Date.now()}`);
+}
+
 /** Cloud backup: the shop's Cloudflare Worker (R2). Everything stays on the phone too; this adds a copy in the cloud and shares it between devices. */
 function CloudCard({ onSynced }: { onSynced: () => void }) {
   const cfg = loadCloudConfig();
@@ -136,6 +147,7 @@ function AccountCard({ shopName }: { shopName: string }) {
     <section className="card stack" data-testid="account-card">
       <div className="section-title">Account</div>
       <p className="small">Signed in: <b data-testid="account-shop">{shopName}</b></p>
+      <button className="btn btn-outline" onClick={() => void updateApp()} data-testid="update-app">Update app now</button>
       <button className="btn btn-outline" onClick={() => { setUnlocked(false); window.location.reload(); }} data-testid="sign-out">Sign out / switch shop</button>
     </section>
   );

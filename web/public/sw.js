@@ -2,7 +2,7 @@
 //  - page navigations: network first, cached page when offline
 //  - same-origin files (hashed JS/CSS, icons): cache first
 // Bump VERSION to drop old caches after a release.
-const VERSION = 'spj-v1';
+const VERSION = 'spj-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -22,6 +22,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.searchParams.has('v')) return; // the app's own "is there a newer version" check always goes to the network
 
   if (req.mode === 'navigate') {
     event.respondWith(

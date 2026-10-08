@@ -39,3 +39,21 @@ if (import.meta.env.PROD && !isNative() && 'serviceWorker' in navigator) {
     });
   });
 }
+
+// A website opened from the home screen is resumed, not reloaded, so it can keep running an old copy. When a newer one is
+// published, load it: check when the app starts and every time it comes back to the front.
+if (import.meta.env.PROD && !isNative()) {
+  const current = () => document.querySelector('script[type="module"][src*="/assets/index-"]')?.getAttribute('src') ?? '';
+  const check = async () => {
+    try {
+      const res = await fetch(`/index.html?v=${Date.now()}`, { cache: 'no-store' });
+      const latest = /\/assets\/index-[^"']+\.js/.exec(await res.text())?.[0];
+      if (latest && current() && current() !== latest) {
+        const last = Number(sessionStorage.getItem('spj.reloaded') ?? 0);
+        if (Date.now() - last > 30_000) { sessionStorage.setItem('spj.reloaded', String(Date.now())); window.location.reload(); }
+      }
+    } catch { /* offline: keep the copy that is running */ }
+  };
+  window.setTimeout(check, 4000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void check(); });
+}
