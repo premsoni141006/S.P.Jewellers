@@ -82,7 +82,7 @@ export function StockPage({ section, onRange, onEditStock, store, setToast }: { 
         <div className="stack" data-testid="section-metal">
           <div className="grid-2">
             <button className="btn btn-primary" onClick={() => onEditStock(newStockEntry('in'), true)} data-testid="stock-add-in"><Icon name="plus" size={18} /> Stock IN</button>
-            <button className="btn btn-outline" onClick={() => onEditStock(newStockEntry('out'), true)} data-testid="stock-add-out"><Icon name="plus" size={18} /> Stock OUT</button>
+            <button className="btn btn-outline" onClick={() => onEditStock(newStockEntry('out'), true)} data-testid="stock-add-out"><Icon name="minus" size={18} /> Stock OUT</button>
           </div>
 
           {byItem.length > 0 && (

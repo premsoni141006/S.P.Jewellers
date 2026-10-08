@@ -53,7 +53,7 @@ function CloudCard({ onSynced }: { onSynced: () => void }) {
       </p>
       <div className="grid-2">
         <button className="btn btn-primary" onClick={() => void connect()} data-testid="cloud-connect">{cfg ? 'Save & sync' : 'Connect'}</button>
-        {cfg && <button className="btn btn-plain" onClick={() => { saveCloudConfig(null); setMsg(''); }} data-testid="cloud-off">Turn off</button>}
+        {cfg && <button className="btn btn-plain" onClick={() => { saveCloudConfig({ url: '', key: '' }); setMsg(''); }} data-testid="cloud-off">Turn off</button>}
       </div>
     </section>
   );

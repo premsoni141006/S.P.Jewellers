@@ -64,10 +64,11 @@ export function HistoryPage({ store, drafts, onContinueDraft, onViewDraft, onDis
         const s = summarize(e);
         const [label, cls] = STATUS[s.printStatus];
         return (
-          <section className={`card hist-card${e.billStatus === 'clear' ? ' is-clear' : ''}`} key={e.id} data-testid="history-row">
+          <section className={`card hist-card${e.billStatus === 'clear' || e.billStatus === 'nil' ? ' is-clear' : ''}`} key={e.id} data-testid="history-row">
             {e.billStatus === 'pending' && <span className="status-dot dot-draft" role="img" aria-label="Pending" data-testid="dot-pending" />}
             {e.billStatus === 'clear' && <span className="status-dot dot-done" role="img" aria-label="Clear" data-testid="dot-done" />}
-            <div className="hist-top" onClick={e.billStatus === 'clear' ? () => onView(e) : undefined} data-testid="hist-top">
+            {e.billStatus === 'nil' && <span className="status-dot dot-nil" role="img" aria-label="Nil" data-testid="dot-nil" />}
+            <div className="hist-top" onClick={e.billStatus === 'clear' || e.billStatus === 'nil' ? () => onView(e) : undefined} data-testid="hist-top">
               <div>
                 <div className="hist-no">{fmtOrderId(orderIdOf(s))}</div>
                 <div className="muted small">{fmtDateTime(s.updatedAt)}</div>

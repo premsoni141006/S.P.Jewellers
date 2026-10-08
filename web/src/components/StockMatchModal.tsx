@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { ZoomImage } from './ZoomImage';
 import { fmtDate, fmtWeight, fmtOrderId, orderIdOf, stockMatchesForSale, type Estimate, type StockEntry } from '@shared';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
@@ -8,7 +9,7 @@ function Slide({ piece, onRemove }: { piece: StockEntry; onRemove: () => void })
   const url = usePhotoUrl(piece.photoId);
   return (
     <div className="match-slide" data-testid="match-slide">
-      <div className="match-photo">{url ? <img src={url} alt="" /> : <span className="muted small">No photo</span>}</div>
+      <div className="match-photo">{url ? <ZoomImage src={url} /> : <span className="muted small">No photo</span>}</div>
       <div className="match-info">
         <b>{fmtWeight(piece.weight)} g</b>
         <span className="muted small">Tunch {piece.tunch}% · IN {fmtDate(`${piece.date}T12:00:00`)}</span>

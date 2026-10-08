@@ -92,11 +92,12 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
                 <button key={e.id} className="result-card" onClick={() => onView(e)} data-testid="search-result">
                   {e.billStatus === 'pending' && <span className="status-dot dot-draft" role="img" aria-label="Pending" />}
                   {e.billStatus === 'clear' && <span className="status-dot dot-done" role="img" aria-label="Clear" />}
+                  {e.billStatus === 'nil' && <span className="status-dot dot-nil" role="img" aria-label="Nil" />}
                   <span className="result-top">
-                    <b>{fmtOrderId(orderIdOf(e))}</b>
+                    <b>{e.customerName.trim() || fmtOrderId(orderIdOf(e))}</b>
                     <b className="result-amt">{fmtRupees(calcEstimate(e).grandTotal)}</b>
                   </span>
-                  <span className="muted small">{fmtDateTime(e.createdAt)}{e.customerName.trim() ? ` · ${e.customerName.trim()}` : ''}{(e.customerLocality ?? '').trim() ? ` · ${(e.customerLocality ?? '').trim()}` : ''}</span>
+                  <span className="muted small">{fmtDateTime(e.createdAt)}{(e.customerLocality ?? '').trim() ? ` · ${(e.customerLocality ?? '').trim()}` : ''}</span>
                   <span className="muted small result-items">{names.slice(0, 2).join(', ')}{names.length > 2 ? ` +${names.length - 2} more` : ''}</span>
                 </button>
               );
@@ -119,7 +120,7 @@ export function HomePage({ store, onSettings, onGallery, onProducts, onRates, on
                     <li key={e.id}>
                       <button className="recent-row" onClick={() => onView(e)}>
                         <span className="recent-ico"><Icon name="estimate" size={22} /></span>
-                        <span className="recent-l"><b>{fmtOrderId(orderIdOf(s))}</b><span className="muted small">{fmtDateTime(s.updatedAt)}</span></span>
+                        <span className="recent-l"><b>{s.customerName.trim() || fmtOrderId(orderIdOf(s))}</b><span className="muted small">{fmtDateTime(s.updatedAt)}</span></span>
                         <span className="recent-r"><b>{fmtRupees(s.grandTotal)}</b><span className={`small st-${tone}`}>{label}</span></span>
                         <span className="recent-go" aria-hidden="true"><Icon name="next" size={16} /></span>
                       </button>

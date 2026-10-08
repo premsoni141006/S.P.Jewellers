@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ZoomImage } from '../components/ZoomImage';
 import { availableStock, fmtDate, fmtWeight, newId, stockTotals, today, validateStockEntry, type Product, type StockEntry, type StockType } from '@shared';
 import type { LabourMode } from '@shared';
 import { deletePhoto, putPhoto, usePhotoUrl } from '../lib/photos';
@@ -20,7 +21,7 @@ function PieceRow({ piece, on, onPick }: { piece: StockEntry; on: boolean; onPic
   const url = usePhotoUrl(piece.photoId);
   return (
     <button type="button" className={`piece-row${on ? ' on' : ''}`} onClick={onPick} data-testid="find-piece">
-      <span className="piece-photo">{url ? <img src={url} alt="" /> : <span className="muted small">No photo</span>}</span>
+      <span className="piece-photo">{url ? <ZoomImage src={url} /> : <span className="muted small">No photo</span>}</span>
       <span className="piece-info">
         <b>{piece.item}</b>
         <span>{fmtWeight(piece.weight)} g · Tunch {piece.tunch}%</span>
@@ -57,7 +58,7 @@ function EntryView({ entry: e, canRemove, onRemoveStock }: { entry: StockEntry; 
   return (
     <div className="page" data-testid="stock-entry-page">
       <section className="card stack">
-        {e.photoId && <div className="entry-photo">{url && <img src={url} alt="" />}</div>}
+        {e.photoId && <div className="entry-photo">{url && <ZoomImage src={url} testId="entry-photo-img" />}</div>}
         {([
           ['Type', e.type === 'in' ? 'Stock IN' : 'Stock OUT'],
           ['Metal', e.metal === 'gold' ? 'Gold' : 'Silver'],

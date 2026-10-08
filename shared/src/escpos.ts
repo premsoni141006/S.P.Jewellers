@@ -183,7 +183,7 @@ export function buildEstimateEscPosText(est: Estimate, header: PrintHeader, pape
   kv('TOTAL', `Rs. ${fmtMoney(t.grandTotal)}`);
   if (paymentsOf(est).length) {
     p.bold(false);
-    paymentsOf(est).forEach((pay) => kv(`Paid ${paymentModeText(pay) ? `${toAscii(paymentModeText(pay))} ` : ''}${toAscii(fmtDayDateTime(pay.at))}`.slice(0, W - 8), fmtMoney(pay.amount)));
+    paymentsOf(est).forEach((pay) => kv(`${pay.mode === 'nil' ? '' : 'Paid '}${paymentModeText(pay) ? `${toAscii(paymentModeText(pay))} ` : ''}${toAscii(fmtDayDateTime(pay.at))}`.slice(0, W - 8), `${pay.mode === 'nil' ? '-' : ''}${fmtMoney(pay.amount)}`));
     p.bold(true);
     kv('BALANCE', `Rs. ${fmtMoney(balanceLeft(est))}`);
   }

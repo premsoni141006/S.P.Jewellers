@@ -3,6 +3,8 @@ const URL = process.env.URL ?? 'http://localhost:4173/';
 let pass = 0, fail = 0;
 const check = (n, ok, d = '') => { (ok ? pass++ : fail++); console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${ok ? '' : ' — ' + d}`); };
 const browser = await chromium.launch({ channel: 'chromium' });
+const __nc = browser.newContext.bind(browser); // never touch the shop's real cloud
+browser.newContext = async (o) => { const c = await __nc(o); await c.addInitScript(() => { try { for (const k of ['spj.cloud.v1', 'kj.cloud.v1']) if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify({ url: '', key: '' })); } catch {} }); return c; };
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page = await ctx.newPage();
 await page.goto(URL);

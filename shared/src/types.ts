@@ -72,7 +72,7 @@ export interface Payment {
   /** When it was received (ISO); the day name and date shown on the bill come from this. */
   at: string;
   /** How it was paid. Missing = cash (older payments and the amount deposited while making the bill). */
-  mode?: 'cash' | 'upi' | 'gold' | 'silver';
+  mode?: 'cash' | 'upi' | 'gold' | 'silver' | 'nil';
   /** Old gold the customer gave instead of money: its value was cut from the bill (`amount` is that value). */
   gold?: GoldPayment;
   /** Old silver given instead of money (same idea, with a tunch % instead of a karat). */
@@ -117,8 +117,8 @@ export interface Estimate {
   printStatus: PrintStatus;
   printedAt: string | null;
   lastPrintError: string | null;
-  /** Set from the preview: 'pending' shows a red dot in history, 'clear' a green one, unset shows no dot. */
-  billStatus?: 'pending' | 'clear';
+  /** Set from the preview: 'pending' shows a red dot in history, 'clear' a green one, 'nil' (what was left is written off) a grey one, unset shows no dot. */
+  billStatus?: 'pending' | 'clear' | 'nil';
   /** Payments received so far (added from the final bill until it is marked Clear). */
   payments?: Payment[];
   /** Gold / silver the customer handed in (grams), same karat / purity as the metal bought, valued at its own rate (`goldRate` / `silverRate`, rupees per 10 g; missing = the bill's 24K rate). Its value is cut from the bill. */
@@ -188,5 +188,5 @@ export interface EstimateSummary {
   itemCount: number;
   printStatus: PrintStatus;
   printedAt: string | null;
-  billStatus?: 'pending' | 'clear';
+  billStatus?: 'pending' | 'clear' | 'nil';
 }

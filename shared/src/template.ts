@@ -226,7 +226,7 @@ export function renderEstimateHtml(est: Estimate, header: PrintHeader, opts: Ren
     sum('TOTAL', '', fmtRupeeCell(t.grandTotal), 'grand'),
     // Money received so far (each with its day and date) and what is left.
     ...(paymentsOf(est).length
-      ? [...paymentsOf(est).map((pay) => sum(`Paid · ${paymentModeText(pay) ? `${escapeHtml(paymentModeText(pay))} · ` : ''}${escapeHtml(fmtDayDateTime(pay.at))}`, '', fmtRupeeCell(pay.amount))), sum('BALANCE', '', fmtRupeeCell(balanceLeft(est)), 'grand')]
+      ? [...paymentsOf(est).map((pay) => sum(`${pay.mode === 'nil' ? '' : 'Paid · '}${paymentModeText(pay) ? `${escapeHtml(paymentModeText(pay))} · ` : ''}${escapeHtml(fmtDayDateTime(pay.at))}`, '', `${pay.mode === 'nil' ? '−' : ''}${fmtRupeeCell(pay.amount)}`)), sum('BALANCE', '', fmtRupeeCell(balanceLeft(est)), 'grand')]
       : []),
   ].join('');
 
@@ -289,7 +289,7 @@ export function renderReceiptHtml(est: Estimate, header: PrintHeader, widthPx: n
     ...(['gold', 'silver'] as const).filter((m) => t.submittedCredit[m] > 0).map((m) => line(`Submitted ${wtText(submittedWeight(est, m))} ${m}`, `−${fmtRupeeCell(t.submittedCredit[m])}`)),
     line('TOTAL', fmtRupeeCell(t.grandTotal), 'grand'),
     ...(paymentsOf(est).length
-      ? [...paymentsOf(est).map((pay) => line(`Paid ${paymentModeText(pay) ? `${paymentModeText(pay)} ` : ''}${fmtDayDateTime(pay.at)}`, fmtRupeeCell(pay.amount))), line('BALANCE', fmtRupeeCell(balanceLeft(est)), 'grand')]
+      ? [...paymentsOf(est).map((pay) => line(`${pay.mode === 'nil' ? '' : 'Paid '}${paymentModeText(pay) ? `${paymentModeText(pay)} ` : ''}${fmtDayDateTime(pay.at)}`, `${pay.mode === 'nil' ? '−' : ''}${fmtRupeeCell(pay.amount)}`)), line('BALANCE', fmtRupeeCell(balanceLeft(est)), 'grand')]
       : []),
   ].join('');
 

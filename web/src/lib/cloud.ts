@@ -14,11 +14,15 @@ export interface CloudConfig { url: string; key: string }
 /** The shop's Worker address (not a secret; only the key opens it). Pre-filled in Settings → Cloud backup. */
 export const DEFAULT_CLOUD_URL = 'https://spj-cloud.premsoni119220.workers.dev';
 
+/** The shop's cloud key, built in so every phone connects as soon as it signs in (no typing). Rotate it with: npx wrangler secret put SYNC_TOKEN, then change it here. */
+export const DEFAULT_CLOUD_KEY = 'a2kdY2lzsYFvWTq0Lulur7F6Y5ep5TTHTsxx6vFpA1s';
+
+/** The shop's own Worker and key unless a different server was entered in Settings (used for testing). */
 export const loadCloudConfig = (): CloudConfig | null => {
   const c = load<CloudConfig | null>(KEYS.cloud, null);
-  if (c?.url && c.key) return c;
-  const envUrl = (import.meta.env.VITE_CLOUD_URL as string | undefined)?.trim();
-  return envUrl && c?.key ? { url: envUrl, key: c.key } : null;
+  if (c && !c.url && !c.key) return null; // turned off on this phone in Settings
+  if (c?.url && c.key && c.url.replace(/\/+$/, '') !== DEFAULT_CLOUD_URL) return c; // another server, e.g. a local test one
+  return { url: DEFAULT_CLOUD_URL, key: DEFAULT_CLOUD_KEY };
 };
 export const saveCloudConfig = (c: CloudConfig | null): void => { save(KEYS.cloud, c); listeners.forEach((l) => l()); };
 

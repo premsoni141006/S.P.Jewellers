@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { ZoomImage } from './ZoomImage';
 import { usePhotoUrl } from '../lib/photos';
 import { CropWindow } from './CropWindow';
 import { Icon } from './Icon';
@@ -26,7 +27,7 @@ export function PhotoField({ photoId, pending, onChange }: { photoId?: string; p
       <span className="field-label">Product photo</span>
       <div className="photo-row">
         <div className="photo-box">
-          {url ? <img src={url} alt="Product" data-testid="photo-preview" /> : <span className="muted small">No photo</span>}
+          {url ? <ZoomImage src={url} alt="Product" testId="photo-preview" /> : <span className="muted small">No photo</span>}
         </div>
         <div className="photo-actions">
           <button type="button" className="btn btn-outline btn-sm" onClick={() => cam.current?.click()} data-testid="photo-camera"><Icon name="camera" size={18} /> Take photo</button>

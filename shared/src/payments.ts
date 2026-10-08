@@ -15,7 +15,7 @@ export const balanceLeft = (est: Estimate): number => Math.max(0, calcEstimate(e
 /** A problem with adding this payment, or null when it is fine. */
 export function validatePayment(est: Estimate, amount: number, opts: { unsaved?: boolean; reserved?: number } = {}): string | null {
   if (est.number <= 0 && !opts.unsaved) return 'Save the bill first.';
-  if (est.billStatus === 'clear') return 'This bill is Clear; it cannot be changed.';
+  if (est.billStatus === 'clear' || est.billStatus === 'nil') return `This bill is ${est.billStatus === 'nil' ? 'Nil' : 'Clear'}; it cannot be changed.`;
   if (!Number.isFinite(amount) || amount <= 0) return 'Enter the amount received.';
   if (!Number.isInteger(amount)) return 'Enter whole rupees.';
   const left = Math.max(0, balanceLeft(est) - Math.round(opts.reserved ?? 0));
@@ -72,6 +72,7 @@ export function netMetalWeight(est: Pick<Estimate, 'items' | 'submitted'>, metal
 export function paymentModeText(p: Payment): string {
   if (p.mode === 'gold' && p.gold) return `Submitted gold ${Math.round(p.gold.weight * 1000) / 1000} g @ ${fmtRupeeCell(p.gold.rate)} / 10 g`; // the karat is not printed (it is set in Settings / Rates)
   if (p.mode === 'silver' && p.silver) return `Submitted silver ${Math.round(p.silver.weight * 1000) / 1000} g @ ${fmtRupeeCell(p.silver.rate)} / 10 g`;
+  if (p.mode === 'nil') return 'Nil (written off)';
   if (p.mode === 'upi') return 'UPI';
   if (p.mode === 'cash') return 'Cash';
   return '';

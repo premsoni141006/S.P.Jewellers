@@ -14,7 +14,7 @@ const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
  * Shows the exact bill that is printed. It opens fitted to the screen and can be zoomed (buttons,
  * two-finger pinch, double-tap) and saved as an image or a PDF.
  */
-export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved, onAddPayment }: { est: Estimate; onAddPayment: (amount: number, extra: PayExtra) => void; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear') => void | Promise<void> }) {
+export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatus, onEnsureSaved, onAddPayment }: { est: Estimate; onAddPayment: (amount: number, extra: PayExtra) => void; onEnsureSaved: () => Estimate | null; header: PrintHeader; onClose: () => void; onPrint: () => void; onNotice: (msg: string) => void; onStatus: (s: 'pending' | 'clear' | 'nil') => void | Promise<void> }) {
   const wrap = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const [fit, setFit] = useState(0.4); // scale that fits the bill to the screen width
@@ -143,15 +143,16 @@ export function PreviewScreen({ est, header, onClose, onPrint, onNotice, onStatu
           <button className="btn btn-outline btn-sm" onClick={() => void run('share')} disabled={!!busy} data-testid="share-bill">{busy === 'share' ? 'Preparing…' : 'Share'}</button>
         </div>
       </div>
-      {est.billStatus !== 'clear' && <div className="status-group" role="group" aria-label="Bill status">
+      {est.billStatus !== 'clear' && est.billStatus !== 'nil' && <div className="status-group" role="group" aria-label="Bill status">
         <button className={`btn btn-outline btn-sm status-pending${est.billStatus === 'pending' ? ' on' : ''}`} onClick={() => onStatus('pending')} data-testid="mark-pending">Pending</button>
         <button className={`btn btn-outline btn-sm status-clear`} onClick={() => onStatus('clear')} data-testid="mark-clear">Clear</button>
+        <button className="btn btn-outline btn-sm status-nil" onClick={() => onStatus('nil')} data-testid="mark-nil">Nil</button>
       </div>}
       {est.number > 0 && (
         <div className="pay-bar" data-testid="pay-bar">
           <span>Paid <b data-testid="pay-paid">{fmtRupees(paidTotal(est))}</b></span>
           <span>Left <b data-testid="pay-left">{fmtRupees(balanceLeft(est))}</b></span>
-          {est.billStatus !== 'clear' && balanceLeft(est) > 0 && <button className="btn btn-outline btn-sm" onClick={() => setPaying(true)} data-testid="pay-add">+ Payment</button>}
+          {est.billStatus !== 'clear' && est.billStatus !== 'nil' && balanceLeft(est) > 0 && <button className="btn btn-outline btn-sm" onClick={() => setPaying(true)} data-testid="pay-add">+ Payment</button>}
         </div>
       )}
       {paying && <PaymentWindow est={est} onClose={() => setPaying(false)} onAdd={(a, extra) => { onAddPayment(a, extra); setPaying(false); }} />}

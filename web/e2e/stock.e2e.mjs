@@ -185,8 +185,25 @@ check('cash entries survive too', (await crows().count()) === 3 && (await flat('
 
 // ------------------------------------------------------------ Remove this stock (the only way out)
 await page.click('[data-testid=bar-back]'); await page.click('[data-testid=tile-stock]'); await settle();
+// ------------------------------------------------------------ photo zoom
+{
+  await rows().filter({ has: page.locator('[data-testid=stock-thumb]') }).first().locator('.stock-main').click();
+  await page.waitForSelector('[data-testid=entry-photo-img]');
+  await page.click('[data-testid=entry-photo-img]');
+  await page.waitForSelector('[data-testid=zoom-viewer]');
+  const sc = () => page.getAttribute('[data-testid=zoom-img]', 'style');
+  await page.click('[data-testid=zoom-in-btn]');
+  check('tapping the photo opens a full-screen viewer that zooms in', /scale\(1\.5\)/.test(await sc()), await sc());
+  await page.click('[data-testid=zoom-level]');
+  check('the level button returns to fitted', /scale\(1\)/.test(await sc()), await sc());
+  await page.click('[data-testid=zoom-close]');
+  check('the viewer closes', (await page.locator('[data-testid=zoom-viewer]').count()) === 0);
+}
+  await page.click('[data-testid=bar-back]'); await settle();
+
 await rows().filter({ hasText: 'Silver Anklet' }).filter({ has: page.locator('.stock-amt.in') }).locator('.stock-main').click();
 await page.waitForSelector('[data-testid=remove-stock]');
+
 await page.click('[data-testid=remove-stock]');
 await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
 await page.waitForSelector('.sheet', { state: 'detached' });

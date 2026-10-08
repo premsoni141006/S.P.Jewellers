@@ -356,8 +356,12 @@ function AppMain() {
           onStatus={async (status) => {
             const fromEditor = preview.fromEditor;
             const target = fromEditor ? est : preview.est;
-            if (target.billStatus === 'clear') return; // a Clear bill is final
+            if (target.billStatus === 'clear' || target.billStatus === 'nil') return; // a Clear or Nil bill is final
             if (status === 'clear' && !(await confirm('Mark this bill Clear?', balanceLeft(target) > 0 ? `${fmtRupees(balanceLeft(target))} is still left on this bill. Once a bill is Clear it cannot be changed again.` : 'Once a bill is Clear it cannot be changed again.', 'Yes, Clear'))) return;
+            if (status === 'nil') {
+              const left = balanceLeft(settleAdvance(target, newId(), new Date().toISOString()));
+              if (!(await confirm('Mark this bill Nil?', left > 0 ? `${fmtRupees(left)} is still left on this bill. Nil writes it off (−${fmtRupees(left)}), so nothing is left to pay, and the bill is complete. It cannot be changed again.` : 'Nothing is left to pay. Once a bill is Nil it cannot be changed again.', 'Yes, Nil'))) return;
+            }
             const issues = validateEstimate(target);
             if (issues.length) {
               setPreview(null);
@@ -366,11 +370,18 @@ function AppMain() {
               return;
             }
             setInvalid(new Set());
-            const stored = saveEstimate({ ...target, billStatus: status });
+            let toStore: Estimate = target;
+            if (status === 'nil') { // what is left is written off as one last adjustment, so the balance comes to 0
+              const at = new Date().toISOString();
+              const settled = settleAdvance(target, newId(), at);
+              const left = balanceLeft(settled);
+              toStore = left > 0 ? withPayment(settled, left, newId(), at, { mode: 'nil' }) : settled;
+            }
+            const stored = saveEstimate({ ...toStore, billStatus: status });
             if (fromEditor || target.id === est.id) setEst(blankEstimate(settings));
             setPreview(null);
             if (fromEditor) setTab('history');
-            setToast(status === 'clear' ? `Order ${fmtOrderId(orderIdOf(stored))} marked Clear.` : `Order ${fmtOrderId(orderIdOf(stored))} marked Pending.`);
+            setToast(`Order ${fmtOrderId(orderIdOf(stored))} marked ${status === 'clear' ? 'Clear' : status === 'nil' ? 'Nil' : 'Pending'}.`);
           }}
           onPrint={() => {
             const target = preview.fromEditor ? est : preview.est;

@@ -44,8 +44,8 @@ export function mergeBill(local: Estimate, remote: Estimate): Estimate {
   const byId = new Map<string, { id: string; amount: number; at: string }>();
   for (const p of [...(remote.payments ?? []), ...(local.payments ?? [])]) byId.set(p.id, p);
   const payments = [...byId.values()].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
-  const clear = local.billStatus === 'clear' || remote.billStatus === 'clear';
-  return { ...base, ...(payments.length ? { payments } : {}), ...(clear ? { billStatus: 'clear' as const } : {}) };
+  const final = [local.billStatus, remote.billStatus].includes('clear') ? ('clear' as const) : [local.billStatus, remote.billStatus].includes('nil') ? ('nil' as const) : undefined;
+  return { ...base, ...(payments.length ? { payments } : {}), ...(final ? { billStatus: final } : {}) };
 }
 
 /** Joins two lists of bills by id using {@link mergeBill}. */

@@ -808,3 +808,17 @@ describe('order id', () => {
     expect(r).toBeGreaterThanOrEqual(1000); expect(r).toBeLessThanOrEqual(9999);
   });
 });
+
+describe('nil (write off what is left)', () => {
+  it('a nil payment takes the balance to 0 and the bill prints it as −₹ with "Nil (written off)"', () => {
+    const e = { ...sampleEstimate(DEFAULT_SETTINGS), id: 'b1', number: 3, submitted: undefined, advance: 0 };
+    const left = balanceLeft(e);
+    const nil = { ...withPayment(e, left, 'n', '2026-10-08T10:00:00', { mode: 'nil' }), billStatus: 'nil' as const };
+    expect(balanceLeft(nil)).toBe(0);
+    expect(validatePayment(nil, 1)).toMatch(/Nil; it cannot be changed/);
+    const html = renderEstimateHtml(nil, { shopName: 'S.P. JEWELLERS', shopCode: '' });
+    expect(html).toContain('Nil (written off)');
+    expect(html).toContain(`−₹${new Intl.NumberFormat('en-IN').format(left)}`);
+    expect(html).not.toContain('Paid · Nil');
+  });
+});
