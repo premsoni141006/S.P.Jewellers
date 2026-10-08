@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type StockEntry } from '@shared';
+import { fmtDate, fmtWeight, type StockEntry } from '@shared';
 import { Icon } from '../components/Icon';
 import { useBackLayer } from '../lib/backStack';
 import { usePhotoUrl } from '../lib/photos';
@@ -174,6 +174,14 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
   const entry = list[index];
   const url = usePhotoUrl(entry.photoId);
   useBackLayer(true, onClose);
+  // Three quick taps in the top-right corner open every detail kept for this photo (as on the stock page).
+  const [info, setInfo] = useState(false);
+  const taps = useRef<number[]>([]);
+  const secretTap = () => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((t) => now - t < 900), now];
+    if (taps.current.length >= 3) { taps.current = []; setInfo(true); }
+  };
 
   // Zoom: pinch with two fingers, double-tap (or double-click), the + / - buttons, or the mouse wheel.
   // When zoomed in, one finger drags the picture around. (The page itself cannot be zoomed, so this is built on pointer events.)
@@ -244,7 +252,7 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
       <header className="gx-top">
         <button className="gx-round" onClick={onClose} aria-label="Back to gallery" data-testid="gallery-viewer-back"><Icon name="back" size={22} /></button>
         <div className="gx-title"><span>{index + 1} / {list.length}</span></div>
-        <span className="gx-round gx-ghost" aria-hidden="true" />
+        <button type="button" className="gx-round gx-secret" onClick={secretTap} aria-hidden="true" tabIndex={-1} data-testid="gallery-secret" />
       </header>
       <div
         className="gx-stage"
@@ -266,6 +274,27 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
       </div>
       <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt">{wt(entry.weight)}</span></div>
       {onLike && <button type="button" className={`gx-like-heart${liked(entry.id) ? ' liked' : ''}`} onClick={() => onLike(entry)} aria-label="A customer likes this" data-testid="gallery-detail-plus"><Icon name="heart" size={26} fill={liked(entry.id) ? 'currentColor' : 'none'} /></button>}
+      {info && (
+        <div className="gx-modal" role="dialog" aria-modal="true" aria-label="Photo details" onClick={() => setInfo(false)} data-testid="gallery-info">
+          <div className="gx-modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>{entry.item || 'Photo'}</h2>
+            {([
+              ['Type', entry.type === 'in' ? 'Stock IN' : 'Stock OUT'],
+              ['Metal', entry.metal === 'gold' ? 'Gold' : 'Silver'],
+              ['Category', entry.item || '—'],
+              ['Weight', `${fmtWeight(entry.weight)} g`],
+              ['Tunch', entry.tunch > 0 ? `${entry.tunch}%` : '—'],
+              ['Add tunch', (entry.oldTunch ?? 0) > 0 ? `${entry.oldTunch}%` : '—'],
+              ['No. of pieces', entry.pcs > 0 ? String(entry.pcs) : '—'],
+              ['Date', fmtDate(`${entry.date}T12:00:00`)],
+              ['Note', entry.note || '—'],
+            ] as const).map(([k, v]) => (
+              <div className="gx-info-row" key={k}><span>{k}</span><b>{v}</b></div>
+            ))}
+            <button type="button" className="gx-btn primary" onClick={() => setInfo(false)} data-testid="gallery-info-close">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

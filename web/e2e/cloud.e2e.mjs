@@ -118,9 +118,29 @@ await A.waitForTimeout(3200); // the app syncs by itself a moment after a change
 await reveal(B); await B.click('[data-testid=cloud-connect]'); await B.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
 check('a settings change on A reaches B', (await ls(B, 'spj.settings.v1'))?.shopName === 'S.P. JEWELLERS TEST');
 
+// ---- the owner resets the shop: every phone clears its own bills, stock, cash and photos once; settings stay
+{
+  const H = { Authorization: `Bearer ${KEY}` };
+  for (const [name, empty] of [['history', { items: [] }], ['stock', { items: [] }], ['cash', { items: [] }], ['picks', { items: [], removed: [] }]]) { // the owner empties the cloud copies first
+    const g = await fetch(`http://127.0.0.1:${PORT}/v1/c/${name}`, { headers: H });
+    await fetch(`http://127.0.0.1:${PORT}/v1/c/${name}`, { method: 'PUT', headers: { ...H, 'If-Match': g.headers.get('x-etag') ?? 'none' }, body: JSON.stringify(empty) });
+  }
+  const r = await fetch(`http://127.0.0.1:${PORT}/v1/p/reset-marker`, { method: 'PUT', headers: { Authorization: `Bearer ${KEY}` }, body: new Date(Date.now() + 1000).toISOString() });
+  check('the reset marker is stored in the cloud', r.ok);
+  await reveal(B); await B.click('[data-testid=cloud-connect]');
+  await B.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
+  await B.waitForTimeout(800);
+  check('B cleared its bills, stock and cash after the reset', (await ls(B, 'spj.history.v1')).length === 0 && (await ls(B, 'spj.stock.v1')).length === 0 && (await ls(B, 'spj.cash.v1')).length === 0);
+  check('B keeps its settings (shop name) after the reset', (await ls(B, 'spj.settings.v1'))?.shopName === 'S.P. JEWELLERS TEST');
+  await reveal(A); await A.click('[data-testid=cloud-connect]');
+  await A.waitForFunction(() => /In sync/.test(document.querySelector('[data-testid=cloud-status]')?.textContent || ''));
+  await A.waitForTimeout(800);
+  check('A cleared too, and the cloud did not bring the old data back', (await ls(A, 'spj.history.v1')).length === 0 && (await ls(B, 'spj.history.v1')).length === 0);
+}
+
 // ---- turn off: data stays on the device
 await reveal(B); await B.click('[data-testid=cloud-off]');
-check('turning the cloud off keeps the data on the device', (await ls(B, 'spj.history.v1')).length === 3 && (await B.textContent('[data-testid=cloud-status]')).includes('Off'));
+check('turning the cloud off keeps the settings on the device', (await ls(B, 'spj.settings.v1'))?.shopName === 'S.P. JEWELLERS TEST' && (await B.textContent('[data-testid=cloud-status]')).includes('Off'));
 
 await browser.close();
 stop();

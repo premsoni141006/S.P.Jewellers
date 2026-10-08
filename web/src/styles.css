@@ -1194,3 +1194,9 @@ button.stock-card { text-align: left; font: inherit; color: inherit; width: 100%
 .zv-close { position: absolute; top: calc(var(--safe-t, 0px) + 14px); right: 14px; z-index: 2; }
 .zv-ctl { position: absolute; bottom: calc(var(--safe-b, 0px) + 22px); display: flex; gap: 10px; z-index: 2; }
 .zv-level { width: auto; padding: 0 14px; border-radius: 22px; }
+
+/* gallery: hidden top-right corner (3 quick taps) and the details pop-up */
+.gx-secret { opacity: 0; border: 0; background: transparent; }
+.gx-info-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(31, 31, 36, 0.08); font-size: 14.5px; }
+.gx-info-row span { color: rgba(31, 31, 36, 0.6); }
+.gx-info-row b { text-align: right; overflow-wrap: anywhere; }

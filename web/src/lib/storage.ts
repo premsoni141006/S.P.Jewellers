@@ -23,6 +23,7 @@ const SUFFIX = {
   cloudPhotos: 'cloud.photos.v1',
   cloudPhotoDeletes: 'cloud.photodeletes.v1',
   cloudLast: 'cloud.last',
+  cloudReset: 'cloud.reset.v1',
 } as const;
 
 /** Storage keys of the shop that is signed in (each shop has its own, see shop.ts). */

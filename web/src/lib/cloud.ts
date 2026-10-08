@@ -5,7 +5,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { fixBillNumbers, maxBillNumber, mergeBills, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
 import { KEYS, load, save } from './storage';
-import { deletePhoto, getPhoto, putPhoto } from './photos';
+import { clearPhotos, deletePhoto, getPhoto, putPhoto } from './photos';
 import { loadPicks, type Pick } from './picks';
 import { activeShop } from './shop';
 
@@ -180,6 +180,25 @@ let suppress = false;
 export const isSyncing = (): boolean => suppress;
 
 /** Syncs everything. Returns true when this device received something new (the screen should reload its data). */
+/** The owner can reset the shop: a marker named 'reset-marker' (a time) is stored in the cloud. A phone that has not seen
+ *  that time yet clears its own bills, stock, cash, picks and photos once (products, rates and settings stay), then carries on. */
+const RESET_ID = 'reset-marker';
+async function applyRemoteReset(cfg: CloudConfig): Promise<boolean> {
+  const res = await call(cfg, `/p/${RESET_ID}`);
+  if (res.status === 404) return false;
+  if (!res.ok) throw new Error(`The cloud answered ${res.status}.`);
+  const at = (await res.text()).trim();
+  if (!at || at <= load<string>(KEYS.cloudReset, '')) return false;
+  for (const k of [KEYS.history, KEYS.drafts, KEYS.stock, KEYS.cash, KEYS.picks, KEYS.picksRemoved, KEYS.cloudPhotos, KEYS.cloudPhotoDeletes]) save(k, []);
+  save(KEYS.draft, null);
+  save(KEYS.nextNo, 1);
+  save(KEYS.picksSession, '');
+  save(KEYS.picksCustomer, '');
+  await clearPhotos();
+  save(KEYS.cloudReset, at);
+  return true;
+}
+
 export async function syncAll(cfg: CloudConfig): Promise<boolean> {
   if (running) return false;
   running = true;
@@ -187,6 +206,7 @@ export async function syncAll(cfg: CloudConfig): Promise<boolean> {
   setStatus({ state: 'syncing', error: '' });
   let changed = false;
   try {
+    changed = (await applyRemoteReset(cfg)) || changed;
     await flushPhotoDeletes(cfg);
     changed = (await listCollection<Estimate>(cfg, 'history', KEYS.history, (e) => e.updatedAt, (l) => fixBillNumbers(l), mergeBills)) || changed;
     const n = maxBillNumber(load<Estimate[]>(KEYS.history, []));

@@ -29,6 +29,8 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 
 export const putPhoto = (id: string, blob: Blob): Promise<unknown> => tx('readwrite', (s) => s.put(blob, id));
 export const getPhoto = (id: string): Promise<Blob | undefined> => tx<Blob | undefined>('readonly', (s) => s.get(id));
+/** Removes every picture kept on this phone (used when the shop is reset). */
+export const clearPhotos = (): Promise<unknown> => tx('readwrite', (s) => s.clear()).catch(() => undefined);
 export const deletePhoto = (id: string): Promise<unknown> => tx('readwrite', (s) => s.delete(id)).catch(() => undefined);
 
 /** Resize a camera / gallery picture to at most `max` px on its long side, as a JPEG. */

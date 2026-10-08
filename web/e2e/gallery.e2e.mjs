@@ -130,6 +130,16 @@ await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2); await 
 check('double-tap again goes back to fitted', (await scaleOf()) === 1);
 await page.click('[data-testid=gallery-next]');
 check('next shows the following piece', (await page.locator('[data-testid=gallery-viewer] .gx-caption').innerText()).replace(/\s+/g, ' ').includes('6 g'));
+// three quick taps in the top-right corner open the photo's details
+await page.click('[data-testid=gallery-secret]');
+await page.click('[data-testid=gallery-secret]');
+check('two taps do nothing yet', (await page.locator('[data-testid=gallery-info]').count()) === 0);
+await page.click('[data-testid=gallery-secret]');
+await page.waitForSelector('[data-testid=gallery-info]');
+const infoText = (await page.locator('[data-testid=gallery-info]').innerText()).replace(/\s+/g, ' ');
+check('three taps open a pop-up with the stock details (type, metal, category, weight, tunch, add tunch, pieces, date, note)', ['Type', 'Metal', 'Category', 'Weight', 'Tunch', 'Add tunch', 'No. of pieces', 'Date', 'Note'].every((k) => infoText.includes(k)) && /Gold Ring – Classic/.test(infoText), infoText);
+await page.click('[data-testid=gallery-info-close]');
+check('the pop-up closes', (await page.locator('[data-testid=gallery-info]').count()) === 0);
 await page.click('[data-testid=gallery-viewer-back]');
 await page.waitForSelector('[data-testid=gallery-viewer]', { state: 'detached' });
 check('no lock while inside the Gallery', (await page.locator('[data-testid=app-lock]').count()) === 0);
