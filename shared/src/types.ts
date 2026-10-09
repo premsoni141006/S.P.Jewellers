@@ -130,6 +130,8 @@ export interface Estimate {
 }
 
 export interface ShopSettings {
+  /** The sign-in password, kept with the settings so a change made on one device reaches every device through the cloud. */
+  loginPass?: string;
   /** First line of the printed header. */
   shopName: string;
   /** Second line of the printed header. */

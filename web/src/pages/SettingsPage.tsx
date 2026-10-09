@@ -216,7 +216,7 @@ function AccountCard({ shopName }: { shopName: string }) {
   );
 }
 
-function PasswordCard() {
+function PasswordCard({ onChanged }: { onChanged: (pass: string) => void }) {
   const [cur, setCur] = useState('');
   const [next, setNext] = useState('');
   const [again, setAgain] = useState('');
@@ -237,7 +237,7 @@ function PasswordCard() {
       <button className="btn btn-primary" data-testid="pw-save" onClick={() => {
         const err = changePassword(cur, next, again);
         if (err) setMsg({ ok: false, text: err });
-        else { setMsg({ ok: true, text: 'Password changed.' }); setCur(''); setNext(''); setAgain(''); }
+        else { onChanged(next); setMsg({ ok: true, text: 'Password changed.' }); setCur(''); setNext(''); setAgain(''); }
       }}>Change password</button>
     </section>
   );
@@ -299,7 +299,7 @@ export function SettingsPage({ store, onPrinter }: Props) {
 
       <DeleteGate onDone={store.reload} />
 
-      <PasswordCard />
+      <PasswordCard onChanged={(loginPass) => set({ loginPass })} />
 
       <AccountCard shopName={s.shopName} />
     </div>

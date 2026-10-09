@@ -9,7 +9,10 @@ import { GLOBAL_KEYS, activeShop, keyFor, setActiveShop, shopOfUser } from './sh
 const DEFAULT_PASS: Record<ShopId, string> = { SPJ: '1234', KJ: '' };
 
 /** The password of a shop: the one the owner set in Settings, otherwise its starting password. */
-const passOf = (shop: ShopId): string => load<{ pass?: string }>(keyFor(shop, 'auth.v3'), {}).pass || DEFAULT_PASS[shop];
+const passOf = (shop: ShopId): string =>
+  load<{ loginPass?: string }>(keyFor(shop, 'settings.v1'), {}).loginPass // set on any device, shared through the cloud with the settings
+  || load<{ pass?: string }>(keyFor(shop, 'auth.v3'), {}).pass
+  || DEFAULT_PASS[shop];
 const currentPass = (): string => passOf(activeShop());
 
 // Wrong passwords: the first 5 tries are free; from the 6th wrong one on, each wrong password locks every password
