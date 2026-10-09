@@ -5,10 +5,10 @@ import type { ShopSettings } from '@shared';
 import { Icon } from '../components/Icon';
 import { NumField } from '../components/NumField';
 import type { AppStore } from '../lib/store';
-import { changePassword, checkCloudGate, passwordError, setUnlocked } from '../lib/auth';
+import { changePassword, checkCloudGate, checkDeleteGate, passwordError, setUnlocked } from '../lib/auth';
 import { ShopLogo } from '../components/ShopLogo';
 import { logoFromFile } from '../lib/logoImage';
-import { DEFAULT_CLOUD_URL, loadCloudConfig, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
+import { DEFAULT_CLOUD_URL, loadCloudConfig, wipeData, type WipeChoice, pingCloud, saveCloudConfig, syncAll, useCloudStatus } from '../lib/cloud';
 import { fmtDateTime } from '@shared';
 
 interface Props {
@@ -72,14 +72,14 @@ function CloudCard({ onSynced }: { onSynced: () => void }) {
 
 
 /** Asks for the password that opens the Cloud backup card. */
-function GateWindow({ onOpen, onClose }: { onOpen: () => void; onClose: () => void }) {
+function GateWindow({ onOpen, onClose, check = checkCloudGate }: { onOpen: () => void; onClose: () => void; check?: (pass: string) => boolean }) {
   const { leaving, leave } = useLeave();
   useBackLayer(true, () => leave(onClose));
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
   return (
     <div className={`modal-backdrop${leaving ? ' leaving' : ''}`} onClick={() => leave(onClose)} role="presentation">
-      <form className="rates-card" role="dialog" aria-modal="true" aria-label="Password" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (checkCloudGate(pass)) leave(onOpen); else setError(passwordError()); }} data-testid="cloud-gate">
+      <form className="rates-card" role="dialog" aria-modal="true" aria-label="Password" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (check(pass)) leave(onOpen); else setError(passwordError()); }} data-testid="cloud-gate">
         <div className="rates-head"><h2>Password</h2><button type="button" className="bar-btn close-x" onClick={() => leave(onClose)} aria-label="Close">✕</button></div>
         <label className="field">
           <span className="field-label">Enter the password</span>
@@ -107,6 +107,69 @@ function CloudGate({ onSynced }: { onSynced: () => void }) {
     <>
       <button type="button" className="thin-card" onClick={tap} data-testid="cloud-thin">spj-img</button>
       {asking && <GateWindow onClose={() => setAsking(false)} onOpen={() => { setAsking(false); setShown(true); }} />}
+    </>
+  );
+}
+
+const WIPE_ROWS: { key: keyof WipeChoice; label: string }[] = [
+  { key: 'bills', label: 'Bills' },
+  { key: 'stock', label: 'Stock entries' },
+  { key: 'images', label: 'Images (stock photos)' },
+  { key: 'cash', label: 'Cash entries' },
+  { key: 'picks', label: 'Customer picks (Gallery likes)' },
+  { key: 'products', label: 'Products' },
+  { key: 'settings', label: 'Shop settings' },
+];
+
+/** Deletes saved data on purpose, on this device and in the cloud. Tick what to delete, then confirm. */
+function DeleteCard({ onDone }: { onDone: () => void }) {
+  const [pick, setPick] = useState<WipeChoice>({ bills: false, stock: false, images: false, cash: false, picks: false, products: false, settings: false });
+  const [sure, setSure] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const any = Object.values(pick).some(Boolean);
+  const all = Object.values(pick).every(Boolean);
+  const run = async () => {
+    if (!sure) { setSure(true); return; }
+    setBusy(true);
+    const problem = await wipeData(pick);
+    setBusy(false);
+    setSure(false);
+    if (problem) { setMsg(problem); return; }
+    setMsg('Deleted.');
+    setPick({ bills: false, stock: false, images: false, cash: false, picks: false, products: false, settings: false });
+    onDone();
+  };
+  return (
+    <section className="card stack" data-testid="delete-card">
+      <div className="section-title">Delete saved data</div>
+      <Toggle label="Everything" checked={all} onChange={(v) => { setPick({ bills: v, stock: v, images: v, cash: v, picks: v, products: v, settings: v }); setSure(false); setMsg(''); }} />
+      {WIPE_ROWS.map((r) => (
+        <Toggle key={r.key} label={r.label} checked={pick[r.key]} onChange={(v) => { setPick({ ...pick, [r.key]: v }); setSure(false); setMsg(''); }} />
+      ))}
+      <p className="small" role="status" data-testid="delete-status">
+        {msg || (all ? 'Deletes everything here and in the cloud, and every phone clears itself the next time it opens.' : 'Deletes the ticked items here and in the cloud. A phone that still has them can send them back; tick Everything to clear every phone.')}
+      </p>
+      <button className="btn btn-primary" disabled={!any || busy} onClick={() => void run()} data-testid="delete-go">{busy ? 'Deleting…' : sure ? 'Tap again to delete for good' : 'Delete ticked'}</button>
+    </section>
+  );
+}
+
+/** The delete card stays hidden behind a thin "spj-del" card: tap it 5 times in a row, then enter the password. */
+function DeleteGate({ onDone }: { onDone: () => void }) {
+  const [shown, setShown] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const taps = useRef({ n: 0, t: 0 });
+  if (shown) return <DeleteCard onDone={onDone} />;
+  const tap = () => {
+    const now = Date.now();
+    taps.current = { n: now - taps.current.t < 2000 ? taps.current.n + 1 : 1, t: now };
+    if (taps.current.n >= 5) { taps.current = { n: 0, t: 0 }; setAsking(true); }
+  };
+  return (
+    <>
+      <button type="button" className="thin-card" onClick={tap} data-testid="delete-thin">spj-del</button>
+      {asking && <GateWindow check={checkDeleteGate} onClose={() => setAsking(false)} onOpen={() => { setAsking(false); setShown(true); }} />}
     </>
   );
 }
@@ -233,6 +296,8 @@ export function SettingsPage({ store, onPrinter }: Props) {
       </section>
 
       <CloudGate onSynced={store.reload} />
+
+      <DeleteGate onDone={store.reload} />
 
       <PasswordCard />
 

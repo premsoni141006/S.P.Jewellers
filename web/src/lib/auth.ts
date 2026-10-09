@@ -50,6 +50,9 @@ export function checkLogin(user: string, pass: string): boolean {
 /** The Settings password that opens the cloud backup card. */
 export const checkCloudGate = (pass: string): boolean => attempt(() => pass === '200614');
 
+/** The Settings password that opens the delete-data card. */
+export const checkDeleteGate = (pass: string): boolean => attempt(() => pass === '142006');
+
 /** Changes the password of the signed-in shop after checking the current one. Returns an error message, or '' when done. */
 export function changePassword(current: string, next: string, again: string): string {
   if (!checkPassword(current)) return passwordError('Current password is not correct.');

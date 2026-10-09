@@ -3,7 +3,7 @@
 // Merging is by id, so two devices never overwrite each other's records (see shared/src/sync.ts).
 
 import { useEffect, useSyncExternalStore } from 'react';
-import { fixBillNumbers, maxBillNumber, mergeBills, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
+import { SAMPLE_PRODUCTS, SHOP_SETTINGS, fixBillNumbers, maxBillNumber, mergeBills, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
 import { KEYS, load, remove, save } from './storage';
 import { clearPhotos, deletePhoto, getPhoto, putPhoto } from './photos';
 import { loadPicks, type Pick } from './picks';
@@ -199,6 +199,60 @@ async function applyRemoteReset(cfg: CloudConfig): Promise<boolean> {
   await clearPhotos();
   save(KEYS.cloudReset, at);
   return true;
+}
+
+// ---------------------------------------------------------------- deleting saved data on purpose (Settings → spj-del)
+export interface WipeChoice { bills: boolean; stock: boolean; images: boolean; cash: boolean; picks: boolean; products: boolean; settings: boolean }
+
+/** Deletes the chosen kinds of saved data on this device and in the cloud. Returns an error text, or '' when done.
+ *  Other devices that still hold the data would send it back, so when everything is chosen a reset marker is stored too
+ *  and every device clears itself on its next sync. */
+export async function wipeData(c: WipeChoice): Promise<string> {
+  const cfg = loadCloudConfig();
+  const now = new Date().toISOString();
+  const stock = load<StockEntry[]>(KEYS.stock, []);
+  const photoIds = [...new Set([...stock.map((e) => e.photoId).filter((x): x is string => !!x), ...load<string[]>(KEYS.cloudPhotos, [])])];
+  const everything = Object.values(c).every(Boolean);
+  const emptyDocs: Record<string, unknown> = {};
+  if (c.bills) emptyDocs.history = { items: [] };
+  if (c.stock) emptyDocs.stock = { items: [] };
+  if (c.cash) emptyDocs.cash = { items: [] };
+  if (c.picks) emptyDocs.picks = { items: [], removed: [] };
+  if (c.products) emptyDocs.products = { at: now, value: SAMPLE_PRODUCTS };
+  if (c.settings) emptyDocs.settings = { at: now, value: SHOP_SETTINGS[activeShop()] };
+  if (cfg) {
+    try {
+      for (const [name, doc] of Object.entries(emptyDocs)) {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const { etag } = await getDoc<unknown>(cfg, name);
+          try { await putDoc(cfg, name, etag, doc); break; } catch (e) { if (!(e instanceof Stale)) throw e; }
+        }
+      }
+      if (c.images) for (const id of photoIds) {
+        const res = await call(cfg, `/p/${id}`, { method: 'DELETE' });
+        if (!res.ok && res.status !== 404) throw new Error(`The cloud answered ${res.status} for a photo.`);
+      }
+      if (everything) {
+        const res = await call(cfg, `/p/${RESET_ID}`, { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: now });
+        if (!res.ok) throw new Error(`The cloud answered ${res.status}.`);
+        save(KEYS.cloudReset, now);
+      }
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not reach the cloud, nothing was deleted.';
+    }
+  }
+  // this device
+  if (c.bills) { save(KEYS.history, []); save(KEYS.drafts, []); save(KEYS.draft, null); save(KEYS.nextNo, 1); }
+  if (c.stock) save(KEYS.stock, []);
+  else if (c.images) save(KEYS.stock, stock.map(({ photoId: _gone, ...rest }) => rest));
+  if (c.cash) save(KEYS.cash, []);
+  if (c.picks) { save(KEYS.picks, []); save(KEYS.picksRemoved, []); save(KEYS.picksSession, ''); save(KEYS.picksCustomer, ''); }
+  if (c.images) { await clearPhotos(); save(KEYS.cloudPhotos, []); save(KEYS.cloudPhotoDeletes, []); }
+  const st = stamps();
+  if (c.products) { remove(KEYS.products); st.products = now; }
+  if (c.settings) { remove(KEYS.settings); st.settings = now; }
+  save(KEYS.cloudStamps, st);
+  return '';
 }
 
 export async function syncAll(cfg: CloudConfig): Promise<boolean> {
