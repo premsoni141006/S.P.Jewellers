@@ -12,6 +12,16 @@ initKeyboardFocus();
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault());
 document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && !(e.target as Element | null)?.closest?.('.preview-body, .gx-stage, .crop-frame')) e.preventDefault(); }, { passive: false });
 async function start(): Promise<void> {
+  // One-time wipe: the first time a device opens this version it forgets everything saved on it (bills, stock, cash,
+  // photos, products, settings, password). Change WIPE_ID to wipe every device again.
+  const WIPE_ID = '2026-10-09-new-shop';
+  try {
+    if (window.localStorage.getItem('spj.wipe.v1') !== WIPE_ID) {
+      for (const k of Object.keys(window.localStorage)) if (/^(spj|kj)\./.test(k) && k !== 'spj.cloud.v1') window.localStorage.removeItem(k);
+      for (const db of ['spj-photos', 'kj-photos']) indexedDB.deleteDatabase(db);
+      window.localStorage.setItem('spj.wipe.v1', WIPE_ID);
+    }
+  } catch { /* storage blocked: nothing saved to wipe */ }
   // Development only: ?demo=stock loads sample stock to try Stock OUT.
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === 'stock') {
     const { loadDemoStock } = await import('./lib/demoData');
