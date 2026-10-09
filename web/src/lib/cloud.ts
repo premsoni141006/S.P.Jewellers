@@ -4,7 +4,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { fixBillNumbers, maxBillNumber, mergeBills, mergeById, type CashEntry, type Estimate, type StockEntry } from '@shared';
-import { KEYS, load, save } from './storage';
+import { KEYS, load, remove, save } from './storage';
 import { clearPhotos, deletePhoto, getPhoto, putPhoto } from './photos';
 import { loadPicks, type Pick } from './picks';
 import { activeShop } from './shop';
@@ -181,7 +181,7 @@ export const isSyncing = (): boolean => suppress;
 
 /** Syncs everything. Returns true when this device received something new (the screen should reload its data). */
 /** The owner can reset the shop: a marker named 'reset-marker' (a time) is stored in the cloud. A phone that has not seen
- *  that time yet clears its own bills, stock, cash, picks and photos once (products, rates and settings stay), then carries on. */
+ *  that time yet clears its own bills, stock, cash, picks, photos, products and settings once, then carries on. */
 const RESET_ID = 'reset-marker';
 async function applyRemoteReset(cfg: CloudConfig): Promise<boolean> {
   const res = await call(cfg, `/p/${RESET_ID}`);
@@ -190,6 +190,8 @@ async function applyRemoteReset(cfg: CloudConfig): Promise<boolean> {
   const at = (await res.text()).trim();
   if (!at || at <= load<string>(KEYS.cloudReset, '')) return false;
   for (const k of [KEYS.history, KEYS.drafts, KEYS.stock, KEYS.cash, KEYS.picks, KEYS.picksRemoved, KEYS.cloudPhotos, KEYS.cloudPhotoDeletes]) save(k, []);
+  remove(KEYS.products);
+  remove(KEYS.settings);
   save(KEYS.draft, null);
   save(KEYS.nextNo, 1);
   save(KEYS.picksSession, '');

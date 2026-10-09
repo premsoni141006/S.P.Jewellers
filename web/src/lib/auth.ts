@@ -6,10 +6,10 @@ import { SHOP_SETTINGS, type ShopId } from '@shared';
 import { KEYS, load, save } from './storage';
 import { GLOBAL_KEYS, activeShop, keyFor, setActiveShop, shopOfUser } from './shop';
 
-const DEFAULT_PASS: Record<ShopId, string> = { SPJ: '3262', KJ: '0800' };
+const DEFAULT_PASS: Record<ShopId, string> = { SPJ: '1234', KJ: '' };
 
 /** The password of a shop: the one the owner set in Settings, otherwise its starting password. */
-const passOf = (shop: ShopId): string => load<{ pass?: string }>(keyFor(shop, 'auth.v2'), {}).pass || DEFAULT_PASS[shop];
+const passOf = (shop: ShopId): string => load<{ pass?: string }>(keyFor(shop, 'auth.v3'), {}).pass || DEFAULT_PASS[shop];
 const currentPass = (): string => passOf(activeShop());
 
 // Wrong passwords: the first 5 tries are free; from the 6th wrong one on, each wrong password locks every password

@@ -13,7 +13,7 @@ const SUFFIX = {
   printer: 'printer.v1',
   stock: 'stock.v1',
   cash: 'cash.v1',
-  auth: 'auth.v2', // v2: the passwords were reset (SPJ 3262, KJ 0800)
+  auth: 'auth.v3', // v3: new shop, the password was reset (SPJ 1234)
   picks: 'picks.v1',
   picksSession: 'picks.session.v1',
   picksCustomer: 'picks.customer.v1',

@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
 };
 
 export type ShopId = 'SPJ' | 'KJ';
-export const SHOP_IDS: ShopId[] = ['SPJ', 'KJ'];
+export const SHOP_IDS: ShopId[] = ['SPJ']; // Kashi Jewellers was removed; only S.P. Jewellers signs in
 
 /** What each shop starts with. SPJ keeps the settings above; Kashi Jewellers has its own name, address and two owners, and no logo until one is uploaded. */
 export const SHOP_SETTINGS: Record<ShopId, ShopSettings> = {
