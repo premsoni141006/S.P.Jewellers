@@ -174,13 +174,13 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
   const entry = list[index];
   const url = usePhotoUrl(entry.photoId);
   useBackLayer(true, onClose);
-  // Three quick taps in the top-right corner open every detail kept for this photo (as on the stock page).
+  // Four quick taps on the weight open every detail kept for this photo in stock (only the owner knows; no button shows).
   const [info, setInfo] = useState(false);
   const taps = useRef<number[]>([]);
   const secretTap = () => {
     const now = Date.now();
-    taps.current = [...taps.current.filter((t) => now - t < 900), now];
-    if (taps.current.length >= 3) { taps.current = []; setInfo(true); }
+    taps.current = [...taps.current.filter((t) => now - t < 1500), now];
+    if (taps.current.length >= 4) { taps.current = []; setInfo(true); }
   };
 
   // Zoom: pinch with two fingers, double-tap (or double-click), the + / - buttons, or the mouse wheel.
@@ -252,7 +252,6 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
       <header className="gx-top">
         <button className="gx-round" onClick={onClose} aria-label="Back to gallery" data-testid="gallery-viewer-back"><Icon name="back" size={22} /></button>
         <div className="gx-title"><span>{index + 1} / {list.length}</span></div>
-        <button type="button" className="gx-round gx-secret" onClick={secretTap} aria-hidden="true" tabIndex={-1} data-testid="gallery-secret" />
       </header>
       <div
         className="gx-stage"
@@ -272,7 +271,7 @@ function Detail({ list, index, liked, onIndex, onLike, onClose }: { list: StockE
           {zoom > 1 && <button className="gx-round gx-zoomlevel" onClick={() => zoomTo(1)} aria-label="Back to fitted" data-testid="gallery-zoom-reset">{Math.round(zoom * 10) / 10}×</button>}
         </div>
       </div>
-      <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt">{wt(entry.weight)}</span></div>
+      <div className="gx-caption"><span className="gx-name">{entry.item}</span><span className="gx-wt" onClick={secretTap} style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }} data-testid="gallery-secret">{wt(entry.weight)}</span></div>
       {onLike && <button type="button" className={`gx-like-heart${liked(entry.id) ? ' liked' : ''}`} onClick={() => onLike(entry)} aria-label="A customer likes this" data-testid="gallery-detail-plus"><Icon name="heart" size={26} fill={liked(entry.id) ? 'currentColor' : 'none'} /></button>}
       {info && (
         <div className="gx-modal" role="dialog" aria-modal="true" aria-label="Photo details" onClick={() => setInfo(false)} data-testid="gallery-info">
