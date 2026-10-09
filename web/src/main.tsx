@@ -17,7 +17,11 @@ async function start(): Promise<void> {
   const WIPE_ID = '2026-10-09-new-shop';
   try {
     if (window.localStorage.getItem('spj.wipe.v1') !== WIPE_ID) {
+      // the password the owner set stays through the wipe
+      let pass = '';
+      try { pass = (JSON.parse(window.localStorage.getItem('spj.settings.v1') ?? '{}') as { loginPass?: string }).loginPass || (JSON.parse(window.localStorage.getItem('spj.auth.v3') ?? '{}') as { pass?: string }).pass || ''; } catch { /* no saved password */ }
       for (const k of Object.keys(window.localStorage)) if (/^(spj|kj)\./.test(k) && k !== 'spj.cloud.v1') window.localStorage.removeItem(k);
+      if (pass) window.localStorage.setItem('spj.settings.v1', JSON.stringify({ loginPass: pass }));
       for (const db of ['spj-photos', 'kj-photos']) indexedDB.deleteDatabase(db);
       window.localStorage.setItem('spj.wipe.v1', WIPE_ID);
     }

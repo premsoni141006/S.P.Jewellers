@@ -189,9 +189,11 @@ async function applyRemoteReset(cfg: CloudConfig): Promise<boolean> {
   if (!res.ok) throw new Error(`The cloud answered ${res.status}.`);
   const at = (await res.text()).trim();
   if (!at || at <= load<string>(KEYS.cloudReset, '')) return false;
+  const pass = keptPass();
   for (const k of [KEYS.history, KEYS.drafts, KEYS.stock, KEYS.cash, KEYS.picks, KEYS.picksRemoved, KEYS.cloudPhotos, KEYS.cloudPhotoDeletes]) save(k, []);
   remove(KEYS.products);
   remove(KEYS.settings);
+  restorePass(pass);
   save(KEYS.draft, null);
   save(KEYS.nextNo, 1);
   save(KEYS.picksSession, '');
@@ -202,6 +204,15 @@ async function applyRemoteReset(cfg: CloudConfig): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------- deleting saved data on purpose (Settings → spj-del)
+/** The sign-in password the owner set (kept through every reset and wipe). */
+const keptPass = (): string => load<{ loginPass?: string }>(KEYS.settings, {}).loginPass || load<{ pass?: string }>(KEYS.auth, {}).pass || '';
+/** Puts the kept password back as the only saved setting after the settings were cleared. */
+function restorePass(pass: string): void {
+  if (!pass) return;
+  save(KEYS.settings, { loginPass: pass });
+  markEdited('settings');
+}
+
 export interface WipeChoice { bills: boolean; stock: boolean; images: boolean; cash: boolean; picks: boolean; products: boolean; settings: boolean }
 
 /** Deletes the chosen kinds of saved data on this device and in the cloud. Returns an error text, or '' when done.
@@ -213,13 +224,14 @@ export async function wipeData(c: WipeChoice): Promise<string> {
   const stock = load<StockEntry[]>(KEYS.stock, []);
   const photoIds = [...new Set([...stock.map((e) => e.photoId).filter((x): x is string => !!x), ...load<string[]>(KEYS.cloudPhotos, [])])];
   const everything = Object.values(c).every(Boolean);
+  const pass = keptPass();
   const emptyDocs: Record<string, unknown> = {};
   if (c.bills) emptyDocs.history = { items: [] };
   if (c.stock) emptyDocs.stock = { items: [] };
   if (c.cash) emptyDocs.cash = { items: [] };
   if (c.picks) emptyDocs.picks = { items: [], removed: [] };
   if (c.products) emptyDocs.products = { at: now, value: SAMPLE_PRODUCTS };
-  if (c.settings) emptyDocs.settings = { at: now, value: SHOP_SETTINGS[activeShop()] };
+  if (c.settings) emptyDocs.settings = { at: now, value: { ...SHOP_SETTINGS[activeShop()], ...(pass ? { loginPass: pass } : {}) } };
   if (cfg) {
     try {
       for (const [name, doc] of Object.entries(emptyDocs)) {
@@ -250,7 +262,7 @@ export async function wipeData(c: WipeChoice): Promise<string> {
   if (c.images) { await clearPhotos(); save(KEYS.cloudPhotos, []); save(KEYS.cloudPhotoDeletes, []); }
   const st = stamps();
   if (c.products) { remove(KEYS.products); st.products = now; }
-  if (c.settings) { remove(KEYS.settings); st.settings = now; }
+  if (c.settings) { remove(KEYS.settings); if (pass) save(KEYS.settings, { loginPass: pass }); st.settings = now; }
   save(KEYS.cloudStamps, st);
   return '';
 }
