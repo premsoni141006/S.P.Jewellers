@@ -8,7 +8,7 @@
 //   GET  /v1/p/<id>  /  HEAD      -> the photo (404 when it is not there)
 //   DELETE /v1/p/<id>             -> remove the photo for good
 //
-// An optional  X-Shop: <id>  header (e.g. kj) keeps another shop's data in its own folder.
+// An optional  X-Shop: <id>  header (e.g. sbj) keeps another shop's data in its own folder.
 // Every request needs  Authorization: Bearer <SYNC_TOKEN>.  The token is a Worker secret, never in the code.
 
 export interface Env {

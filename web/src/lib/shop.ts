@@ -1,5 +1,5 @@
 // Which shop is signed in on this device. Each shop keeps its own data (bills, stock, cash, products,
-// settings, photos, cloud copy), kept apart by a storage prefix: SPJ keeps "spj.", Kashi Jewellers uses "kj.".
+// settings, photos, cloud copy), kept apart by a storage prefix: SPJ keeps "spj.", Shree Bala Ji Jewellers uses "sbj.".
 
 import { SHOP_IDS, type ShopId } from '@shared';
 
@@ -11,7 +11,7 @@ export const shopOfUser = (user: string): ShopId | null => {
   return (SHOP_IDS as string[]).includes(u) ? (u as ShopId) : null;
 };
 
-const prefixOf = (shop: ShopId): string => (shop === 'KJ' ? 'kj' : 'spj');
+const prefixOf = (shop: ShopId): string => (shop === 'SBJ' ? 'sbj' : 'spj');
 
 function readActive(): ShopId {
   try {

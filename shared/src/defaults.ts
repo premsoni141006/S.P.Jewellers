@@ -29,21 +29,19 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   roundGrandTotal: true,
 };
 
-export type ShopId = 'SPJ' | 'KJ';
-export const SHOP_IDS: ShopId[] = ['SPJ']; // Kashi Jewellers was removed; only S.P. Jewellers signs in
+export type ShopId = 'SPJ' | 'SBJ';
+export const SHOP_IDS: ShopId[] = ['SPJ', 'SBJ']; // S.P. Jewellers and Shree Bala Ji Jewellers
 
-/** What each shop starts with. SPJ keeps the settings above; Kashi Jewellers has its own name, address and two owners, and no logo until one is uploaded. */
+/** What each shop starts with. SPJ keeps the settings above; Shree Bala Ji Jewellers has its own name and no logo until one is uploaded. */
 export const SHOP_SETTINGS: Record<ShopId, ShopSettings> = {
   SPJ: DEFAULT_SETTINGS,
-  KJ: {
+  SBJ: {
     ...DEFAULT_SETTINGS,
-    shopName: 'KASHI JEWELLERS',
-    address: 'Main Bazar, Bhadra',
-    ownerName: 'Jaideep Soni',
+    shopName: 'SHREE BALA JI JEWELLERS',
+    address: '',
+    ownerName: '',
     ownerFamily: '',
-    phone: '9782785300',
-    ownerName2: 'Yogesh Soni',
-    phone2: '9929288743',
+    phone: '',
     printLogo: false,
   },
 };

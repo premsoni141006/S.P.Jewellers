@@ -47,7 +47,7 @@ export function markEdited(name: DocName): void {
 class Stale extends Error {}
 
 async function call(cfg: CloudConfig, path: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(`${cfg.url.replace(/\/+$/, '')}/v1${path}`, { ...init, headers: { Authorization: `Bearer ${cfg.key}`, ...(activeShop() === 'KJ' ? { 'X-Shop': 'kj' } : {}), ...(init.headers ?? {}) } });
+  const res = await fetch(`${cfg.url.replace(/\/+$/, '')}/v1${path}`, { ...init, headers: { Authorization: `Bearer ${cfg.key}`, ...(activeShop() === 'SBJ' ? { 'X-Shop': 'sbj' } : {}), ...(init.headers ?? {}) } });
   if (res.status === 401) throw new Error('The cloud key is not correct.');
   return res;
 }

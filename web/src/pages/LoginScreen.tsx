@@ -27,7 +27,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }) {
             shop's logo appears only when they match a registered shop. */}
         <div className="login-mark" data-testid="login-mark" aria-live="polite">
           {shop
-            ? <ShopLogo size={84} shop={shop} logoData={load<{ logoData?: string }>(keyFor(shop, 'settings.v1'), {}).logoData} name={shop === 'KJ' ? 'Kashi Jewellers' : 'S.P. Jewellers'} />
+            ? <ShopLogo size={84} shop={shop} logoData={load<{ logoData?: string }>(keyFor(shop, 'settings.v1'), {}).logoData} name={shop === 'SBJ' ? 'Shree Bala Ji Jewellers' : 'S.P. Jewellers'} />
             : <span className="login-letters" data-testid="login-letters">{user.trim().toUpperCase()}</span>}
         </div>
         <h1>Sign in</h1>

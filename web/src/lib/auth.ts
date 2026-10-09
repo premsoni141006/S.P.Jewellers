@@ -1,4 +1,4 @@
-// Sign-in for the shops. User name SPJ (S.P. Jewellers) or KJ (Kashi Jewellers), each with its own password
+// Sign-in for the shops. User name SPJ (S.P. Jewellers) or SBJ (Shree Bala Ji Jewellers), each with its own password
 // that the owner can change in Settings. This keeps casual visitors out of the app; it is not server-side
 // security (the data lives on the device).
 
@@ -6,7 +6,7 @@ import { SHOP_SETTINGS, type ShopId } from '@shared';
 import { KEYS, load, save } from './storage';
 import { GLOBAL_KEYS, activeShop, keyFor, setActiveShop, shopOfUser } from './shop';
 
-const DEFAULT_PASS: Record<ShopId, string> = { SPJ: '1234', KJ: '' };
+const DEFAULT_PASS: Record<ShopId, string> = { SPJ: '1234', SBJ: '0800' };
 
 /** The password of a shop: the one the owner set in Settings, otherwise its starting password. */
 const passOf = (shop: ShopId): string =>
@@ -72,7 +72,7 @@ export function isUnlocked(): boolean {
   return shopOfUser(load<string>(GLOBAL_KEYS.signedIn, '')) !== null;
 }
 
-/** Signs in as `user` (SPJ or KJ) and makes that shop's data the active one; `setUnlocked(false)` signs out. */
+/** Signs in as `user` (SPJ or SBJ) and makes that shop's data the active one; `setUnlocked(false)` signs out. */
 export function setUnlocked(on: boolean, user = ''): void {
   const shop = shopOfUser(user);
   if (on && shop) {
